@@ -1,0 +1,144 @@
+rewrite_and_extract_entities:
+  version: "1.0"
+  description: Rewrite a query and extract search entities
+  variables: [query, current_timestamp, max_entities]
+  template: |
+    You are a search analysis expert. Rewrite the question clearly without changing its
+    meaning, then extract only explicitly mentioned entities useful for retrieval. The
+    current UTC time is {current_timestamp}.
+
+    Question: {query}
+
+    Return only a JSON object in this form:
+    {{"rewritten_query":"...","entities":["...","..."]}}
+    Deduplicate entities and return at most {max_entities}.
+
+extract_named_entities:
+  version: "2.0"
+  description: Extract named entities from a query
+  variables: [query, max_entities]
+  system: |
+    You're a very effective entity extraction system.
+  examples:
+    - user: |
+        Please extract all named entities that are important for solving the questions below.
+        Place the named entities in json format.
+
+        Question: Which magazine was started first Arthur's Magazine or First for Women?
+      assistant: |
+        {{"named_entities": ["First for Women", "Arthur's Magazine"]}}
+  template: |
+    Question: {query}
+
+llm_rank_events:
+  version: "1.0"
+  description: Select and rank relevant candidate events
+  variables: [query, events_list, max_results]
+  system: |
+    You filter RAG retrieval results. Remove noise and duplicates while retaining events that
+    directly answer the question or provide necessary multi-hop facts. Scores must be between
+    0 and 1. Return only JSON matching the schema.
+  template: |
+    Question:
+    {query}
+
+    Candidate events:
+    {events_list}
+
+    Return at most {max_results} results. Every index must identify a candidate above.
+
+llm_rank_events_cot:
+  version: "1.0"
+  description: Select relations with explicit chain-of-thought (SAG2 multi Step7 parity)
+  variables: [query, events_list, max_results]
+  system: |
+    I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly {max_results} relationships most useful for answering this multi-hop question.
+
+    Return JSON with "thought_process" and "useful_relations" (list of {max_results} relation indices like "[id]", most useful first).
+  examples:
+    - user: |
+        Question:
+        When did Lothair II's mother die?
+
+        Relationship descriptions:
+        [42] lothair ii son of ermengarde of tours
+        [43] lothair ii married to teutberga
+        [41] lothair ii son of emperor lothair i
+        [60] lothair ii husband of waldrada
+        [67] waldrada was mistress of lothair ii
+      assistant: |
+        {{"thought_process": "Find Lothair II's mother from relation [42].", "useful_relations": ["[42]", "[41]", "[43]", "[60]", "[67]"]}}
+  template: |
+    Question:
+    {query}
+
+    Relationship descriptions:
+    {events_list}
+
+select_useful_relations_local:
+  version: "1.0"
+  description: Select useful knowledge graph relations
+  variables: [question, relations, top_k]
+  system: |
+    I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly {top_k} relationships most useful for answering this multi-hop question.
+
+    Return JSON with only "useful_relations" (list of {top_k} index numbers, most useful first). Do not include reason, thought_process, explanations, or relation text.
+  examples:
+    - user: |
+        I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly 5 relationships most useful for answering this multi-hop question.
+
+        Return JSON with only "useful_relations" (list of 5 index numbers, most useful first).
+
+        Question:
+        When did Lothair Ii's mother die?
+
+        Relationship descriptions:
+        [53] bertha married to theobald of arles
+        [54] bertha married to adalbert ii of tuscany
+        [42] lothair ii son of ermengarde of tours
+        [43] lothair ii married to teutberga
+        [41] lothair ii son of emperor lothair i
+        [60] lothair ii husband of waldrada
+        [67] waldrada was mistress of lothair ii
+      assistant: |
+        {{"useful_relations": ["42", "41", "43", "60", "67"]}}
+    - user: |
+        I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly 5 relationships most useful for answering this multi-hop question.
+
+        Return JSON with only "useful_relations" (list of 5 index numbers, most useful first).
+
+        Question:
+        What country is the composer of "Erta Eterna" from?
+
+        Relationship descriptions:
+        [12] terra eterna composed by paulo flores
+        [15] paulo flores born in angola
+        [18] paulo flores genre is semba
+        [22] angola located in africa
+        [25] semba originated in angola
+        [30] paulo flores nationality angolan
+      assistant: |
+        {{"useful_relations": ["12", "15", "30", "22", "25"]}}
+    - user: |
+        I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly 5 relationships most useful for answering this multi-hop question.
+
+        Return JSON with only "useful_relations" (list of 5 index numbers, most useful first).
+
+        Question:
+        Who is the director of the film that won the award also won by "The Hurt Locker"?
+
+        Relationship descriptions:
+        [5] the hurt locker won academy award best picture
+        [8] the hurt locker directed by kathryn bigelow
+        [12] moonlight won academy award best picture
+        [15] moonlight directed by barry jenkins
+        [20] la la land won golden globe best musical
+        [25] barry jenkins born in miami
+      assistant: |
+        {{"useful_relations": ["5", "12", "15", "8", "25"]}}
+  template: |
+    Question:
+    {question}
+
+    Relationship descriptions:
+    {relations}

@@ -1,0 +1,137 @@
+extract_parent:
+  version: "3.1-sag.1"
+  template: |
+    ## Role
+
+    You are a professional parent-event summarizer. The input contains validated child events
+    from one source that have already passed schema, entity-count, and reference validation. Summarize them into
+    exactly one concise parent event that covers the global through-line and remains faithful to
+    the child events.
+
+    The parent provides a source-level overview. It does not replace child events and must not
+    manufacture causal relationships absent from them.
+
+    ## Summary principles
+
+    - Produce exactly one top-level event.
+    - Consider every input child during global topic analysis; never summarize only the first items.
+    - Concisely capture the shared picture, emphasizing material change, conclusions, decisions,
+      risks, and important figures.
+    - Omit argument detail, repeated background, and modifiers relevant only to minor details.
+    - Merge equivalent conclusions and explicit causal chains, but never derive an unsupported conclusion.
+    - Preserve whether work is planned, in progress, or completed.
+    - Do not change figures, currencies, percentages, subjects, time expressions, or negation.
+    - The input may have been reduced from full content to summaries or titles by a token budget.
+      Summarize only what is actually visible.
+
+    # [[rich]]
+    ## Title, summary, and content
+    # [[minimal]]
+    ## Title and content
+    # [[/]]
+
+    - Keep the title concise—roughly 15 English words or fewer—and express the core topic plus conclusion.
+    - Never concatenate child titles with commas or semicolons.
+    - Avoid empty titles such as “Combined overview” or “Related events”.
+    # [[rich]]
+    - The summary states the most important source-level progress or conclusion in one sentence.
+    # [[/]]
+    - Content uses a few concise paragraphs to show how major topics connect.
+    - Do not enumerate “event one, event two” or copy every child's full content.
+
+    ## Topic coverage
+
+    1. Identify the main topics across all child events.
+    2. Assign every child to one or more topics and confirm coverage of high-priority, boundary,
+       and turning-point events.
+    3. Determine whether topics are parallel, chronological, causal, problem-solution, or
+       decision-execution relationships.
+    4. Retain only relationships directly supported by child events. When uncertain, present topics in parallel.
+    5. Derive one source-level through-line that covers those topics.
+
+    ## Entity extraction principles
+
+    - Extract only the most important cross-event entities: those repeated, connecting multiple
+      topics, or determining the global conclusion.
+    - Omit an entity unique to one child when it is not important to the global view.
+    - Split coordinated entities.
+    - Entity types must come from `meta.entity_types`.
+    - Descriptions explain each entity's role in the global through-line or cross-topic relationship.
+    - Prefer specific types and never invent a missing type.
+
+    ## Time and uncertainty
+
+    - Time information must come from child-event text; never infer a quarter, year, or exact date.
+    - Preserve vague expressions such as recently, this year, next week, or month-end.
+    - When child events have different temporal states, express their progression rather than
+      collapsing them into one time point.
+    - Preserve conflicts and uncertainty instead of selecting one side.
+
+    ## Task
+
+    1. Scan all child events for topics, subjects, states, figures, time, decisions, risks, and outcomes.
+    2. Classify topics and relationships, covering high-priority and boundary information.
+    # [[rich]]
+    3. Produce one concise title and one-sentence summary.
+    # [[minimal]]
+    3. Produce one concise title.
+    # [[/]]
+    4. Produce concise content that merges equivalent conclusions while retaining material figures and states.
+    5. Extract cross-event core entities.
+    6. Check for omitted topics, changed figures, invented causality, or unfinished work presented as complete.
+
+    ## Fixed output constraints
+
+    - `data.items` contains exactly one valid event.
+    # [[rich]]
+    - Parent `references` must be `[]` because the parent does not directly cite original Chunks.
+    # [[/]]
+    - Parent `children` must be `[]`; code persists parent-child relationships through `parent_id`.
+    - Never output child ids, parent_id, level, or other persistence fields.
+    - Return only the canonical JSON contract, with no Markdown, explanation, or extra fields.
+    - Response `data` contains only `items`; do not output other fields.
+  examples:
+    input: |
+      {
+        "type": "request",
+        "data": {
+          "items": [
+            {"id": 1, "content": "Acme completed a CNY 200 million Series B round in 2024 for industrial-vision R&D and East China delivery expansion."},
+            {"id": 2, "content": "Acme deployed three new production lines with a 96% project acceptance rate."},
+            {"id": 3, "content": "Acme plans to enter Southeast Asia next and is still evaluating channels."}
+          ],
+          "meta": {
+            "source_type": "parent",
+            "source_title": "Acme 2024 development",
+            "entity_types": [
+              {"type": "organization", "description": "Company or institution"},
+              {"type": "product", "description": "Product"},
+              {"type": "metric", "description": "Amount, percentage, or count"},
+              {"type": "location", "description": "Region"}
+            ]
+          }
+        }
+      }
+    output: |
+      {
+        "type": "response",
+        "data": {
+          "items": [
+            {
+              "reason": "The three child events cover financing, production-line delivery, and market expansion, which together form Acme's annual development thread, summarized as one parent event.",
+              "title": "Acme financing advances R&D, delivery, and expansion",
+              "summary": "Acme used CNY 200 million financing to advance industrial-vision R&D and delivery while evaluating Southeast Asian expansion.",
+              "content": "Acme completed a CNY 200 million Series B round in 2024 and directed the proceeds toward industrial-vision product R&D and expansion of its East China delivery team. It subsequently deployed three new production lines with a 96% project acceptance rate. Alongside R&D and delivery progress, Acme is evaluating channels for entry into Southeast Asia, which remains a plan rather than a completed expansion.",
+              "references": [],
+              "entities": [
+                {"type": "organization", "name": "Acme", "description": "Company connecting the financing, R&D, delivery, and market-expansion topics"},
+                {"type": "product", "name": "industrial-vision product", "description": "Core R&D direction funded by the financing"},
+                {"type": "location", "name": "Southeast Asia", "description": "Market Acme is evaluating for future entry"},
+                {"type": "metric", "name": "CNY 200 million", "description": "Series B amount supporting R&D and delivery investment"}
+              ],
+              "is_valid": true,
+              "children": []
+            }
+          ]
+        }
+      }

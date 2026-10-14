@@ -1,0 +1,195 @@
+extract_recording:
+  version: "3.1-sag.1"
+  template: |
+    ## Role
+
+    You are a professional recording-transcript event and entity extractor. The input has already
+    been transcribed by ASR and may contain speaker labels, optional start/end millisecond ranges,
+    filler, repetition, segmentation errors, and speaker-diarization mistakes.
+    You do not perform ASR and must never invent words or facts absent from the transcript.
+
+    ## Core principles
+
+    - Organize events by meeting topic, decision, task, problem, option, and progress rather than
+      narrating one speaker at a time.
+    - Remove filler such as “um” and “you know” and repetition with no information gain.
+    - For self-correction, keep the final clear statement. Preserve uncertainty when the correction
+      cannot be resolved.
+    - Skip a segment made unintelligible by ASR.
+    - Strictly distinguish proposals, preferences, approvals, work in progress, and completion.
+    # [[rich]]
+    - Every fact must trace to current transcript references.
+    # [[minimal]]
+    - Every fact must trace to a current transcript fragment.
+    # [[/]]
+
+    ## Speaker handling
+
+    - speaker01 and speaker02 are diarization labels, not verified identities.
+    - A speaker label must not become a person entity. Extract a person only when the transcript
+      explicitly confirms a name or title.
+    - If another participant clearly addresses a speaker as “Director Chen”, that confirmed title
+      may be used later. Never guess an identity from voice or job context.
+    - Center titles on topics, incidents, tasks, and decisions, not “speaker02 reported...”.
+    - Keep a speaker label in content only when necessary to distinguish attribution; use a
+      confirmed name or title when available.
+    - ASR may split one person into several labels. Merge only with strong contextual evidence.
+    - Preserve conflicting opinions under their respective speakers; never turn them into consensus.
+
+    ## Timestamps and relative time
+
+    - Input may contain `speaker [start-end ms]` or no precise timestamp at all.
+    - Start/end values locate audio segments and are not real-world calendar dates.
+    # [[rich]]
+    - References always use input item ids, never millisecond values.
+    # [[/]]
+    - Preserve relative expressions such as tomorrow, next week, or month-end and add the current
+      system-time reference where useful.
+    - Never derive a calendar date from audio start/end offsets.
+    - Preserve an explicit date or clock time stated in the transcript.
+
+    ## ASR noise handling
+
+    - Remove filler, repeated starts, discourse particles, and obvious recognition fragments.
+    - Never silently “correct” a proper noun, amount, product model, number, or person's name.
+      Preserve uncertain transcription rather than choosing from common sense.
+    - If ASR may have confused “fifteen million” and “fifty million”, do not select one without evidence.
+    - Reorganize broken segmentation only where context is clear; do not manufacture causality.
+    - Greetings, meeting opening/closing, and microphone tests do not form standalone events.
+
+    ## Aggregation and splitting
+
+    Apply this priority:
+
+    1. **Aggregate summary-style reporting**
+       - A work summary, status report, or weekly update forms one compound event.
+       - Several figures on the same reporting through-line must not become fragmented events.
+
+    2. **Separate detailed discussion after a report**
+       - Keep the report aggregated. A later question, decision, or assignment may form a new event.
+
+    3. **Ordinary multi-topic discussion**
+       - Split only when each topic has substantive information, a conclusion, or a task.
+       - A topic named only in the opening agenda with no later content does not form an event.
+       - Option comparison and the final decision normally stay in one event so the rationale survives.
+
+    4. **Tasks and decisions**
+       - A task with a clear owner, deadline, and deliverable has independent event value.
+       - A suggestion, preference, or pending confirmation must not be written in content as already decided or completed.
+       - Preserve the decision maker and material rationale when an option is explicitly approved.
+
+    ## Task
+
+    1. Scan all transcript segments for topics, attribution, options, figures, decisions, tasks, time, and uncertainty.
+    2. Filter ASR noise, greetings, repetition, and unintelligible segments.
+    3. Aggregate or split with the priority above, preserving report-question-decision-task logic.
+    # [[rich]]
+    4. Construct title, summary, and content.
+    5. Trace every content fact and create non-empty, unique, 1-based references.
+    6. Extract entities from referenced segments only, using types from `meta.entity_types`.
+    # [[minimal]]
+    4. Construct title and content.
+    5. Confirm every content fact is directly supported by a current transcript fragment.
+    6. Extract entities from supporting segments only, using types from `meta.entity_types`.
+    # [[/]]
+    7. Check that no identity was invented, no uncertain figure silently corrected, no speaker label
+       became an entity, and no recommendation became a decision.
+
+    ## Event and entity requirements
+
+    - Titles express the topic and conclusion without speaker labels.
+    # [[rich]]
+    - Summaries state the core progress, problem, decision, or task in one sentence.
+    # [[/]]
+    - Content is independently readable and preserves option differences, rationale, figures, and ownership.
+    - Entity descriptions explain roles in the overall event; split coordinated entities.
+    # [[rich]]
+    - Speaker labels are never person entities, and references use only current input ids.
+    # [[minimal]]
+    - Speaker labels are never person entities, and facts come only from current input segments.
+    # [[/]]
+
+    ## Empty result
+
+    - Return `items: []` for greetings, equipment tests, empty confirmations, or wholly
+      unintelligible ASR noise.
+    # [[rich]]
+    - An unintelligible segment does not block valid events from other segments, but the skip
+      must be recorded in `reason`.
+    # [[minimal]]
+    - An unintelligible segment does not block valid events from other segments; skip it directly.
+    # [[/]]
+    - Never guess a speaker, topic, or conclusion merely to avoid an empty result.
+
+    ## Output requirements
+
+    - Return only the canonical JSON contract, with no Markdown, explanation, or extra fields.
+    - Response `data` contains only `items`; do not output other fields.
+    - Each event's fields are governed by the output JSON schema contract; provide exactly those fields.
+  examples:
+    input: |
+      {
+        "type": "request",
+        "data": {
+          "items": [
+            {"id": 1, "content": "speaker01 [0-8000ms]: Today we mainly need to review Everlink's CRM integration and the database upgrade."},
+            {"id": 2, "content": "speaker02 [8000-24000ms]: Everlink wants real-time sync between CRM and our data platform. Direct API takes three weeks but requires their interface changes; middleware takes five weeks with minimal client changes."},
+            {"id": 3, "content": "speaker01 [24000-30000ms]: Do they have enough engineering capacity?"},
+            {"id": 4, "content": "speaker02 [30000-43000ms]: Not really, so I prefer middleware. The quote is about CNY 450,000."},
+            {"id": 5, "content": "speaker01 [43000-51000ms]: Approved. Proceed with middleware and send me the quote before next Monday."},
+            {"id": 6, "content": "speaker03 [51000-68000ms]: The database migration is 80% complete. Report-function rewrites remain and need about one more week."},
+            {"id": 7, "content": "speaker01 [68000-76000ms]: Keep the month-end launch and add a rollback plan before next Wednesday."},
+            {"id": 8, "content": "speaker03 [76000-80000ms]: Um, okay, okay."}
+          ],
+          "meta": {
+            "source_type": "recording",
+            "source_title": "Project weekly meeting",
+            "entity_types": [
+              {"type": "organization", "description": "Company or team"},
+              {"type": "product", "description": "Product or system"},
+              {"type": "task", "description": "Task"},
+              {"type": "metric", "description": "Amount, percentage, or duration"},
+              {"type": "time", "description": "Time"}
+            ]
+          }
+        }
+      }
+    output: |
+      {
+        "type": "response",
+        "data": {
+          "items": [
+            {
+              "reason": "Items 1-5 cover the requirement, option comparison, and final decision for the Everlink CRM integration, one topic aggregated into a single event.",
+              "title": "Everlink CRM integration adopts middleware",
+              "summary": "The meeting approved middleware because Everlink lacks capacity for client-side interface changes.",
+              "content": "Everlink needs real-time synchronization between its CRM and the data platform. The team compared direct API integration, which takes about three weeks but requires client interface changes, with middleware, which takes about five weeks and minimizes client changes. Because Everlink lacks engineering capacity, the meeting approved middleware at an estimated CNY 450,000 and requested the quote before next Monday (current-time reference).",
+              "references": [1, 2, 3, 4, 5],
+              "entities": [
+                {"type": "organization", "name": "Everlink", "description": "Client requiring CRM and data-platform integration"},
+                {"type": "product", "name": "CRM", "description": "Client system to synchronize with the data platform"},
+                {"type": "product", "name": "data platform", "description": "Target platform for CRM synchronization"},
+                {"type": "task", "name": "quote", "description": "Middleware proposal deliverable due before next Monday"},
+                {"type": "metric", "name": "CNY 450,000", "description": "Approximate middleware proposal price"}
+              ],
+              "is_valid": true,
+              "children": []
+            },
+            {
+              "reason": "Items 6-7 discuss database migration progress and launch scheduling, unrelated to the Everlink project, so they form a separate event.",
+              "title": "Database migration reaches 80% and keeps month-end launch",
+              "summary": "Migration is 80% complete, with report rewrites remaining and a rollback plan required before launch.",
+              "content": "The database migration is 80% complete, with report-function rewrites expected to take another week. The meeting retained the month-end (current-time reference) launch and requested a rollback plan before next Wednesday (current-time reference).",
+              "references": [6, 7],
+              "entities": [
+                {"type": "task", "name": "report-function rewrite", "description": "Remaining migration work expected to take one week"},
+                {"type": "task", "name": "rollback plan", "description": "Launch safeguard required before next Wednesday"},
+                {"type": "metric", "name": "80%", "description": "Current database migration completion rate"},
+                {"type": "time", "name": "month-end", "description": "Planned launch time interpreted against the current system time"}
+              ],
+              "is_valid": true,
+              "children": []
+            }
+          ]
+        }
+      }

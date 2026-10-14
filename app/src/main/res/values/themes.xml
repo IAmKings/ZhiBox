@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose 单 Activity 应用：XML 侧仅需无标题栏基础主题，实际配色由 Compose Theme 提供 -->
+    <style name="Theme.ZhiBox" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+</resources>

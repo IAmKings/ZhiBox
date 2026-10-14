@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MVP 骨架临时图标：单 vector drawable（API 24+ 可用）；正式图标在 Phase 1 UI 任务中替换 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#3F6C51"
+        android:pathData="M24,4 L40,12 L40,28 C40,36 33,42 24,44 C15,42 8,36 8,28 L8,12 Z" />
+    <path
+        android:fillColor="#C2E8CF"
+        android:pathData="M15,22 L21,28 L33,16 L36,19 L21,34 L12,25 Z" />
+</vector>

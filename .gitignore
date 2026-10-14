@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# SDK 路径等本机配置
+local.properties
+
+# 签名
+*.jks
+*.keystore
+
+# macOS
+.DS_Store
+
+# Kotlin / 编译产物
+*.class
+
+# 日志与临时
+*.log
+tmp/

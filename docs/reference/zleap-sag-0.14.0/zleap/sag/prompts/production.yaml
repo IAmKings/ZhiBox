@@ -1,0 +1,215 @@
+rewrite_and_extract_entities:
+  version: "1.0"
+  description: 查询改写并提取搜索实体
+  variables: [query, current_timestamp, max_entities]
+  template: |
+    你是搜索分析专家。请分析用户问题，改写为清晰、正式且不改变原意的查询，
+    并只提取问题中明确出现、对检索有帮助的实体。当前 UTC 时间为
+    {current_timestamp}。
+
+    用户问题：{query}
+
+    严格返回 JSON 对象，格式如下：
+    {{"rewritten_query":"...","entities":["...","..."]}}
+    实体去重后最多返回 {max_entities} 个。
+
+extract_named_entities:
+  version: "2.0"
+  description: 从查询中提取命名实体
+  variables: [query, max_entities]
+  system: |
+    You're a very effective entity extraction system. Please extract all named entities that are important for solving the questions below.
+        Place the named entities in json format.
+
+  examples:
+    - user: |
+        Question: Which magazine was started first Arthur's Magazine or First for Women?
+      assistant: |
+        {{"named_entities": ["First for Women", "Arthur's Magazine"]}}
+  template: |
+    Question: {query}
+
+llm_rank_events:
+  version: "1.0"
+  description: 对候选事项进行相关性精选排序
+  variables: [query, events_list, max_results]
+  system: |
+    你是 RAG 召回后过滤专家。剔除噪声和重复内容，保留能直接回答问题或为多跳
+    推理提供必要事实的事项。分数必须在 0 到 1 之间，只输出满足 Schema 的 JSON。
+  template: |
+    用户问题：
+    {query}
+
+    候选事项：
+    {events_list}
+
+    最多返回 {max_results} 个结果，结果中的 index 必须是候选事项的有效索引。
+
+llm_rank_events_cot:
+  version: "1.0"
+  description: 对候选事项进行显式 CoT 精选排序，对齐 SAG2 benchmark multi 策略 Step7
+  variables: [query, events_list, max_results]
+  system: |
+    I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly {max_results} relationships most useful for answering this multi-hop question.
+
+    Return JSON with "thought_process" and "useful_relations" (list of {max_results} relation indices like "[id]", most useful first).
+  examples:
+    - user: |
+        Question:
+        When did Lothair II's mother die?
+
+        Relationship descriptions:
+        [42] lothair ii son of ermengarde of tours
+        [43] lothair ii married to teutberga
+        [41] lothair ii son of emperor lothair i
+        [60] lothair ii husband of waldrada
+        [67] waldrada was mistress of lothair ii
+      assistant: |
+        {{"thought_process": "Find Lothair II's mother from relation [42].", "useful_relations": ["[42]", "[41]", "[43]", "[60]", "[67]"]}}
+  template: |
+    Question:
+    {query}
+
+    Relationship descriptions:
+    {events_list}
+
+    Return JSON with "thought_process" (string) and "useful_relations" (list of exactly {max_results} index strings like "[id]", most useful first).
+
+select_useful_relations_local:
+  version: "1.0"
+  description: 从知识图谱关系描述中选择最有用的候选
+  variables: [question, relations, top_k]
+  system: |
+    I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly {top_k} relationships most useful for answering this multi-hop question.
+
+    Return JSON with only "useful_relations" (list of {top_k} index numbers, most useful first). Do not include reason, thought_process, explanations, or relation text.
+  examples:
+    - user: |
+        I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly 5 relationships most useful for answering this multi-hop question.
+
+        Return JSON with only "useful_relations" (list of 5 index numbers, most useful first).
+
+        Question:
+        When did Lothair Ii's mother die?
+
+        Relationship descriptions:
+        [53] bertha married to theobald of arles
+        [54] bertha married to adalbert ii of tuscany
+        [42] lothair ii son of ermengarde of tours
+        [43] lothair ii married to teutberga
+        [41] lothair ii son of emperor lothair i
+        [60] lothair ii husband of waldrada
+        [67] waldrada was mistress of lothair ii
+      assistant: |
+        {{"useful_relations": ["42", "41", "43", "60", "67"]}}
+    - user: |
+        I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly 5 relationships most useful for answering this multi-hop question.
+
+        Return JSON with only "useful_relations" (list of 5 index numbers, most useful first).
+
+        Question:
+        What country is the composer of "Erta Eterna" from?
+
+        Relationship descriptions:
+        [12] terra eterna composed by paulo flores
+        [15] paulo flores born in angola
+        [18] paulo flores genre is semba
+        [22] angola located in africa
+        [25] semba originated in angola
+        [30] paulo flores nationality angolan
+      assistant: |
+        {{"useful_relations": ["12", "15", "30", "22", "25"]}}
+    - user: |
+        I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly 5 relationships most useful for answering this multi-hop question.
+
+        Return JSON with only "useful_relations" (list of 5 index numbers, most useful first).
+
+        Question:
+        Who is the director of the film that won the award also won by "The Hurt Locker"?
+
+        Relationship descriptions:
+        [5] the hurt locker won academy award best picture
+        [8] the hurt locker directed by kathryn bigelow
+        [12] moonlight won academy award best picture
+        [15] moonlight directed by barry jenkins
+        [20] la la land won golden globe best musical
+        [25] barry jenkins born in miami
+      assistant: |
+        {{"useful_relations": ["5", "12", "15", "8", "25"]}}
+  template: |
+    Question:
+    {question}
+
+    Relationship descriptions:
+    {relations}
+
+llm_rank_events_cot_atomic:
+  version: "1.0"
+  description: atomic 消融检索：带思考的方括号索引精选（逐字搬自 AtomicSearcher）
+  variables: [question, relations, top_k]
+  system: |-
+    I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly {top_k} relationships most useful for answering this multi-hop question.
+
+    Return JSON with "thought_process" and "useful_relations" (list of {top_k} relation lines, most useful first).
+  examples:
+    - user: |
+        I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly 5 relationships most useful for answering this multi-hop question.
+
+        Return JSON with "thought_process" and "useful_relations" (list of 5 relation lines, most useful first).
+
+        Question:
+        When did Lothair Ii's mother die?
+
+        Relationship descriptions:
+        [53] bertha married to theobald of arles
+        [54] bertha married to adalbert ii of tuscany
+        [42] lothair ii son of ermengarde of tours
+        [43] lothair ii married to teutberga
+        [41] lothair ii son of emperor lothair i
+        [60] lothair ii husband of waldrada
+        [67] waldrada was mistress of lothair ii
+
+      assistant: |-
+        {{"thought_process": "2-hop question: First find Lothair II's mother (relation [42]: Ermengarde of Tours), then find death date. [41] gives father for family context.", "useful_relations": ["[42]", "[41]", "[43]", "[60]", "[67]"]}}
+    - user: |
+        I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly 5 relationships most useful for answering this multi-hop question.
+
+        Return JSON with "thought_process" and "useful_relations" (list of 5 relation lines, most useful first).
+
+        Question:
+        What country is the composer of "Erta Eterna" from?
+
+        Relationship descriptions:
+        [12] terra eterna composed by paulo flores
+        [15] paulo flores born in angola
+        [18] paulo flores genre is semba
+        [22] angola located in africa
+        [25] semba originated in angola
+        [30] paulo flores nationality angolan
+
+      assistant: |-
+        {{"thought_process": "2-hop question: First find composer of Terra Eterna ([12]: Paulo Flores), then find his country ([15] born in Angola or [30] nationality Angolan).", "useful_relations": ["[12]", "[15]", "[30]", "[22]", "[25]"]}}
+    - user: |
+        I will provide you with a set of relationship descriptions from a knowledge graph. Select exactly 5 relationships most useful for answering this multi-hop question.
+
+        Return JSON with "thought_process" and "useful_relations" (list of 5 relation lines, most useful first).
+
+        Question:
+        Who is the director of the film that won the award also won by "The Hurt Locker"?
+
+        Relationship descriptions:
+        [5] the hurt locker won academy award best picture
+        [8] the hurt locker directed by kathryn bigelow
+        [12] moonlight won academy award best picture
+        [15] moonlight directed by barry jenkins
+        [20] la la land won golden globe best musical
+        [25] barry jenkins born in miami
+
+      assistant: |-
+        {{"thought_process": "3-hop question: (1) Find award won by The Hurt Locker ([5]: Academy Award Best Picture), (2) Find another film with same award ([12]: Moonlight), (3) Find director ([15]: Barry Jenkins).", "useful_relations": ["[5]", "[12]", "[15]", "[8]", "[25]"]}}
+  template: |
+    Question:
+    {question}
+
+    Relationship descriptions:
+    {relations}
