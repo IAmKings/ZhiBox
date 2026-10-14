@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -15,27 +16,45 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zhibox.memory.ui.BenchmarkScreen
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val autoBenchmark = intent?.getBooleanExtra(EXTRA_AUTO_BENCHMARK, false) == true
         setContent {
             ZhiBoxTheme {
-                AppSkeleton()
+                var showBenchmark by remember { mutableStateOf(autoBenchmark) }
+                if (showBenchmark) {
+                    BenchmarkScreen(
+                        autoStart = autoBenchmark,
+                        onBack = { showBenchmark = false },
+                    )
+                } else {
+                    AppSkeleton(onOpenBenchmark = { showBenchmark = true })
+                }
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_AUTO_BENCHMARK = "autostart_benchmark"
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppSkeleton() {
+fun AppSkeleton(onOpenBenchmark: () -> Unit = {}) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -58,15 +77,16 @@ fun AppSkeleton() {
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("当前里程碑：P0-1 工程初始化", style = MaterialTheme.typography.bodyLarge)
+                    Text("当前里程碑：P0-2 Universal Embedder 接入", style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "后续：P0-2 Universal Embedder demo → 判定门 G1–G4 → Phase 1 离线搜索 MVP",
+                        "后续：P0-3 判定门 G1（任务模板）→ G2–G4 → Phase 1 离线搜索 MVP",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
                         "依据：docs/SAG_Android_MVP_Implementation_Plan_v1.0.md",
                         style = MaterialTheme.typography.bodySmall
                     )
+                    Button(onClick = onOpenBenchmark) { Text("Embedder 基准") }
                 }
             }
         }

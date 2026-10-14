@@ -11,21 +11,30 @@
 | 参考引擎包 | `zleap-sag==0.14.0` | PyPI；MIT；关系库默认 SQLite（SQLAlchemy + aiosqlite），向量库默认 LanceDB |
 | 引擎 wheel SHA-256 | `c58d12f1af0c07010a966da16112337ce92734b164832af7a708f049ad7bc429` | 提取参考素材前已校验 |
 
-## 本工程构建链版本（2026-10-15 记录）
+## 本工程构建链版本（2026-10-15 记录，同日因依赖要求升级）
 
 | 组件 | 版本 | 备注 |
 |---|---|---|
-| Gradle | 8.11.1 | wrapper distributionUrl 指向华为云镜像（本机网络环境下官方源经 GitHub releases 不可达）；其他环境可改回 `services.gradle.org` |
+| Gradle | **8.14.3** | wrapper distributionUrl 指向华为云镜像（本机网络环境下官方源经 GitHub releases 不可达）；其他环境可改回 `services.gradle.org` |
 | Android Gradle Plugin | 8.9.1 | 支持 compileSdk 36 |
-| Kotlin | 2.1.10 | 含 compose compiler 插件 |
+| Kotlin | **2.4.21** | **升级原因**：`tasks-retrieval:1.1.1` 传递依赖 `litertlm-android:0.17.0-alpha1`（Kotlin 2.4.0 元数据），Kotlin 2.1 无法读取其符号 |
+| MediaPipe tasks-retrieval | 1.1.1 | 2026-10-14 发布；含 UniversalEmbedder（`universalembedder` 子包）、TextChunker、SqliteVectorStore |
 | Compose BOM | 2025.01.00 | — |
 | compileSdk / targetSdk / minSdk | 36 / 36 / 24 | arm64-v8a 优先 |
-| 构建用 JDK | Android Studio JBR 21（`/Applications/Android Studio.app/Contents/jbr`） | 系统默认 Java 25 不被 Gradle 8.11 支持，构建时通过 JAVA_HOME 指定 JBR 21 |
+| 构建用 JDK | Android Studio JBR 21（`/Applications/Android Studio.app/Contents/jbr`） | 系统默认 Java 25 不被当前 Gradle 支持，构建时通过 JAVA_HOME 指定 JBR 21 |
 
-## 模型资产（Phase 0 判定后补充锁定）
+> 已核验 API（经 AAR javap）：`BaseOptions.Builder` 仅支持 `setModelAssetPath` / `setModelAssetFileDescriptor(Integer)` / `setModelAssetBuffer`，无 `setModelAssetFilePath`；文件路径加载须持 `ParcelFileDescriptor` 传 `fd`。`Embedding.floatEmbedding()` 返回 `float[]`。
 
-| 资产 | 状态 |
+## 模型资产（2026-10-15 下载并记录，本地 `models/` 不入库）
+
+| 资产 | 体积 | SHA-256 | 来源 |
+|---|---|---|---|
+| `embeddinggemma-2-text-270m.litertlm` | 157MB (164,892,672B 级) | `2d079ee2f6f066b1f368e8d7c819f55214eaef1d0513b312321901f30ab286fb` | `litert-community/embeddinggemma-2-text-270m-litert-lm`（经 hf-mirror） |
+| `embeddinggemma-2-text-vision-440m.litertlm` | 370MB | `92dcbea108899e5d6e30d919b0744f90d9967e80c67a4ab5503ac16d54f62eb0` | `litert-community/embeddinggemma-2-text-vision-440m-litert-lm`（经 hf-mirror） |
+
+**G2 相关发现**：官方示例的 `download.gradle` 明确列出 270M 纯文本模型发布于独立仓库（调查报告 R2 的疑问已解决——纯文本 MVP 不必携带 388MB 的 440M 文件）。
+
+| 待补资产 | 状态 |
 |---|---|
-| `embeddinggemma-2-text-vision-440m.litertlm`（路径 A，Universal Embedder） | 待 P0-2 下载后记录 URL/体积/SHA-256 |
 | Text Embedder + EmbeddingGemma v1（路径 B 回退） | 待 G2 盘点后记录 |
 | HuggingFace 参考权重 `google/embeddinggemma-2`（G1 对照用） | 待 P0-3 记录 revision |

@@ -26,3 +26,6 @@ local.properties
 # 日志与临时
 *.log
 tmp/
+
+# 模型缓存（体积大，经 hf-mirror 下载，SHA 记录于 docs/UPSTREAM_VERSIONS.md）
+models/
