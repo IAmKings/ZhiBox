@@ -25,6 +25,8 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 | `docs/SAG_Android_OnDevice_Feasibility_Investigation_Report_v1.0.md` | 可行性调查报告（含附录 A：LanceDB 可替代性分析；附录 B：ANN 引擎选型全景） |
 | `docs/Personal_Memory_AI_K12_Learning_Assistant_PRD_v1.0.md` | 最终项目目标（服务端形态） |
 | `docs/UPSTREAM_VERSIONS.md` | 上游版本锚点（SAG commit / zleap-sag wheel / 构建链版本） |
+| `docs/UPSTREAM_WATCH.md` | 上游动态监控清单（ML Kit/MediaPipe/litertlm 版本跟踪与触发动作） |
+| `docs/PHASE0_REPORT.md` | Phase 0 技术验证报告（判定门结论与实测数据） |
 | `docs/reference/zleap-sag-0.14.0/` | 上游参考源码（只读对照，不参与编译） |
 
 ## 里程碑

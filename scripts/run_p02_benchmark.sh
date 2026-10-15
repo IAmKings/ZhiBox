@@ -64,6 +64,7 @@ sleep 100
 
 echo "[6/6] 拉取报告"
 mkdir -p docs/phase0/bench-results
+DEV_TAG=$("$ADB" get-serialno 2>/dev/null | tr -d '\r')
 FILES=$("$ADB" shell "run-as $PKG ls files/benchmark" 2>/dev/null | tr -d '\r')
 if [ -z "$FILES" ]; then
     echo "未发现报告文件；检查 logcat:"
@@ -71,7 +72,7 @@ if [ -z "$FILES" ]; then
     exit 1
 fi
 for f in $FILES; do
-    "$ADB" shell "run-as $PKG cat files/benchmark/$f" | tr -d '\r' > "docs/phase0/bench-results/$f"
-    echo "  已拉取: $f"
+    "$ADB" shell "run-as $PKG cat files/benchmark/$f" | tr -d '\r' > "docs/phase0/bench-results/${DEV_TAG}_$f"
+    echo "  已拉取: ${DEV_TAG}_$f"
 done
-echo "完成。结果位于 docs/phase0/bench-results/"
+echo "完成。设备 $DEV_TAG 结果位于 docs/phase0/bench-results/"
