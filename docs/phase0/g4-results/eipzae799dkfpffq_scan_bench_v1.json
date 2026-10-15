@@ -1,0 +1,101 @@
+{
+  "experiment": "G4_exact_scan",
+  "dim": 768,
+  "real_vectors": 50,
+  "random_vectors": 9950,
+  "runs": 30,
+  "warmup": 3,
+  "build_times": {
+    "sqlite_blob_ms": 572,
+    "mmap_flat_ms": 353,
+    "preloaded_ms": 13
+  },
+  "rss_after_data_kb": 1451864,
+  "rss_baseline_kb": 1451864,
+  "results": [
+    {
+      "impl": "SQLITE_BLOB",
+      "n": 1000,
+      "cold_ms": 14,
+      "p50_ms": 12,
+      "p95_ms": 14,
+      "top10": "0,8,16,24,32,40,48,1,9,17"
+    },
+    {
+      "impl": "PRELOADED",
+      "n": 1000,
+      "cold_ms": 1,
+      "p50_ms": 1,
+      "p95_ms": 1,
+      "top10": "0,8,16,24,32,40,48,1,9,17"
+    },
+    {
+      "impl": "MMAP_FLAT",
+      "n": 1000,
+      "cold_ms": 13,
+      "p50_ms": 15,
+      "p95_ms": 20,
+      "top10": "0,8,16,24,32,40,48,1,9,17"
+    },
+    {
+      "impl": "SQLITE_BLOB",
+      "n": 5000,
+      "cold_ms": 93,
+      "p50_ms": 90,
+      "p95_ms": 92,
+      "top10": "0,8,16,24,32,40,48,1,9,17"
+    },
+    {
+      "impl": "PRELOADED",
+      "n": 5000,
+      "cold_ms": 4,
+      "p50_ms": 4,
+      "p95_ms": 4,
+      "top10": "0,8,16,24,32,40,48,1,9,17"
+    },
+    {
+      "impl": "MMAP_FLAT",
+      "n": 5000,
+      "cold_ms": 74,
+      "p50_ms": 75,
+      "p95_ms": 82,
+      "top10": "0,8,16,24,32,40,48,1,9,17"
+    },
+    {
+      "impl": "SQLITE_BLOB",
+      "n": 10000,
+      "cold_ms": 246,
+      "p50_ms": 246,
+      "p95_ms": 248,
+      "top10": "0,8,16,24,32,40,48,1,9,17"
+    },
+    {
+      "impl": "PRELOADED",
+      "n": 10000,
+      "cold_ms": 8,
+      "p50_ms": 8,
+      "p95_ms": 8,
+      "top10": "0,8,16,24,32,40,48,1,9,17"
+    },
+    {
+      "impl": "MMAP_FLAT",
+      "n": 10000,
+      "cold_ms": 153,
+      "p50_ms": 160,
+      "p95_ms": 173,
+      "top10": "0,8,16,24,32,40,48,1,9,17"
+    }
+  ],
+  "consistency_top10": {
+    "n1000": true,
+    "n5000": true,
+    "n10000": true
+  },
+  "gates": {
+    "p95_1k_le_150ms": true,
+    "p95_10k_le_800ms": true,
+    "best_p95_1k": 1,
+    "best_p95_10k": 8
+  },
+  "g4_pass": true
+}

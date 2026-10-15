@@ -30,22 +30,24 @@ import androidx.compose.ui.unit.dp
 import android.content.Context
 import com.zhibox.memory.benchmark.EmbedderBenchmark
 import com.zhibox.memory.benchmark.G1Comparison
+import com.zhibox.memory.benchmark.VectorScanBenchmark
 import kotlinx.coroutines.launch
 import java.io.File
 
 /**
- * Phase 0 实验界面：P0-2 资源基准 与 P0-3 G1 判定门对照。
+ * Phase 0 实验界面：P0-2 资源基准、P0-3 G1 判定门、P0-6 G4 精确扫描基准。
  *
  * 自动化入口：
  *   基准: adb shell am start -n com.zhibox.memory/.MainActivity --ez autostart_benchmark true
  *   G1:   adb shell am start -n com.zhibox.memory/.MainActivity --ez autostart_g1 true
- * 输入文件均经 adb run-as 投放到应用私有目录。
+ *   G4:   adb shell am start -n com.zhibox.memory/.MainActivity --ez autostart_scan true
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BenchmarkScreen(
     autoStart: Boolean = false,
     autoStartG1: Boolean = false,
+    autoStartScan: Boolean = false,
     onBack: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -54,8 +56,10 @@ fun BenchmarkScreen(
     var running by remember { mutableStateOf(false) }
     var started by remember { mutableStateOf(false) }
     var g1Started by remember { mutableStateOf(false) }
+    var scanStarted by remember { mutableStateOf(false) }
     var reports by remember { mutableStateOf(listOf<EmbedderBenchmark.Report>()) }
     var g1Summary by remember { mutableStateOf(listOf<String>()) }
+    var scanSummary by remember { mutableStateOf(listOf<String>()) }
     var status by remember { mutableStateOf("待运行") }
 
     fun runAll() {
@@ -109,12 +113,42 @@ fun BenchmarkScreen(
         }
     }
 
+    fun runScan() {
+        if (running) return
+        running = true
+        scanStarted = true
+        scope.launch {
+            runCatching { VectorScanBenchmark.run(context) }
+                .onSuccess { out ->
+                    val d = org.json.JSONObject(out.readText())
+                    val gates = d.getJSONObject("gates")
+                    val lines = listOf(
+                        "G4_${if (d.getBoolean("g4_pass")) "PASS" else "FAIL"}：" +
+                            "1k p95=${gates.getDouble("best_p95_1k")}ms（≤150） " +
+                            "10k p95=${gates.getDouble("best_p95_10k")}ms（≤800）",
+                        "Top-10 跨实现一致: ${d.getJSONObject("consistency_top10")}",
+                    )
+                    scanSummary = lines
+                }
+                .onFailure {
+                    scanSummary = listOf("运行失败: ${it.message?.lineSequence()?.first() ?: it.javaClass.simpleName}")
+                    status = "G4 扫描基准失败"
+                }
+            if (status != "G4 扫描基准失败") status = "G4 扫描基准完成；结果在 filesDir/scan_bench/"
+            running = false
+        }
+    }
+
     LaunchedEffect(autoStart) {
         if (autoStart && !started && models.isNotEmpty()) runAll()
     }
 
     LaunchedEffect(autoStartG1) {
         if (autoStartG1 && !g1Started && models.isNotEmpty()) runG1()
+    }
+
+    LaunchedEffect(autoStartScan) {
+        if (autoStartScan && !scanStarted) runScan()
     }
 
     Scaffold(
@@ -138,6 +172,9 @@ fun BenchmarkScreen(
                 Button(onClick = { runG1() }, enabled = !running && models.isNotEmpty()) {
                     Text("G1 对照")
                 }
+                Button(onClick = { runScan() }, enabled = !running) {
+                    Text("G4 扫描")
+                }
                 TextButton(onClick = onBack, enabled = !running) { Text("返回") }
             }
             if (running) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -148,6 +185,15 @@ fun BenchmarkScreen(
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("G1 判定摘要", style = MaterialTheme.typography.titleSmall)
                         g1Summary.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    }
+                }
+            }
+
+            if (scanSummary.isNotEmpty()) {
+                Card {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("G4 扫描基准摘要", style = MaterialTheme.typography.titleSmall)
+                        scanSummary.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                     }
                 }
             }
