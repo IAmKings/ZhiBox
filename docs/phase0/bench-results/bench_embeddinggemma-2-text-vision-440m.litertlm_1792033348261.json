@@ -1,0 +1,21 @@
+{
+  "model_file": "embeddinggemma-2-text-vision-440m.litertlm",
+  "model_bytes": 387710976,
+  "policy": "RAW",
+  "cold_load_ms": 1032,
+  "dimensions": 768,
+  "all_finite": true,
+  "l2_norm_delta": 0,
+  "self_cosine": 1,
+  "warm_samples": 30,
+  "warm_p50_ms": 79,
+  "warm_p95_ms": 81,
+  "first_embed_ms": 224,
+  "rss_baseline_kb": 332864,
+  "peak_rss_kb": 1448388,
+  "device_model": "PJZ110",
+  "soc_model": "SM8750",
+  "android_version": "16",
+  "timestamp": "2026-10-15T11:02:24",
+  "error": null
+}

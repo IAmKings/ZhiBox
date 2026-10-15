@@ -1,0 +1,21 @@
+{
+  "model_file": "embeddinggemma-2-text-vision-440m.litertlm",
+  "model_bytes": 387710976,
+  "policy": "RAW",
+  "cold_load_ms": -1,
+  "dimensions": -1,
+  "all_finite": false,
+  "l2_norm_delta": -1,
+  "self_cosine": null,
+  "warm_samples": 0,
+  "warm_p50_ms": -1,
+  "warm_p95_ms": -1,
+  "first_embed_ms": -1,
+  "rss_baseline_kb": 243316,
+  "peak_rss_kb": 243876,
+  "device_model": "PJZ110",
+  "soc_model": "SM8750",
+  "android_version": "16",
+  "timestamp": "2026-10-15T10:56:48",
+  "error": "NoClassDefFoundError: Failed resolution of: Lcom\/google\/ai\/edge\/litertlm\/ActivationDataType;"
+}

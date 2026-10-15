@@ -19,6 +19,7 @@
 | Android Gradle Plugin | 8.9.1 | 支持 compileSdk 36 |
 | Kotlin | **2.4.21** | **升级原因**：`tasks-retrieval:1.1.1` 传递依赖 `litertlm-android:0.17.0-alpha1`（Kotlin 2.4.0 元数据），Kotlin 2.1 无法读取其符号 |
 | MediaPipe tasks-retrieval | 1.1.1 | 2026-10-14 发布；含 UniversalEmbedder（`universalembedder` 子包）、TextChunker、SqliteVectorStore |
+| LiteRT-LM (litertlm-android) | **0.18.0（强制）** | tasks-retrieval 1.1.1 POM 传递依赖 0.17.0-alpha1 缺 `ActivationDataType`（运行时崩溃）；0.18.0 经核验包含该类，`resolutionStrategy.force` 固定 |
 | Compose BOM | 2025.01.00 | — |
 | compileSdk / targetSdk / minSdk | 36 / 36 / 24 | arm64-v8a 优先 |
 | 构建用 JDK | Android Studio JBR 21（`/Applications/Android Studio.app/Contents/jbr`） | 系统默认 Java 25 不被当前 Gradle 支持，构建时通过 JAVA_HOME 指定 JBR 21 |

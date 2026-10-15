@@ -54,6 +54,16 @@ kotlin {
     }
 }
 
+// tasks-retrieval 1.1.1 的 POM 传递依赖 litertlm-android:0.17.0-alpha1，
+// 但该 alpha 缺少运行时所需的 com.google.ai.edge.litertlm.ActivationDataType
+// （运行时 NoClassDefFoundError，经 AAR 反编译核验 0.18.0 才包含该类）。
+// 上游修复前强制解析到 0.18.0。
+configurations.all {
+    resolutionStrategy {
+        force("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
