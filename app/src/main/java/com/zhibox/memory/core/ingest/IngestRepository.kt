@@ -49,7 +49,10 @@ class IngestRepository(
         try {
             val staging = File(filesDir, "import-staging")
             val files = staging.listFiles { f ->
-                f.isFile && (f.extension.equals("md", true) || f.extension.equals("txt", true))
+                // 点开头文件过滤（W1-K1 根因修复）：macOS AppleDouble(._*)/.DS_Store 等
+                // 传输垃圾会伪装成 .txt/.md 进入知识库（实测 100 语料变 200 文档）
+                f.isFile && !f.name.startsWith(".") &&
+                    (f.extension.equals("md", true) || f.extension.equals("txt", true))
             }?.sortedBy { it.name } ?: return emptyList()
             return files.map { importFile(it) }
         } finally {

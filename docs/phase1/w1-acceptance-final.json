@@ -1,0 +1,609 @@
+{
+  "ready_documents": 100,
+  "chunks": 298,
+  "fts_rows": 298,
+  "embeddings": 298,
+  "smoke_fts_hits": 8,
+  "jobs": [
+    {
+      "id": "job_cfc9504136f042aebb91",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_adfa9988b4114bce9790",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_62542db8a9484f9da0b5",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_dda6c2496a9c464aa4b1",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_99b06164798d448483d8",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_5f6cfbb207da46a39948",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_7dd29bc025d844d2ab71",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_8376e300636949e391d8",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_bd5e426c1e3344b6b246",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_dd390c7dec454b99b36e",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_6e0ed1f325e340af9775",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_9fe6cb4321664a5abe31",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_8adbbf4b74ab404f8574",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_0fc0229e3e654bc19636",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_b0acee69654f44528cd8",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_672da43379444a5c9bac",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_7d5e30b5620841f8bf8f",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_4866b06d537e4153b1c7",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_8d5852bde90a4c2080cd",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_e88a44de150840488f39",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_0b6045959ec04ec5a99d",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_191914f697f6468ebed2",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_8d4b7b71fd8645a29059",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_132e74fc4842404ebc7c",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_9d19c73a2ecc4901bb25",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_0c447ec237a44680bfc7",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_f609f45d04864732894c",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_d39cf7c60c294b3ab279",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_0c9c5874088b457f9c2c",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_f691fe0b41694d838e87",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_91505e5a7ace42be9dd9",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_b7b28a9547ae4f1da6c3",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_ce3ea1d43992486e8f99",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_e98fe8ecae9f46f5931d",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_7b88f28adf274d88aee5",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_d4f26ae219154f4489bb",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_b4b6ec6e96b144abbfa8",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_34e8ffc993ac4c178afd",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_a18eb6cd205f41f1ae86",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_79c87fcdf2164e2eaf5a",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_e81975aeb34e4ae0b257",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_e3e55abd522947b09be4",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_c173c2f5b6ad4a628c74",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_52dbba882e6a4d5c9dd8",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_202a87e1f76344b59a06",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_2fa8b0de8da74d419357",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_d0220bcb144a48598ec1",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_e2ec1576e5b7427993ca",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_3ab0f1b3e1f34c579808",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_8fd97361a1464f5b8cc2",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_30dc4c30a3834f5aac8e",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_c47ba117c40f43e6a402",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_0479f31b261d40248894",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_d08f14388e8c441ca7a4",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_fcd8170205284e34968c",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_769c91dc6e4d46c3bf96",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_cf590a9293ef4e5c8bab",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_9f3f641a25534ca6a9ac",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_f766e24e4c354ba3a96c",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_526fefdc1aaf43bea621",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_b7733a6838f640aeb364",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_4cd08cc0bbcd4f23a42e",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_7b6298354b0c4011b8dd",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_d078f603393c4ef78b0e",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_19ecf93f29304ef9af32",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_59dc7ab3d88e4ea496c9",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_ad3e02ef91884aa29e2a",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_203163c85f63460c81d5",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_0a521d60cfb24322ac48",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_6f72016ae5ec4d29b8f6",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_d3c949ff95f3451783b5",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_d0c6c61d0ab44750a9d1",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_7957eb4908dd42e9a9a3",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_3967e8793f6645fea1b9",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_5e6ea49dddf44e2d96fe",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_f87a3b30157b451492bd",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_29452a21ff814b25bd93",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_4642bdda19a440f7afc0",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_89a49a8f8a474c339576",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_7c72be39c4c44445ade9",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_3cd4d34eeb6d4970a31a",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_48998957224c493890d4",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_293296bddc5b4e8cafe7",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_bae94fdc30c84688936d",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_caaabb768d9e4434ae98",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_4477ff2a8cc44446bec0",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_dbd209909cf04e9a91e7",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_6b5aea361cec47e982dc",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_3913aa5821744065aae3",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_e1b2946bdc734781b6ca",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_b690188689dc4e729120",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_f049d007ad8e41128052",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_b269bf149cc84d52a721",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_01971d99ee0146e6ae15",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_e71a3ac80e4745fa9291",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_7b4a4da2060e41e59437",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_4b8f3945584344c8b69f",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_4ceea1f69395414f8c65",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_f6945309dd8f4f56b938",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    },
+    {
+      "id": "job_35ad63509fe34291a31f",
+      "stage": "done",
+      "progress": 100,
+      "error": null
+    }
+  ]
+}
