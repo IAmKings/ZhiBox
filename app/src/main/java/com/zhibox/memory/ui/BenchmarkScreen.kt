@@ -2,6 +2,8 @@ package com.zhibox.memory.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,7 +42,7 @@ import java.io.File
  *
  * 自动化入口：--ez autostart_benchmark / autostart_g1 / autostart_scan / autostart_g3 true
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun BenchmarkScreen(
     autoStart: Boolean = false,
@@ -192,7 +194,11 @@ fun BenchmarkScreen(
                 "设备: ${android.os.Build.MODEL} · ${if (android.os.Build.VERSION.SDK_INT >= 31) android.os.Build.SOC_MODEL else ""} · Android ${android.os.Build.VERSION.RELEASE}",
                 style = MaterialTheme.typography.bodySmall
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // FlowRow 自动换行：实验入口增至 5 个后，固定 Row 在窄屏会把尾部按钮挤出可视区
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Button(onClick = { runAll() }, enabled = !running && models.isNotEmpty()) {
                     Text(if (running) "运行中…" else "运行基准 (${models.size})")
                 }
