@@ -10,14 +10,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -181,7 +184,16 @@ fun BenchmarkScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Phase 0 · Embedder 基准") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Phase 0 · Embedder 基准") },
+                navigationIcon = {
+                    IconButton(onClick = onBack, enabled = !running) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+            )
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -211,7 +223,6 @@ fun BenchmarkScreen(
                 Button(onClick = { runG3() }, enabled = !running) {
                     Text("G3 分词")
                 }
-                TextButton(onClick = onBack, enabled = !running) { Text("返回") }
             }
             if (running) LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(status, style = MaterialTheme.typography.bodyMedium)
