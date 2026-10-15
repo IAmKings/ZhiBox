@@ -1,0 +1,21 @@
+{
+  "model_file": "embeddinggemma-2-text-vision-440m.litertlm",
+  "model_bytes": 387710976,
+  "policy": "RAW",
+  "cold_load_ms": 1932,
+  "dimensions": 768,
+  "all_finite": true,
+  "l2_norm_delta": 0,
+  "self_cosine": 1,
+  "warm_samples": 30,
+  "warm_p50_ms": 94,
+  "warm_p95_ms": 104,
+  "first_embed_ms": 582,
+  "rss_baseline_kb": 355964,
+  "peak_rss_kb": 1472324,
+  "device_model": "23078PND5G",
+  "soc_model": "MT6985",
+  "android_version": "14",
+  "timestamp": "2026-10-15T12:35:30",
+  "error": null
+}

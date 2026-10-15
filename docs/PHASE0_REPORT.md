@@ -25,14 +25,16 @@
 | 配置面 | `setL2Normalize` / `setTextDelegate` / `setVisionDelegate` / `setMaxInputLength` / `setActivationDataType` / `setCacheDir`；**未见任务模板/prompt 参数**（与调查报告 R1 预判一致，G1 需用向量对照法判定） |
 | 模型投放（Android 16 实测） | adb 直推 `/sdcard/Android/data/<pkg>/` 产生 shell 属主目录，应用 uid 无权列出（UI 显示"未找到模型文件"）；正确方式：`/data/local/tmp` 中转 + `run-as cp` 入内部 `filesDir/models`（已固化进 `scripts/run_p02_benchmark.sh`） |
 
-### 资源画像基准结果（高端档：PJZ110 · Snapdragon 8 Elite · 16GB · Android 16 · CPU/XNNPack · RAW 模板）
+### 资源画像基准结果（PRD §9.2 门槛：单条 query embedding p95 ≤ 500ms 中高端档）
 
-| 模型 | 冷加载 | 首条 | p50 | p95 (30次) | 峰值 RSS | 维度 | 校验 | 结果 |
-|---|---|---|---|---|---|---|---|---|
-| embeddinggemma-2-text-270m (157MB) | — | — | — | — | — | — | — | ❌ **加载失败** |
-| embeddinggemma-2-text-vision-440m (370MB) | 1032ms | 224ms | **79ms** | **81ms** | ≈1.38GB | 768 | 有限值✓ L2Δ=0 自余弦=1 | ✅ |
+| 设备档 | 机型 · SoC · RAM · Android | 模型 | 冷加载 | 首条 | p50 | p95 (30次) | 峰值 RSS | 校验 | 结果 |
+|---|---|---|---|---|---|---|---|---|---|
+| 高端 | PJZ110 · SD 8 Elite (SM8750) · 16GB · 16 | 440M | 1032ms | 224ms | **79ms** | **81ms** | ≈1.38GB | 全过 | ✅ |
+| 中高端 | **K60 Ultra · 天玑 9200+ (MT6985) · 15GB · 14** | 440M | 1932ms | 582ms | **94ms** | **104ms** | ≈1.44GB | 全过 | ✅ |
+| 低端 | K40 · 待测 | — | — | — | — | — | — | — | 待测 |
+| （全部设备） | — | 270M | — | — | — | — | — | — | ❌ 加载失败（跨 Qualcomm/MediaTek 复现，运行时限制） |
 
-**对照 PRD §9.2 门槛**：单条 query embedding p95 目标 ≤500ms（中高端）→ 实测 81ms，**余量约 6 倍**。冷加载约 1s。原始 JSON 存于 `docs/phase0/bench-results/`。
+**中高端档结论**：两芯片平台（Qualcomm/MediaTek）均以约 5–6 倍余量通过 p95 门槛；RSS ≈1.4GB 在 15–16GB 设备无压力，且**与设备无关、由模型体积主导**。真正的低端档验证（K40）将回答 8GB 级以下与 2021 代 SoC 的可行性。原始 JSON 存于 `docs/phase0/bench-results/`（文件名带设备序列号）。
 
 ### G2 结论（R2 解锁）
 
