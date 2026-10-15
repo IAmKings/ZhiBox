@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.content.Context
+import com.zhibox.memory.benchmark.ChineseTokenizationBenchmark
 import com.zhibox.memory.benchmark.EmbedderBenchmark
 import com.zhibox.memory.benchmark.G1Comparison
 import com.zhibox.memory.benchmark.VectorScanBenchmark
@@ -35,12 +36,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 /**
- * Phase 0 实验界面：P0-2 资源基准、P0-3 G1 判定门、P0-6 G4 精确扫描基准。
+ * Phase 0 实验界面：P0-2 资源基准、P0-3 G1 判定门、P0-5 G3 中文分词、P0-6 G4 精确扫描。
  *
- * 自动化入口：
- *   基准: adb shell am start -n com.zhibox.memory/.MainActivity --ez autostart_benchmark true
- *   G1:   adb shell am start -n com.zhibox.memory/.MainActivity --ez autostart_g1 true
- *   G4:   adb shell am start -n com.zhibox.memory/.MainActivity --ez autostart_scan true
+ * 自动化入口：--ez autostart_benchmark / autostart_g1 / autostart_scan / autostart_g3 true
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +46,7 @@ fun BenchmarkScreen(
     autoStart: Boolean = false,
     autoStartG1: Boolean = false,
     autoStartScan: Boolean = false,
+    autoStartG3: Boolean = false,
     onBack: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -57,9 +56,11 @@ fun BenchmarkScreen(
     var started by remember { mutableStateOf(false) }
     var g1Started by remember { mutableStateOf(false) }
     var scanStarted by remember { mutableStateOf(false) }
+    var g3Started by remember { mutableStateOf(false) }
     var reports by remember { mutableStateOf(listOf<EmbedderBenchmark.Report>()) }
     var g1Summary by remember { mutableStateOf(listOf<String>()) }
     var scanSummary by remember { mutableStateOf(listOf<String>()) }
+    var g3Summary by remember { mutableStateOf(listOf<String>()) }
     var status by remember { mutableStateOf("待运行") }
 
     fun runAll() {
@@ -147,8 +148,34 @@ fun BenchmarkScreen(
         if (autoStartG1 && !g1Started && models.isNotEmpty()) runG1()
     }
 
+    fun runG3() {
+        if (running) return
+        running = true
+        g3Started = true
+        scope.launch {
+            runCatching { ChineseTokenizationBenchmark.run(context) }
+                .onSuccess { out ->
+                    val d = org.json.JSONObject(out.readText())
+                    val v = d.getJSONObject("verdict")
+                    g3Summary = listOf(
+                        "G3_${if (v.getBoolean("g3_pass")) "PASS" else "FAIL"} " +
+                            "选定方案: ${v.getString("chosen_scheme")}",
+                        "hit率: raw=${v.getDouble("raw_hit")} bigram=${v.getDouble("bigram_hit")} " +
+                            "jieba=${v.getDouble("jieba_hit")}（语料 ${d.getInt("chunks")} chunks）",
+                    )
+                }
+                .onFailure { g3Summary = listOf("运行失败: ${it.message?.lineSequence()?.first()}") }
+            status = "G3 完成；结果在 filesDir/g3_results/"
+            running = false
+        }
+    }
+
     LaunchedEffect(autoStartScan) {
         if (autoStartScan && !scanStarted) runScan()
+    }
+
+    LaunchedEffect(autoStartG3) {
+        if (autoStartG3 && !g3Started) runG3()
     }
 
     Scaffold(
@@ -175,6 +202,9 @@ fun BenchmarkScreen(
                 Button(onClick = { runScan() }, enabled = !running) {
                     Text("G4 扫描")
                 }
+                Button(onClick = { runG3() }, enabled = !running) {
+                    Text("G3 分词")
+                }
                 TextButton(onClick = onBack, enabled = !running) { Text("返回") }
             }
             if (running) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -194,6 +224,15 @@ fun BenchmarkScreen(
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("G4 扫描基准摘要", style = MaterialTheme.typography.titleSmall)
                         scanSummary.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    }
+                }
+            }
+
+            if (g3Summary.isNotEmpty()) {
+                Card {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("G3 中文分词摘要", style = MaterialTheme.typography.titleSmall)
+                        g3Summary.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                     }
                 }
             }

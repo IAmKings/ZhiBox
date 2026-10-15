@@ -32,7 +32,7 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ## 里程碑
 
 - [x] M0 / P0-1：工程初始化 + 参考素材入库 + 版本锚点记录
-- [ ] P0-2：Universal Embedder demo 与资源画像
-- [ ] P0-3–P0-6：判定门 G1（任务模板）/ G2（模型资产）/ G3（中文分词）/ G4（精确扫描基准）
-- [ ] M-P0：PHASE0_REPORT.md，go/no-go
+- [x] P0-2：Universal Embedder 接入 + 三档设备资源画像（81/104/145ms p95）
+- [x] P0-3–P0-6：判定门 G1 ✅（app-prefix，R@1=1.0，跨设备 |Δ|=0）/ G2 ✅（440M 基线）/ G3 ✅（bigram，hit 0.96）/ G4 ✅（最慢设备 10k p95 最优 8ms）
+- [x] M-P0：PHASE0_REPORT.md 定稿，**go/no-go = GO**（2026-10-15）
 - [ ] Phase 1（W1–W3）：离线搜索 MVP → MVP-1 内部发布

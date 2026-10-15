@@ -1,0 +1,58 @@
+{
+  "experiment": "G3_chinese_tokenization",
+  "corpus_files": 8,
+  "chunks": 232,
+  "queries": 50,
+  "build": [
+    {
+      "scheme": "RAW",
+      "build_ms": 47,
+      "content_bytes": 115268
+    },
+    {
+      "scheme": "BIGRAM",
+      "build_ms": 126,
+      "content_bytes": 306875
+    },
+    {
+      "scheme": "JIEBA",
+      "build_ms": 394,
+      "content_bytes": 102601
+    }
+  ],
+  "results": [
+    {
+      "scheme": "RAW",
+      "valid_queries": 49,
+      "hit_rate": 0.4082,
+      "avg_results": 0.94,
+      "false_positive_rate": 0,
+      "index_bloat": 1
+    },
+    {
+      "scheme": "BIGRAM",
+      "valid_queries": 49,
+      "hit_rate": 0.9592,
+      "avg_results": 11.86,
+      "false_positive_rate": 0,
+      "index_bloat": 2.66
+    },
+    {
+      "scheme": "JIEBA",
+      "valid_queries": 49,
+      "hit_rate": 0.2245,
+      "avg_results": 0.35,
+      "false_positive_rate": 0,
+      "index_bloat": 0.89
+    }
+  ],
+  "verdict": {
+    "raw_hit": 0.4082,
+    "bigram_hit": 0.9592,
+    "jieba_hit": 0.2245,
+    "bigram_qualified": true,
+    "jieba_qualified": false,
+    "chosen_scheme": "BIGRAM",
+    "g3_pass": true
+  }
+}

@@ -75,5 +75,7 @@ dependencies {
     implementation(libs.androidx.material3)
     // P0-2: MediaPipe Universal Embedder（LiteRT-LM 推理），版本锚点见 docs/UPSTREAM_VERSIONS.md
     implementation(libs.mediapipe.tasks.retrieval)
+    // P0-5 G3: 结巴分词纯 Java 移植（中文分词方案对照用）
+    implementation(libs.jieba.analysis)
     debugImplementation(libs.androidx.ui.tooling)
 }

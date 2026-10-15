@@ -34,14 +34,18 @@ class MainActivity : ComponentActivity() {
         val autoBenchmark = intent?.getBooleanExtra(EXTRA_AUTO_BENCHMARK, false) == true
         val autoG1 = intent?.getBooleanExtra(EXTRA_AUTO_G1, false) == true
         val autoScan = intent?.getBooleanExtra(EXTRA_AUTO_SCAN, false) == true
+        val autoG3 = intent?.getBooleanExtra(EXTRA_AUTO_G3, false) == true
         setContent {
             ZhiBoxTheme {
-                var showBenchmark by remember { mutableStateOf(autoBenchmark || autoG1 || autoScan) }
+                var showBenchmark by remember {
+                    mutableStateOf(autoBenchmark || autoG1 || autoScan || autoG3)
+                }
                 if (showBenchmark) {
                     BenchmarkScreen(
                         autoStart = autoBenchmark,
                         autoStartG1 = autoG1,
                         autoStartScan = autoScan,
+                        autoStartG3 = autoG3,
                         onBack = { showBenchmark = false },
                     )
                 } else {
@@ -55,6 +59,7 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_AUTO_BENCHMARK = "autostart_benchmark"
         const val EXTRA_AUTO_G1 = "autostart_g1"
         const val EXTRA_AUTO_SCAN = "autostart_scan"
+        const val EXTRA_AUTO_G3 = "autostart_g3"
     }
 }
 

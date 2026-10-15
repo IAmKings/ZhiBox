@@ -29,7 +29,7 @@ echo "[2/4] 触发扫描基准（10k 向量构建 + 3 实现 × 3 规模 × 33 �
 echo "  轮询等待完成（最长 8 分钟）..."
 for i in $(seq 1 48); do
     sleep 10
-    DONE=$("$ADB" shell "run-as $PKG ls files/scan_bench" 2>/dev/null | grep -c "scan_bench_v1.json" | tr -d '\r')
+    DONE=$("$ADB" shell "run-as $PKG ls files/scan_bench 2>/dev/null | grep -c scan_bench_v1.json" | tr -d '\r')
     [ "$DONE" = "1" ] && { echo "  完成（$((i*10))s）"; break; }
 done
 
