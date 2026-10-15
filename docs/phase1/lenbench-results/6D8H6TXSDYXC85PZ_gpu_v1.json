@@ -1,0 +1,15 @@
+{
+  "experiment": "length_latency_matrix",
+  "mode": "gpu",
+  "model": "embeddinggemma-2-text-vision-440m",
+  "dimensions": -1,
+  "warmup": 2,
+  "runs": 12,
+  "device_model": "23078PND5G",
+  "soc": "MT6985",
+  "android": "14",
+  "rss_before_kb": 1618368,
+  "rss_after_kb": 1618368,
+  "rows": [],
+  "error": "LiteRtLmJniException: Failed to create EmbeddingEngineImpl: UNKNOWN: ERROR: [third_party\/odml\/litert_lm\/runtime\/core\/embedding_engine_impl.cc:520]\n└ ERROR: [third_party\/odml\/litert_lm\/runtime\/executor\/vision_litert_compiled_model_executor.cc:313]\n└ ERROR: [.\/third_party\/odml\/litert\/litert\/cc\/litert_compiled_model.h:1961]\n└ Failed to modify graph with delegate"
+}

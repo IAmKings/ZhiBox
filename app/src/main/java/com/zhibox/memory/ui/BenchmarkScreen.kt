@@ -189,7 +189,9 @@ fun BenchmarkScreen(
         lenStarted = true
         scope.launch {
             val lines = mutableListOf<String>()
-            val model = models.firstOrNull()
+            // 与 IngestRepository.findModel 同一偏好：仅 440M 已被验证可加载
+            // （270M 残留会被 firstOrNull 字母序选中导致引擎创建失败，K60U 实测踩中）
+            val model = models.firstOrNull { it.name.contains("440m") } ?: models.firstOrNull()
             if (model == null) {
                 lines += "缺少模型文件"
             } else {
