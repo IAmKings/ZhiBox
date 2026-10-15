@@ -36,13 +36,14 @@ class MainActivity : ComponentActivity() {
         val autoG1 = intent?.getBooleanExtra(EXTRA_AUTO_G1, false) == true
         val autoScan = intent?.getBooleanExtra(EXTRA_AUTO_SCAN, false) == true
         val autoG3 = intent?.getBooleanExtra(EXTRA_AUTO_G3, false) == true
+        val autoLen = intent?.getBooleanExtra(EXTRA_AUTO_LEN, false) == true
         val autoImport = intent?.getBooleanExtra(EXTRA_AUTO_IMPORT, false) == true
         setContent {
             ZhiBoxTheme {
                 var screen by remember {
                     mutableStateOf(
                         when {
-                            autoBenchmark || autoG1 || autoScan || autoG3 -> "benchmark"
+                            autoBenchmark || autoG1 || autoScan || autoG3 || autoLen -> "benchmark"
                             autoImport -> "import"
                             else -> "home"
                         }
@@ -54,6 +55,7 @@ class MainActivity : ComponentActivity() {
                         autoStartG1 = autoG1,
                         autoStartScan = autoScan,
                         autoStartG3 = autoG3,
+                        autoStartLen = autoLen,
                         onBack = { screen = "home" },
                     )
                     "import" -> ImportScreen(autoStart = autoImport, onBack = { screen = "home" })
@@ -71,6 +73,7 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_AUTO_G1 = "autostart_g1"
         const val EXTRA_AUTO_SCAN = "autostart_scan"
         const val EXTRA_AUTO_G3 = "autostart_g3"
+        const val EXTRA_AUTO_LEN = "autostart_lenbench"
         const val EXTRA_AUTO_IMPORT = "autostart_import"
     }
 }

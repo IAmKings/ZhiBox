@@ -11,7 +11,12 @@ package com.zhibox.memory.core.text
 class Chunker(
     private val options: Options = Options(),
 ) {
-    data class Options(val maxChars: Int = 800)
+    /**
+     * maxChars 默认 600：运行时输入上限实测为 1024 token（litertlm 0.18.0 签名限制，
+     * 非 8192 模型上下文），中文 ≈1.35 token/字 + 任务前缀，800 字块会越界（1080 token）。
+     * 600 字 × 1.35 + 前缀 ≈ 830 token，留有安全余量。
+     */
+    data class Options(val maxChars: Int = 600)
 
     data class Chunk(
         val ordinal: Int,
@@ -111,12 +116,12 @@ class Chunker(
     }
 
     companion object {
-        /** token 估算：CJK 字符≈1，其余≈4 字符/token */
+        /** token 估算：CJK ≈1.35 token/字（按 800 字→1080 token 越界实测校准），其余≈4 字符/token */
         fun estimateTokens(text: String): Int {
             var cjk = 0
             var other = 0
             for (c in text) if (c.code > 0x2E80) cjk++ else other++
-            return cjk + (other + 3) / 4
+            return ((cjk * 1.35).toInt() + 1) + (other + 3) / 4
         }
     }
 }

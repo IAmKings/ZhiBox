@@ -36,6 +36,7 @@ import android.content.Context
 import com.zhibox.memory.benchmark.ChineseTokenizationBenchmark
 import com.zhibox.memory.benchmark.EmbedderBenchmark
 import com.zhibox.memory.benchmark.G1Comparison
+import com.zhibox.memory.benchmark.LengthLatencyBenchmark
 import com.zhibox.memory.benchmark.VectorScanBenchmark
 import kotlinx.coroutines.launch
 import java.io.File
@@ -52,6 +53,7 @@ fun BenchmarkScreen(
     autoStartG1: Boolean = false,
     autoStartScan: Boolean = false,
     autoStartG3: Boolean = false,
+    autoStartLen: Boolean = false,
     onBack: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -66,6 +68,8 @@ fun BenchmarkScreen(
     var g1Summary by remember { mutableStateOf(listOf<String>()) }
     var scanSummary by remember { mutableStateOf(listOf<String>()) }
     var g3Summary by remember { mutableStateOf(listOf<String>()) }
+    var lenSummary by remember { mutableStateOf(listOf<String>()) }
+    var lenStarted by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("待运行") }
 
     fun runAll() {
@@ -179,8 +183,48 @@ fun BenchmarkScreen(
         if (autoStartScan && !scanStarted) runScan()
     }
 
+    fun runLenBench() {
+        if (running) return
+        running = true
+        lenStarted = true
+        scope.launch {
+            val lines = mutableListOf<String>()
+            val model = models.firstOrNull()
+            if (model == null) {
+                lines += "缺少模型文件"
+            } else {
+                for (useGpu in listOf(false, true)) {
+                    val mode = if (useGpu) "GPU" else "CPU"
+                    status = "长度×延迟矩阵（$mode）运行中..."
+                    runCatching {
+                        LengthLatencyBenchmark.runPass(context, model, useGpu)
+                    }.onSuccess { out ->
+                        val d = org.json.JSONObject(out.readText())
+                        if (!d.isNull("error")) {
+                            lines += "$mode: 失败 ${d.getString("error").take(60)}"
+                        } else {
+                            lines += "$mode: " + d.getJSONArray("rows").let { rows ->
+                                (0 until rows.length()).joinToString("  ") {
+                                    val r = rows.getJSONObject(it)
+                                    "${r.getInt("chars")}字=${r.getDouble("p50_ms")}/${r.getDouble("p95_ms")}ms"
+                                }
+                            }
+                        }
+                    }.onFailure { lines += "$mode: 异常 ${it.message?.take(50)}" }
+                    lenSummary = lines.toList()
+                }
+            }
+            status = "长度基准完成；结果在 filesDir/lenbench/"
+            running = false
+        }
+    }
+
     LaunchedEffect(autoStartG3) {
         if (autoStartG3 && !g3Started) runG3()
+    }
+
+    LaunchedEffect(autoStartLen) {
+        if (autoStartLen && !lenStarted && models.isNotEmpty()) runLenBench()
     }
 
     Scaffold(
@@ -223,6 +267,9 @@ fun BenchmarkScreen(
                 Button(onClick = { runG3() }, enabled = !running) {
                     Text("G3 分词")
                 }
+                Button(onClick = { runLenBench() }, enabled = !running && models.isNotEmpty()) {
+                    Text("长度×GPU")
+                }
             }
             if (running) LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(status, style = MaterialTheme.typography.bodyMedium)
@@ -250,6 +297,15 @@ fun BenchmarkScreen(
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("G3 中文分词摘要", style = MaterialTheme.typography.titleSmall)
                         g3Summary.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    }
+                }
+            }
+
+            if (lenSummary.isNotEmpty()) {
+                Card {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("长度×delegate 延迟（p50/p95）", style = MaterialTheme.typography.titleSmall)
+                        lenSummary.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                     }
                 }
             }

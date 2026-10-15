@@ -119,7 +119,8 @@ class ChunkerTest {
         val cjk = Chunker.estimateTokens("向量检索")
         val latin = Chunker.estimateTokens("abcd")
         assertTrue(cjk > latin)
-        assertEquals(4, cjk)
+        // 校准系数 1.35：(4×1.35)取整+1 = 6
+        assertEquals(6, cjk)
         assertEquals(1, latin)
     }
 }
