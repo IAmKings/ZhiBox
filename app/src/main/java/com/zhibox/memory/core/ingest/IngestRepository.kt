@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.zhibox.memory.core.embedding.UniversalEmbedderProvider
 import com.zhibox.memory.core.text.BigramTokenizer
 import com.zhibox.memory.core.text.Chunker
@@ -35,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class IngestRepository(
     private val context: Context,
-    private val db: AppDatabase = AppDatabase.get(context),
+    val db: AppDatabase = AppDatabase.get(context),
     private val chunker: Chunker = Chunker(),
 ) {
     private val filesDir get() = context.filesDir
@@ -54,7 +53,18 @@ class IngestRepository(
                 f.isFile && !f.name.startsWith(".") &&
                     (f.extension.equals("md", true) || f.extension.equals("txt", true))
             }?.sortedBy { it.name } ?: return emptyList()
-            return files.map { importFile(it) }
+            val documentIds = files.map { importFile(it) }
+            // 优化②：整批入队单个 worker（任务清单在 DB，worker 循环领取）
+            if (documentIds.isNotEmpty()) {
+                WorkManager.getInstance(context)
+                    .beginUniqueWork(
+                        INGEST_BATCH_WORK,
+                        ExistingWorkPolicy.KEEP, // 已有 worker 在跑则其循环会拾取新任务
+                        OneTimeWorkRequestBuilder<IngestBatchWorker>().build(),
+                    )
+                    .enqueue()
+            }
+            return documentIds
         } finally {
             stagingBusy.set(false)
         }
@@ -86,20 +96,7 @@ class IngestRepository(
         db.ingestJobDao().upsert(
             IngestJobEntity(jobId, sourceId, documentId, "queued", 0, null, now, now)
         )
-
-        // 唯一工作链串行执行：多 worker 并行会各自加载嵌入模型（1.4GB/实例），
-        // 低内存设备直接内存耗尽（P1-W1 验收实测：并行 5 实例 RSS 7GB 触发 LMK）
-        WorkManager.getInstance(context)
-            .beginUniqueWork(INGEST_CHAIN, ExistingWorkPolicy.APPEND_OR_REPLACE,
-                OneTimeWorkRequestBuilder<IngestWorker>()
-                    .setInputData(
-                        workDataOf(
-                            IngestWorker.KEY_DOCUMENT to documentId,
-                            IngestWorker.KEY_JOB to jobId,
-                        )
-                    )
-                    .build())
-            .enqueue()
+        // 入队由 importStaged 统一完成（批量单 worker）；此处仅登记
         return documentId
     }
 
@@ -228,7 +225,7 @@ class IngestRepository(
         const val EXPECTED_DIM = 768
         const val ROLE_CONTENT = "content"
         const val EMBED_BATCH = 16
-        const val INGEST_CHAIN = "ingest-chain"
+        const val INGEST_BATCH_WORK = "ingest-batch"
 
         /** 进程级共享嵌入模型（唯一实例）；embedding 全程持锁串行 */
         @Volatile

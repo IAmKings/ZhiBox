@@ -67,29 +67,27 @@ fun ImportScreen(
         }?.size ?: 0
     }
 
-    fun exportStatus(jobList: List<IngestJobEntity>) {
-        scope.launch {
-            // W1 冒烟的可检索证据：固定查询走 bigram MATCH
-            val smokeHits = runCatching {
-                db.chunkDao().searchFts(
-                    com.zhibox.memory.core.text.BigramTokenizer.toMatchQuery("向量检索"), 20,
-                ).size
-            }.getOrDefault(-1)
-            val json = JSONObject()
-                .put("ready_documents", db.documentDao().readyCount())
-                .put("chunks", db.chunkDao().count())
-                .put("fts_rows", runCatching { db.chunkDao().ftsCount() }.getOrDefault(-1))
-                .put("embeddings", db.embeddingDao().count())
-                .put("smoke_fts_hits", smokeHits)
-                .put("jobs", org.json.JSONArray().apply {
-                    jobList.forEach {
-                        put(JSONObject().put("id", it.id).put("stage", it.stage)
-                            .put("progress", it.progress).put("error", it.error ?: JSONObject.NULL))
-                    }
-                })
-            withContext(Dispatchers.IO) {
-                File(context.filesDir, "import_status.json").writeText(json.toString(2))
-            }
+    suspend fun exportStatus(jobList: List<IngestJobEntity>) {
+        // W1 冒烟的可检索证据：固定查询走 bigram MATCH
+        val smokeHits = runCatching {
+            db.chunkDao().searchFts(
+                com.zhibox.memory.core.text.BigramTokenizer.toMatchQuery("向量检索"), 20,
+            ).size
+        }.getOrDefault(-1)
+        val json = JSONObject()
+            .put("ready_documents", db.documentDao().readyCount())
+            .put("chunks", db.chunkDao().count())
+            .put("fts_rows", runCatching { db.chunkDao().ftsCount() }.getOrDefault(-1))
+            .put("embeddings", db.embeddingDao().count())
+            .put("smoke_fts_hits", smokeHits)
+            .put("jobs", org.json.JSONArray().apply {
+                jobList.forEach {
+                    put(JSONObject().put("id", it.id).put("stage", it.stage)
+                        .put("progress", it.progress).put("error", it.error ?: JSONObject.NULL))
+                }
+            })
+        withContext(Dispatchers.IO) {
+            File(context.filesDir, "import_status.json").writeText(json.toString(2))
         }
     }
 
@@ -107,7 +105,11 @@ fun ImportScreen(
         refreshStaging()
         db.ingestJobDao().observeAll().collectLatest { list ->
             jobs = list
-            exportStatus(list)
+            // 去抖（优化①）：导出在 collectLatest 块内执行，300ms 内的新 emission
+            // 会取消未完成的本次导出——高频进度更新合并为低频快照。
+            // 此前导出在独立协程中，不可取消，曾造成写入放大（每次表变更全量重写+FTS 查询）
+            kotlinx.coroutines.delay(300)
+            runCatching { exportStatus(list) }
         }
     }
 

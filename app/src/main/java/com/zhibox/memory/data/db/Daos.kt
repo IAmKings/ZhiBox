@@ -109,6 +109,13 @@ interface IngestJobDao {
 
     @Query("SELECT COUNT(*) FROM ingest_job WHERE stage IN ('queued','parsing','chunking','embedding','storing')")
     suspend fun activeCount(): Int
+
+    @Query("SELECT * FROM ingest_job WHERE stage = 'queued' ORDER BY createdAt LIMIT 1")
+    suspend fun nextQueued(): IngestJobEntity?
+
+    /** 原子认领：仅当仍为 queued 时置为 parsing；返回 0 表示已被其他执行者领走 */
+    @Query("UPDATE ingest_job SET stage = 'parsing', progress = 5, updatedAt = :now WHERE id = :id AND stage = 'queued'")
+    suspend fun claim(id: String, now: Long): Int
 }
 
 @Dao
