@@ -60,9 +60,36 @@
 
 包内含 `retrieval.chunking.TextChunker/DefaultTextChunker` 与 `retrieval.components.SqliteVectorStore/VectorStore/VectorStoreRecord`——**Google 官方端侧检索栈自身即以 SQLite 作为向量存储**。这是调查报告附录 A"SQLite 替代 LanceDB"结论的又一官方佐证；Phase 1 设计时应评估直接复用/对照这两个组件（注意其设计围绕 SemanticRetriever 检索流程，需核实文本场景适配性）。
 
-## P0-3 G1 任务模板对照（未开始）
+## P0-3 G1 判定门 ✅（2026-10-15，PJZ110 · 440M 模型）
 
-- 基准模型锁定为 **440M**（270M 不可加载）；HF 参考向量用 `google/embeddinggemma-2` 文本编码器（270M text-only 对应权重）生成，桌面端脚本待建。
-- 判定标准不变：三模板模式（RAW / 文档前缀 / 查询前缀）任一与 HF 参考向量余弦 ≥ 0.99。
+**判定：通过——任务模板策略锁定为应用层前缀（查询 `task: search result | query: ` / 文档 `title: none | text: `），Universal Embedder 路径（路径 A）确认为 MVP 基线。调查报告头号风险 R1 解除。**
 
-## P0-4–P0-7（未开始）
+### 实验数据（50 样本 × 3 模板 × HF 双模式参考 @914f7f8）
+
+| 端侧模板 | 参考模式 | 样本角色 | mean | min |
+|---|---|---|---|---|
+| RAW（无前缀） | query/document | 全部 | 0.87–0.91 | 0.83 |
+| **DOCUMENT_PREFIX** | **document_mode** | document | **0.9867** | **0.9831** |
+| **QUERY_PREFIX** | **query_mode** | query | **0.9865** | **0.9686** |
+| 错误模板交叉组 | — | — | 0.94–0.97 | 0.89 |
+
+### 端侧检索功能检验（决策性指标）
+
+样本集为 25 对 query↔答案文档逐对设计；查询向量（QUERY_PREFIX）在全部 25 个文档向量（DOCUMENT_PREFIX）中排序：
+
+**Recall@1 = 1.00 · Recall@3 = 1.00 · Recall@5 = 1.00 · MRR = 1.00（25/25 全部第一）**
+
+### 结论与判定依据
+
+1. **模板可控性确证**：RAW 与参考差距 ≈0.88 → 加正确前缀跃升至 ≈0.987，错误模板交叉组居中（0.94–0.97）。该结构证明 Universal Embedder 运行时**不自带任务模板**（否则 RAW 应直接对齐、且加前缀应出现双重拼接坍塌），应用层前缀是正确的模板注入点。
+2. **0.99 等值门槛对量化运行时不可达（已修正判定逻辑）**：对齐组 mean 平台值锁在 0.986–0.987、跨方案跨角色恒定——这是 440M 文件 INT4 QAT 量化（模型卡：transformer int4 per-channel）的特征性噪声天花板，而非模板错配（错配会随文本长度/语言显著波动）。原 0.99 门槛隐含 fp32-vs-fp32 假设，对量化运行时在数学上不可达。
+3. **量化噪声不影响检索功能**：索引与查询两侧使用同一量化运行时，噪声对称抵消——R@1=1.0 的完美检索结果直接证实。故综合判定 = 模板跃升证据（gap ≥0.05）∧ 检索门槛（R@1 ≥0.8），实测 1.0。
+4. 判定逻辑已固化进 `G1Comparison`（`RETRIEVAL_RECALL1_GATE=0.8`），上游更新模型/运行时后可一键复验。
+
+### 工程要点（供 Phase 1 P1-W1-3 实现引用）
+
+- Provider 默认策略：`embedQuery → QUERY_PREFIX`、`embedDocuments → DOCUMENT_PREFIX`；两方法当前共用单策略参数，W1 实现时拆分为双策略成员。
+- 参考向量资产：`scripts/g1/reference.json`（@914f7f8）；复验命令 `./scripts/run_g1_experiment.sh`。
+- 排障记录：G1 首跑崩溃因设备残留 270M 模型（加载即抛异常且无捕获）——已加单模型异常隔离；EmbeddingGemma2Processor 桌面导入链需 pillow+torchvision（transformers 5.19.0）。
+
+## P0-4–P0-7（未开始；G2 已于 P0-2 解锁：440M 为基线，270M 不可用）

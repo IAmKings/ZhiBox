@@ -58,10 +58,14 @@ import json, glob
 for p in sorted(glob.glob("docs/phase0/g1-results/*.json")):
     d = json.load(open(p))
     v = d.get("verdict", {})
+    r = d.get("retrieval_check") or {}
     print(f"\n{p}")
     print(f"  model: {d.get('model_file')}  threshold: {d.get('threshold')}")
     for s in ("scheme_app_prefix", "scheme_runtime_default"):
         sv = v.get(s, {})
         print(f"  {s}: pass={sv.get('pass')}  doc_min={sv.get('doc_side_min')}  query_min={sv.get('query_side_min')}")
+    print(f"  template_gap_confirmed: {v.get('template_gap_confirmed')}")
+    if r:
+        print(f"  retrieval: R@1={r.get('recall_at_1')} R@3={r.get('recall_at_3')} R@5={r.get('recall_at_5')} MRR={r.get('mrr')} (n={r.get('n_pairs')})")
     print(f"  G1_PASS = {v.get('g1_pass')}")
 EOF

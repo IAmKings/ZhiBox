@@ -89,13 +89,19 @@ fun BenchmarkScreen(
             val lines = mutableListOf<String>()
             for (m in models) {
                 status = "G1 对照中: ${m.name}"
-                val out = G1Comparison.run(context, m)
-                val v = org.json.JSONObject(out.readText()).getJSONObject("verdict")
-                val pass = v.getBoolean("g1_pass")
-                val appPrefix = v.getJSONObject("scheme_app_prefix")
-                lines += "${m.name}: G1_${if (pass) "PASS" else "FAIL"}" +
-                    "（app-prefix min: doc=${appPrefix.getDouble("doc_side_min")} " +
-                    "query=${appPrefix.getDouble("query_side_min")}）"
+                // 单模型失败（如 270M 结构不支持）不阻断其余模型
+                runCatching { G1Comparison.run(context, m) }
+                    .onSuccess { out ->
+                        val v = org.json.JSONObject(out.readText()).getJSONObject("verdict")
+                        val pass = v.getBoolean("g1_pass")
+                        val appPrefix = v.getJSONObject("scheme_app_prefix")
+                        lines += "${m.name}: G1_${if (pass) "PASS" else "FAIL"}" +
+                            "（app-prefix min: doc=${appPrefix.getDouble("doc_side_min")} " +
+                            "query=${appPrefix.getDouble("query_side_min")}）"
+                    }
+                    .onFailure {
+                        lines += "${m.name}: 运行失败 ${it.message?.lineSequence()?.first() ?: it.javaClass.simpleName}"
+                    }
                 g1Summary = lines.toList()
             }
             status = "G1 完成；结果已导出 filesDir/g1_results/"
