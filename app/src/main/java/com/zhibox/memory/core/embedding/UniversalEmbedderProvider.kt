@@ -7,6 +7,8 @@ import com.google.mediapipe.tasks.core.Delegate
 import com.google.mediapipe.tasks.retrieval.universalembedder.UniversalEmbedder
 import com.google.mediapipe.tasks.retrieval.universalembedder.UniversalEmbedderOptions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -14,21 +16,22 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * 路径 A：MediaPipe Universal Embedder（tasks-retrieval 1.1.1，底层 LiteRT-LM）。
  *
- * Phase 0 用途：资源画像基准 + G1 判定门三模板对照。
- * 生产化改造（分批、超时、并发保护）在 Phase 1 P1-W1-3 完成。
+ * P1-W1-3 生产化形态（Phase 0 G1 结论落地）：
+ * - 双任务模板策略：embedQuery → QUERY_PREFIX，embedDocuments → DOCUMENT_PREFIX
+ *   （应用层前缀，运行时确认不自带模板；检索 R@1=1.0）
+ * - 批量编码支持协作取消（ensureActive）与逐条有限值校验
+ * - 维度首次推理回填，维度漂移视为运行时异常
  *
- * API 备注（经 AAR javap 核验，1.1.1）：
- * - 模型从文件路径加载：BaseOptions 只有 assetPath / fileDescriptor / buffer 三种方式，
- *   本实现持有 ParcelFileDescriptor 并在 close 时释放；
- * - Embedding.floatEmbedding() 直接返回 float[]。
+ * 实验复验入口（ChineseTokenizationBenchmark 等基准）：构造时以 queryPolicy
+ * 覆盖默认值即可重现 Phase 0 的单策略测量语义。
  *
- * @param policy 任务模板策略，见 [TaskTemplatePolicy]；索引侧与查询侧必须使用一致策略
- * @param useGpu 默认 false（CPU/XNNPack）。GPU 仅基准对照用，依据调查报告 R4 不进默认配置
+ * @param useGpu 默认 false（CPU/XNNPack，调查报告 R4）
  */
 class UniversalEmbedderProvider(
     context: Context,
     modelFile: File,
-    private val policy: TaskTemplatePolicy = TaskTemplatePolicy.RAW,
+    private val queryPolicy: TaskTemplatePolicy = TaskTemplatePolicy.QUERY_PREFIX,
+    private val documentPolicy: TaskTemplatePolicy = TaskTemplatePolicy.DOCUMENT_PREFIX,
     useGpu: Boolean = false,
 ) : EmbeddingProvider {
 
@@ -37,13 +40,12 @@ class UniversalEmbedderProvider(
     private val embedder: UniversalEmbedder
     private val closed = AtomicBoolean(false)
 
-    // 覆盖为 var：首次推理后回填 dimensions
     override var descriptor: EmbeddingDescriptor = EmbeddingDescriptor(
         providerId = PROVIDER_ID,
         modelId = modelFile.nameWithoutExtension,
         dimensions = -1,
-        queryTaskTemplate = policy.name,
-        documentTaskTemplate = policy.name,
+        queryTaskTemplate = queryPolicy.name,
+        documentTaskTemplate = documentPolicy.name,
     )
 
     init {
@@ -55,19 +57,23 @@ class UniversalEmbedderProvider(
                     .setDelegate(if (useGpu) Delegate.GPU else Delegate.CPU)
                     .build()
             )
-            // 调查报告附录 A.5：SAG 检索语义依赖归一化余弦分数，统一 L2 归一化
             .setL2Normalize(true)
             .build()
         embedder = UniversalEmbedder.createFromOptions(appContext, options)
     }
 
     override suspend fun embedDocuments(texts: List<String>): List<FloatArray> =
-        withContext(Dispatchers.Default) { texts.map { encode(it) } }
+        withContext(Dispatchers.Default) {
+            texts.map { text ->
+                currentCoroutineContext().ensureActive()
+                encode(text, documentPolicy)
+            }
+        }
 
     override suspend fun embedQuery(text: String): FloatArray =
-        withContext(Dispatchers.Default) { encode(text) }
+        withContext(Dispatchers.Default) { encode(text, queryPolicy) }
 
-    private fun encode(rawText: String): FloatArray {
+    private fun encode(rawText: String, policy: TaskTemplatePolicy): FloatArray {
         check(!closed.get()) { "provider already closed" }
         val input = policy.prefix?.let { it + rawText } ?: rawText
         val vector = embedder.embedText(input).embeddings().first().floatEmbedding()

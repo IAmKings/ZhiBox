@@ -61,7 +61,11 @@ object VectorScanBenchmark {
         var realCount = 0
         for (candidate in candidates) {
             val provider = runCatching {
-                UniversalEmbedderProvider(appContext, candidate, TaskTemplatePolicy.RAW, false)
+                UniversalEmbedderProvider(
+                    appContext, candidate,
+                    queryPolicy = TaskTemplatePolicy.RAW,
+                    useGpu = false,
+                )
             }.getOrNull() ?: continue
             try {
                 // 50 条真实向量（样本文本循环取用）

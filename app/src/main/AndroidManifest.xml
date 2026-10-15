@@ -2,10 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-      MVP（离线搜索模式 A）不申请任何权限。
-      网络权限推迟到 P1-W1-5 模型下载器任务时再引入，且仅用于显式的用户触发的模型下载。
-      依据：docs/SAG_Android_MVP_Implementation_Plan_v1.0.md P1-W2-5
+      P1-W1-5 起引入：应用内唯一联网路径是"模型下载器"（显式用户触发的下载，
+      URL + SHA-256 校验 + 断点续传）。检索/导入/嵌入全链路离线可用。
+      依据：docs/SAG_Android_MVP_Implementation_Plan_v1.0.md P1-W1-5 / P1-W2-5
     -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"

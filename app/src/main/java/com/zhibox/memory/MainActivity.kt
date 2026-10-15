@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.zhibox.memory.ui.BenchmarkScreen
+import com.zhibox.memory.ui.ImportScreen
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
 
 class MainActivity : ComponentActivity() {
@@ -35,21 +36,31 @@ class MainActivity : ComponentActivity() {
         val autoG1 = intent?.getBooleanExtra(EXTRA_AUTO_G1, false) == true
         val autoScan = intent?.getBooleanExtra(EXTRA_AUTO_SCAN, false) == true
         val autoG3 = intent?.getBooleanExtra(EXTRA_AUTO_G3, false) == true
+        val autoImport = intent?.getBooleanExtra(EXTRA_AUTO_IMPORT, false) == true
         setContent {
             ZhiBoxTheme {
-                var showBenchmark by remember {
-                    mutableStateOf(autoBenchmark || autoG1 || autoScan || autoG3)
+                var screen by remember {
+                    mutableStateOf(
+                        when {
+                            autoBenchmark || autoG1 || autoScan || autoG3 -> "benchmark"
+                            autoImport -> "import"
+                            else -> "home"
+                        }
+                    )
                 }
-                if (showBenchmark) {
-                    BenchmarkScreen(
+                when (screen) {
+                    "benchmark" -> BenchmarkScreen(
                         autoStart = autoBenchmark,
                         autoStartG1 = autoG1,
                         autoStartScan = autoScan,
                         autoStartG3 = autoG3,
-                        onBack = { showBenchmark = false },
+                        onBack = { screen = "home" },
                     )
-                } else {
-                    AppSkeleton(onOpenBenchmark = { showBenchmark = true })
+                    "import" -> ImportScreen(autoStart = autoImport, onBack = { screen = "home" })
+                    else -> AppSkeleton(
+                        onOpenBenchmark = { screen = "benchmark" },
+                        onOpenImport = { screen = "import" },
+                    )
                 }
             }
         }
@@ -60,12 +71,13 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_AUTO_G1 = "autostart_g1"
         const val EXTRA_AUTO_SCAN = "autostart_scan"
         const val EXTRA_AUTO_G3 = "autostart_g3"
+        const val EXTRA_AUTO_IMPORT = "autostart_import"
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppSkeleton(onOpenBenchmark: () -> Unit = {}) {
+fun AppSkeleton(onOpenBenchmark: () -> Unit = {}, onOpenImport: () -> Unit = {}) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -97,7 +109,12 @@ fun AppSkeleton(onOpenBenchmark: () -> Unit = {}) {
                         "依据：docs/SAG_Android_MVP_Implementation_Plan_v1.0.md",
                         style = MaterialTheme.typography.bodySmall
                     )
-                    Button(onClick = onOpenBenchmark) { Text("Embedder 基准") }
+                    androidx.compose.foundation.layout.Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(onClick = onOpenBenchmark) { Text("实验/诊断") }
+                        Button(onClick = onOpenImport) { Text("导入管线") }
+                    }
                 }
             }
         }

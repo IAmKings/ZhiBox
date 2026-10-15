@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -54,6 +55,11 @@ kotlin {
     }
 }
 
+// Room schema 导出（迁移测试与版本审计依据）
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 // tasks-retrieval 1.1.1 的 POM 传递依赖 litertlm-android:0.17.0-alpha1，
 // 但该 alpha 缺少运行时所需的 com.google.ai.edge.litertlm.ActivationDataType
 // （运行时 NoClassDefFoundError，经 AAR 反编译核验 0.18.0 才包含该类）。
@@ -75,7 +81,15 @@ dependencies {
     implementation(libs.androidx.material3)
     // P0-2: MediaPipe Universal Embedder（LiteRT-LM 推理），版本锚点见 docs/UPSTREAM_VERSIONS.md
     implementation(libs.mediapipe.tasks.retrieval)
-    // P0-5 G3: 结巴分词纯 Java 移植（中文分词方案对照用）
+    // P0-5 G3: 结巴分词纯 Java 移植（中文分词方案对照用；G3 已证劣于 bigram，Phase 1 检视移除）
     implementation(libs.jieba.analysis)
+    // P1-W1: 数据层与导入管线
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.work.runtime.ktx)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     debugImplementation(libs.androidx.ui.tooling)
 }

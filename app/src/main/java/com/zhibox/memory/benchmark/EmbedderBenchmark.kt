@@ -70,7 +70,11 @@ object EmbedderBenchmark {
         val baselineHwm = readVmHwmKb()
         try {
             val t0 = SystemClock.elapsedRealtime()
-            val provider = UniversalEmbedderProvider(context, modelFile, policy, useGpu)
+            val provider = UniversalEmbedderProvider(
+                context, modelFile,
+                queryPolicy = policy,
+                useGpu = useGpu,
+            )
             val coldLoadMs = SystemClock.elapsedRealtime() - t0
             try {
                 val firstStart = SystemClock.elapsedRealtime()

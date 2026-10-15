@@ -52,7 +52,11 @@ object G1Comparison {
         val embByPolicy = HashMap<String, HashMap<String, FloatArray>>()
 
         for ((name, policy, _) in POLICIES) {
-            val provider = UniversalEmbedderProvider(appContext, modelFile, policy, useGpu = false)
+            val provider = UniversalEmbedderProvider(
+                appContext, modelFile,
+                queryPolicy = policy,
+                useGpu = false,
+            )
             try {
                 val embMap = embByPolicy.getOrPut(name) { HashMap() }
                 for (i in 0 until samples.length()) {
