@@ -38,4 +38,4 @@
 | 待补资产 | 状态 |
 |---|---|
 | Text Embedder + EmbeddingGemma v1（路径 B 回退） | 待 G2 盘点后记录 |
-| HuggingFace 参考权重 `google/embeddinggemma-2`（G1 对照用） | 待 P0-3 记录 revision |
+| HuggingFace 参考权重 `google/embeddinggemma-2`（G1 对照用） | ✅ 已锁定：revision `914f7f89142e33e77833254d9c9b90c3cef7303b`（768d，text-only 模式；经 hf-mirror）；参考向量 `scripts/g1/reference.json`（50 样本 × query/document 双模式）；生成环境 torch 2.14.1 / sentence-transformers 6.1.0 / transformers 5.19.0（需 pillow + torchvision，EmbeddingGemma2Processor 导入链依赖） |

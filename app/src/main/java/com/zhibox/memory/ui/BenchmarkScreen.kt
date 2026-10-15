@@ -29,20 +29,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.content.Context
 import com.zhibox.memory.benchmark.EmbedderBenchmark
+import com.zhibox.memory.benchmark.G1Comparison
 import kotlinx.coroutines.launch
 import java.io.File
 
 /**
- * P0-2 基准界面：扫描设备上的模型文件（外部私有目录 models/ 或内部 filesDir/models/，
- * 均经 adb push 放入，应用保持零权限），逐个执行 RAW/CPU 基准并导出 JSON。
+ * Phase 0 实验界面：P0-2 资源基准 与 P0-3 G1 判定门对照。
  *
  * 自动化入口：
- *   adb shell am start -n com.zhibox.memory/.MainActivity --ez autostart_benchmark true
+ *   基准: adb shell am start -n com.zhibox.memory/.MainActivity --ez autostart_benchmark true
+ *   G1:   adb shell am start -n com.zhibox.memory/.MainActivity --ez autostart_g1 true
+ * 输入文件均经 adb run-as 投放到应用私有目录。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BenchmarkScreen(
     autoStart: Boolean = false,
+    autoStartG1: Boolean = false,
     onBack: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -50,7 +53,9 @@ fun BenchmarkScreen(
     val models = remember { discoverModels(context) }
     var running by remember { mutableStateOf(false) }
     var started by remember { mutableStateOf(false) }
+    var g1Started by remember { mutableStateOf(false) }
     var reports by remember { mutableStateOf(listOf<EmbedderBenchmark.Report>()) }
+    var g1Summary by remember { mutableStateOf(listOf<String>()) }
     var status by remember { mutableStateOf("待运行") }
 
     fun runAll() {
@@ -71,8 +76,39 @@ fun BenchmarkScreen(
         }
     }
 
+    fun runG1() {
+        if (running || models.isEmpty()) return
+        val hasRef = File(context.filesDir, "g1/reference.json").isFile
+        if (!hasRef) {
+            status = "缺少 filesDir/g1/reference.json（先运行 scripts/run_g1_experiment.sh）"
+            return
+        }
+        running = true
+        g1Started = true
+        scope.launch {
+            val lines = mutableListOf<String>()
+            for (m in models) {
+                status = "G1 对照中: ${m.name}"
+                val out = G1Comparison.run(context, m)
+                val v = org.json.JSONObject(out.readText()).getJSONObject("verdict")
+                val pass = v.getBoolean("g1_pass")
+                val appPrefix = v.getJSONObject("scheme_app_prefix")
+                lines += "${m.name}: G1_${if (pass) "PASS" else "FAIL"}" +
+                    "（app-prefix min: doc=${appPrefix.getDouble("doc_side_min")} " +
+                    "query=${appPrefix.getDouble("query_side_min")}）"
+                g1Summary = lines.toList()
+            }
+            status = "G1 完成；结果已导出 filesDir/g1_results/"
+            running = false
+        }
+    }
+
     LaunchedEffect(autoStart) {
         if (autoStart && !started && models.isNotEmpty()) runAll()
+    }
+
+    LaunchedEffect(autoStartG1) {
+        if (autoStartG1 && !g1Started && models.isNotEmpty()) runG1()
     }
 
     Scaffold(
@@ -93,10 +129,22 @@ fun BenchmarkScreen(
                 Button(onClick = { runAll() }, enabled = !running && models.isNotEmpty()) {
                     Text(if (running) "运行中…" else "运行基准 (${models.size})")
                 }
+                Button(onClick = { runG1() }, enabled = !running && models.isNotEmpty()) {
+                    Text("G1 对照")
+                }
                 TextButton(onClick = onBack, enabled = !running) { Text("返回") }
             }
             if (running) LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(status, style = MaterialTheme.typography.bodyMedium)
+
+            if (g1Summary.isNotEmpty()) {
+                Card {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("G1 判定摘要", style = MaterialTheme.typography.titleSmall)
+                        g1Summary.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    }
+                }
+            }
 
             if (models.isEmpty()) {
                 Card {

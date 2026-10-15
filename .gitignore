@@ -29,3 +29,7 @@ tmp/
 
 # 模型缓存（体积大，经 hf-mirror 下载，SHA 记录于 docs/UPSTREAM_VERSIONS.md）
 models/
+
+# G1 桌面工具链与 HF 缓存（P0-3）
+.venv-g1/
+.hf-cache/

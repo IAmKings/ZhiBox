@@ -32,12 +32,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val autoBenchmark = intent?.getBooleanExtra(EXTRA_AUTO_BENCHMARK, false) == true
+        val autoG1 = intent?.getBooleanExtra(EXTRA_AUTO_G1, false) == true
         setContent {
             ZhiBoxTheme {
-                var showBenchmark by remember { mutableStateOf(autoBenchmark) }
+                var showBenchmark by remember { mutableStateOf(autoBenchmark || autoG1) }
                 if (showBenchmark) {
                     BenchmarkScreen(
                         autoStart = autoBenchmark,
+                        autoStartG1 = autoG1,
                         onBack = { showBenchmark = false },
                     )
                 } else {
@@ -49,6 +51,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_AUTO_BENCHMARK = "autostart_benchmark"
+        const val EXTRA_AUTO_G1 = "autostart_g1"
     }
 }
 
