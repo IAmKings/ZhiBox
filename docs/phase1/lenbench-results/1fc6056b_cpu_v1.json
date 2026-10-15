@@ -1,0 +1,64 @@
+{
+  "experiment": "length_latency_matrix",
+  "mode": "cpu",
+  "model": "embeddinggemma-2-text-vision-440m",
+  "dimensions": 768,
+  "warmup": 2,
+  "runs": 12,
+  "device_model": "PJZ110",
+  "soc": "SM8750",
+  "android": "16",
+  "rss_before_kb": 259308,
+  "rss_after_kb": 1627848,
+  "rows": [
+    {
+      "chars": 30,
+      "token_estimate": 41,
+      "runs": 12,
+      "mean_ms": 67.7,
+      "p50_ms": 62,
+      "p95_ms": 65
+    },
+    {
+      "chars": 200,
+      "token_estimate": 250,
+      "runs": 12,
+      "mean_ms": 130.3,
+      "p50_ms": 131,
+      "p95_ms": 133
+    },
+    {
+      "chars": 400,
+      "token_estimate": 439,
+      "runs": 12,
+      "mean_ms": 132.5,
+      "p50_ms": 132,
+      "p95_ms": 135
+    },
+    {
+      "chars": 600,
+      "token_estimate": 683,
+      "runs": 12,
+      "mean_ms": 344.1,
+      "p50_ms": 346,
+      "p95_ms": 354
+    },
+    {
+      "chars": 700,
+      "token_estimate": 743,
+      "runs": 12,
+      "mean_ms": 377.8,
+      "p50_ms": 384,
+      "p95_ms": 389
+    },
+    {
+      "chars": 800,
+      "token_estimate": 878,
+      "runs": 12,
+      "mean_ms": 397.5,
+      "p50_ms": 390,
+      "p95_ms": 443
+    }
+  ],
+  "error": null
+}

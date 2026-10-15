@@ -13,6 +13,8 @@
 | W4 | **HF litert-community 模型资产** | 270M 发布但不可被 Universal Embedder 加载；440M 可用（370MB）；各 SoC 专用 740M 构建存在 | [litert-community 组织页](https://huggingface.co/litert-community)（经 hf-mirror 可达） | 新增 text-only 可加载变体 / 更小量化版 → 重跑 G2 资源画像 |
 | W5 | **SAG / zleap-sag** | 锚点 0.14.0 + commit 56f073c；不追新 | [SAG releases](https://github.com/Zleap-AI/SAG/releases)（GitHub API 可达） | 仅在 Phase 1 设计定稿前核对一次 schema 变更；升级走独立 PR + 参考 diff（UPSTREAM_VERSIONS.md 流程） |
 | W6 | **EmbeddingGemma 2 模型卡/权重** | google/embeddinggemma-2 锁定 @`914f7f8` | HF 模型卡 + ai.google.dev | revision 更新 → G1 参考向量需重新生成（`scripts/g1/gen_reference.py`）；prompt 规范变更 → 直接影响 TaskTemplatePolicy 定义 |
+| W7 | **litertlm 1024 token 输入上限** | litertlm 0.18.0 签名限制（非模型卡 8192）；中文 1.35 token/字；700-800 字红线区行为不一致 | litertlm 发行说明 / tasks-retrieval 更新 | 上限放宽或 `setMaxInputLength` 生效 → 重测长度阶梯（`run_latency_matrix.sh`）并评估恢复 800 字块（更大块 = 更少块数 = 更少次调用） |
+| W8 | **GPU delegate 设备覆盖** | 仅 SM8750/Adreno 可用；MT6985/MT6893 引擎创建失败（价值倒挂，不做通用路线） | litertlm/tasks-retrieval 发行说明 | 若 GPU 覆盖扩大到 MediaTek → 重评 `run_latency_matrix.sh` 三档 GPU 列 |
 
 ## 检查节奏
 
