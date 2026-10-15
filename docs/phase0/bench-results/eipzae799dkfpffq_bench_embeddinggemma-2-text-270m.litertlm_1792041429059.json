@@ -1,0 +1,21 @@
+{
+  "model_file": "embeddinggemma-2-text-270m.litertlm",
+  "model_bytes": 164626432,
+  "policy": "RAW",
+  "cold_load_ms": -1,
+  "dimensions": -1,
+  "all_finite": false,
+  "l2_norm_delta": -1,
+  "self_cosine": null,
+  "warm_samples": 0,
+  "warm_p50_ms": -1,
+  "warm_p95_ms": -1,
+  "first_embed_ms": -1,
+  "rss_baseline_kb": 214900,
+  "peak_rss_kb": 306628,
+  "device_model": "M2012K10C",
+  "soc_model": "MT6893",
+  "android_version": "13",
+  "timestamp": "2026-10-15T13:17:08",
+  "error": "LiteRtLmJniException: Failed to create EmbeddingEngineImpl: NOT_FOUND: ERROR: [third_party\/odml\/litert_lm\/runtime\/core\/embedding_engine_impl.cc:479]\n└ ERROR: [third_party\/odml\/litert_lm\/runtime\/core\/embedding_engine_impl.cc:293]\n└ ERROR: [third_party\/odml\/litert_lm\/runtime\/executor\/model_signature_utils.cc:283]\n└ ERROR: [third_party\/odml\/litert_lm\/runtime\/executor\/model_signature_utils.cc:168]\n└ tf_lite_vision_encoder not found in the model."
+}
