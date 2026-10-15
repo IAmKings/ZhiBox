@@ -121,7 +121,7 @@ class Chunker(
             var cjk = 0
             var other = 0
             for (c in text) if (c.code > 0x2E80) cjk++ else other++
-            return ((cjk * 1.35).toInt() + 1) + (other + 3) / 4
+            return Math.ceil(cjk * 1.35).toInt() + (other + 3) / 4
         }
     }
 }
