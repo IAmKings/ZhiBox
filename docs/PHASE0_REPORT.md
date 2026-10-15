@@ -133,6 +133,19 @@
 3. Android 框架 SQLite 的 FTS4 原样对中文有 41% 的偶发命中（整串 token 的巧合匹配），不可依赖；入库与查询两侧统一 bigram 化是正确做法。
 4. 索引膨胀 2.66× 在可接受范围（10 万字语料 → 30 万字节 FTS 内容列）。
 
+附：SAG 分词方案考据（2026-10-15，源码级）
+
+SAG 的分词**按向量后端分治**，仅 ParadeDB 实现了中文分词：
+
+| 后端 | 中文分词 | 证据（zleap-sag 0.14.0） |
+|---|---|---|
+| ParadeDB | **jieba**（zh）· lindera（ja）· 其余 Unicode #29 | `paradedb_store.py:33` `_CJK_TOKENIZER="jieba"`；注释承认"默认分词器对 CJK 基本等于不切分，故必须显式指定" |
+| LanceDB（默认后端） | **无** | `lancedb_store.py:758` `create_index(col, config=FTS())` 零参数 |
+| Elasticsearch | 无显式配置（依赖 ES 默认 standard 单字切分） | 全文件无 analyzer |
+| OceanBase | 无 | `resources.py:129`"其余后端不接受该参数" |
+
+三点印证：① SAG 注释承认的"默认对 CJK 不切分"与本报告 RAW 0.41 命中率互证——SAG 默认后端的中文关键词检索与向量通道改造前同样弱；② SAG 选 jieba 属通用语料合理选择，但本实验已实证其领域词典缺陷（0.22），bigram 思路对服务端 ParadeDB 路线同样有参考价值；③ 框架 SQLite FTS4 无自定义 tokenizer 接口（接 jieba 需自带 SQLite + NDK C tokenizer），在"不自带 SQLite"约束下双侧 bigram 是唯一务实解。
+
 ## P0-7 Phase 0 总结与 go/no-go（2026-10-15）
 
 ### 四判定门结论汇总
@@ -160,3 +173,23 @@
 - Phase 1 W1 起用 Room schema 时，`chunk_embedding` 双策略成员与 embedding space 隔离按实施计划 P1-W1-1 落地。
 
 ### go/no-go：**GO**——全部判定门通过且均有较大余量，无一项触发回退路径。
+
+## 补充决策记录：存储栈选型对比（2026-10-15，Phase 1 开工前钉死）
+
+**"不自带 SQLite"的原因**：自带（bundle）自定义 SQLite 的三个可能动因在 MVP 全部不成立——
+① FTS5/自定义分词器：G3 已证 FTS4 + bigram 足够（0.96 命中）；② sqlite-vec 向量表：G4 已证朴素扫描 + 预载在最慢设备有 3–100 倍余量，其 ANN 尚属实验特性；③ 其他扩展：无需求。
+而自带成本是确定的：NDK 构建/CI、Android 15+ 16KB 页对齐、SQLite 上游安全补丁自运维、Room 工厂替换与迁移验证。结论：**无强制动因时不引入自运维原生构建面**。
+
+**候选方案对比**：
+
+| 方案 | 中文关键词 | 向量检索 | 加密 | 原生构建面 | 评估 |
+|---|---|---|---|---|---|
+| **A. Room + 框架 SQLite（选定）** | FTS4+bigram ✅（G3 实证） | BLOB 扫描+预载 ✅（G4 实证） | 无（依赖 OS 沙箱+FBE） | **零** | MVP 最优：已实证、零额外风险 |
+| B. Room + 自带 SQLite + sqlite-vec | 同上（FTS5 可用） | vec0 虚表 + 实验性 ANN | 无 | NDK 自建（无官方 Maven AAR；expo/op-sqlite 有先例，~350KB，16KB 对齐坑） | 触发线：chunks > ~10 万或 p95 超标（附录 B.4 路径） |
+| C. Room + SQLCipher | 不受影响（完整 SQLite 构建） | 不受影响（BLOB 同样可存） | ✅ AES-256 全库 | +3–9MB APK，开库密钥派生 200–500ms | 触发线：隐私合规需求（如端侧引入 K12 未成年人学习数据）；注意 SQLCipher 本身就是自带 SQLite |
+| D. C+B 合体（SQLCipher + sqlite-vec 静态链接） | 同上 | 同上 | ✅ | 最大（社区有 op-sqlite 先例） | B/C 任一触发时一步到位，避免两次换栈 |
+| E. 非 SQLite：ObjectBox / libSQL / SQLDelight | ObjectBox 有 HNSW 但商业闭源核心；libSQL 是整库替换且与 Room 冲突；SQLDelight 仅是 ORM 平替 | — | — | 各异 | 不改变问题本质，仅换供应商；ORM 层 Room↔SQLDelight 互换成本有界 |
+
+**换栈成本评估（接口隔离红利）**：因 `VectorIndex`/`EmbeddingProvider` 抽象 + 标准 SQLite 文件 + 纯 SQL schema，后期换栈是**存储层替换而非领域层重写**——Room 经 `SupportSQLiteOpenHelper.Factory` 换引擎，实体/DAO 不动；sqlite-vec 作为 `VectorIndex` 新增实现（附录 B.4 既有路径）；bigram 内容列与应用层分词对任何引擎通用。预估触发时工作量：NDK 构建+CI 2–4 天、工厂替换+迁移测试 1–2 天、vec 实现与基准 2–3 天。**加密触发时直接做 D，避免 B→C→D 三跳**。
+
+**锁定**：MVP = 方案 A；B/D 触发线 = chunks > ~10 万或检索 p95 超标；C/D 触发线 = 端侧引入未成年人学习数据或合规要求。
