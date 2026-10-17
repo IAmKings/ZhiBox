@@ -85,7 +85,47 @@ ZHIBOX_KEY_PASSWORD=***
 之后 `./gradlew :app:assembleRelease` 直接产出已签名 `app-release.apk`；
 `scripts/release.sh` 会识别并跳过二次签名。四项缺任意一项时 AGP 不签名（unsigned，不阻塞构建）。
 
-### 1.4 验签
+> 本项目 2026-10-18 已生成 release keystore（本地路径 `~/.zhibox-release/zhibox-release.jks`，
+> `credentials.properties` 同目录、权限 600，证书 SHA-256：
+> `B1:D1:36:BA:DC:C7:E0:32:A3:9D:85:04:FB:05:0F:98:F4:44:01:7A:EB:5F:5C:FC:E6:62:56:AF:EC:1D:B1:D1`）。
+> **必须离线备份 keystore + 口令**；丢失后无法覆盖升级已安装用户（只能换包名/卸载重装）。
+
+### 1.4 CI tag 自动签名发布（B4-6）
+
+release keystore 通过 **GitHub Actions Secrets** 注入，tag 推送时自动构建、验签并创建 GitHub Release：
+
+| Secret | 内容 |
+|---|---|
+| `ZHIBOX_STORE_BASE64` | release keystore 的 base64（单文件 PKCS12/JKS） |
+| `ZHIBOX_STORE_PASSWORD` | keystore 口令 |
+| `ZHIBOX_KEY_ALIAS` | key alias（本项目 `zhibox`） |
+| `ZHIBOX_KEY_PASSWORD` | key 口令 |
+
+配置（值只从本地文件读，不贴入聊天/仓库；`gh` 已登录上游仓库）：
+
+```bash
+KS="$HOME/.zhibox-release/zhibox-release.jks"
+base64 < "$KS" | tr -d '\n' | gh secret set ZHIBOX_STORE_BASE64
+sed -n 's/^ZHIBOX_STORE_PASSWORD=//p' "$HOME/.zhibox-release/credentials.properties" | gh secret set ZHIBOX_STORE_PASSWORD
+printf '%s' zhibox | gh secret set ZHIBOX_KEY_ALIAS
+sed -n 's/^ZHIBOX_KEY_PASSWORD=//p' "$HOME/.zhibox-release/credentials.properties" | gh secret set ZHIBOX_KEY_PASSWORD
+```
+
+发版流程（workflow：`.github/workflows/release.yml`）：
+
+```bash
+# 1) 确认 versionName 与 tag 一致（workflow 会强校验 v<versionName>）
+# 2) 打 tag 并推送（触发 Release workflow）
+git tag -a v0.1.0-mvp -m "ZhiBox v0.1.0-mvp"
+git push origin v0.1.0-mvp
+# 3) 等待 GitHub Actions "Release (signed APK)" 全绿；会自动创建 Release 并上传：
+#    zhibox-<version>-<sha7>-release-signed.apk / .apk.sha256 / -mapping.txt
+```
+
+workflow 校验点：tag 与 versionName 一致、keystore 可解码、`apksigner verify --print-certs` 有证书 SHA-256、
+非 debuggable、`aapt2 dump badging` 成功；任一失败不会创建 Release。
+
+### 1.5 验签
 
 ```bash
 apksigner verify --print-certs dist/zhibox-<version>-<sha>-release-signed.apk

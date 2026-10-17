@@ -74,7 +74,8 @@ VERSION_NAME="$(grep -E '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"' app
 [ -n "$VERSION_NAME" ] || die "无法从 app/build.gradle.kts 解析 versionName"
 GIT_SHA="$(git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)"
 GIT_DIRTY=""
-if [ -n "$(git status --porcelain 2>/dev/null | head -1 || true)" ]; then
+# 仅把"已跟踪文件改动"视为 dirty；未跟踪文件（如本地 Trellis/IDE 目录）不应污染发布包名
+if [ -n "$(git status --porcelain --untracked-files=no 2>/dev/null | head -1 || true)" ]; then
   GIT_DIRTY="-dirty"
   warn "工作区有未提交改动：产物标记为 ${GIT_SHA}${GIT_DIRTY}（发布请使用干净工作区）"
 fi

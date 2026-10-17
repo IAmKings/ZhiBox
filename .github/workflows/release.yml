@@ -1,0 +1,120 @@
+name: Release (signed APK)
+
+# B4-6：tag 推送（v*）→ 用仓库 Secrets 中的 release keystore 签名构建 → 自动创建 GitHub Release
+#   必需 Secrets（通过 `gh secret set` 配置，值不入库）：
+#     ZHIBOX_STORE_BASE64       release keystore 的 base64（PKCS12/JKS 单文件）
+#     ZHIBOX_STORE_PASSWORD     keystore 口令
+#     ZHIBOX_KEY_ALIAS          key alias（如 zhibox）
+#     ZHIBOX_KEY_PASSWORD       key 口令
+#   注意：keystore/口令是本应用的长期签名身份，丢失后无法覆盖升级已安装用户；
+#   必须离线备份（见 docs/RELEASE.md §签名 provision）。
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # 创建 GitHub Release + 上传资产
+
+jobs:
+  signed-release:
+    name: Build & publish signed release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check tag matches versionName
+        run: |
+          VERSION_NAME="$(grep -E '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"' app/build.gradle.kts \
+            | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$TAG" != "$VERSION_NAME" ]; then
+            echo "::error::tag '$GITHUB_REF_NAME' 与 versionName '$VERSION_NAME' 不一致（应为 v$VERSION_NAME）"
+            exit 1
+          fi
+          echo "tag/version OK: $GITHUB_REF_NAME = $VERSION_NAME"
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Wrapper 供应链校验（与 ci.yml 一致）
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up Gradle with cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode release keystore
+        env:
+          ZHIBOX_STORE_BASE64: ${{ secrets.ZHIBOX_STORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          [ -n "${ZHIBOX_STORE_BASE64:-}" ] || { echo "::error::secret ZHIBOX_STORE_BASE64 未配置"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/zhibox"
+          printf '%s' "$ZHIBOX_STORE_BASE64" | base64 -d > "$RUNNER_TEMP/zhibox/zhibox-release.jks"
+          chmod 600 "$RUNNER_TEMP/zhibox/zhibox-release.jks"
+          # 校验 keystore 可读（口令在校验步骤注入，避免把口令写进日志）
+          echo "keystore decoded: $(stat -c%s "$RUNNER_TEMP/zhibox/zhibox-release.jks") bytes"
+
+      - name: Export signing env
+        env:
+          ZHIBOX_STORE_FILE: ${{ runner.temp }}/zhibox/zhibox-release.jks
+          ZHIBOX_STORE_PASSWORD: ${{ secrets.ZHIBOX_STORE_PASSWORD }}
+          ZHIBOX_KEY_ALIAS: ${{ secrets.ZHIBOX_KEY_ALIAS }}
+          ZHIBOX_KEY_PASSWORD: ${{ secrets.ZHIBOX_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for v in ZHIBOX_STORE_FILE ZHIBOX_STORE_PASSWORD ZHIBOX_KEY_ALIAS ZHIBOX_KEY_PASSWORD; do
+            [ -n "${!v:-}" ] || { echo "::error::签名环境变量 $v 为空"; exit 1; }
+            printf '%s=%s\n' "$v" "${!v}" >> "$GITHUB_ENV"
+          done
+          echo "signing env exported"
+
+      - name: Build signed release
+        run: ./gradlew --no-daemon --stacktrace :app:assembleRelease
+
+      - name: Verify signature & manifest
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          [ -f "$APK" ] || { echo "::error::未生成签名 APK（$APK）；检查 Secrets/签名配置"; ls -l app/build/outputs/apk/release/ || true; exit 1; }
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -1)"
+          [ -n "$BT" ] || { echo "::error::找不到 Android build-tools"; exit 1; }
+          echo "build-tools: $BT"
+          "$BT/apksigner" verify --print-certs "$APK" | tee /tmp/apksigner.txt
+          grep -q "SHA-256" /tmp/apksigner.txt || { echo "::error::apksigner 未输出证书 SHA-256"; exit 1; }
+          if "$BT/aapt2" dump badging "$APK" | grep -q "application-debuggable"; then
+            echo "::error::release APK 标记为 debuggable"; exit 1
+          fi
+          "$BT/aapt2" dump badging "$APK" | grep -m1 '^package:'
+
+      - name: Archive release artifacts
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          TAG="${GITHUB_REF_NAME#v}"
+          SHA7="$(git rev-parse --short=7 HEAD)"
+          OUT="dist/zhibox-${TAG}-${SHA7}-release-signed.apk"
+          mkdir -p dist
+          cp -f "$APK" "$OUT"
+          sha256sum "$OUT" | sed 's|dist/||' > "$OUT.sha256"
+          cp -f app/build/outputs/mapping/release/mapping.txt dist/zhibox-${TAG}-${SHA7}-mapping.txt
+          ls -l dist/
+          cat "$OUT.sha256"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" \
+            dist/*.apk dist/*.apk.sha256 dist/*-mapping.txt \
+            --verify-tag \
+            --title "ZhiBox $GITHUB_REF_NAME" \
+            --notes-file docs/RELEASE_NOTES.md
