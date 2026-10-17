@@ -109,6 +109,7 @@ else
   if [ -f app/build/outputs/apk/release/app-release.apk ]; then
     APK="app/build/outputs/apk/release/app-release.apk"
     ALREADY_SIGNED=1 # 由 ~/.gradle/gradle.properties 的 ZHIBOX_* signingConfig 签名
+    SIGNED_SUFFIX="-signed"
     log "检测到 AGP 已签名 release APK（ZHIBOX_* signingConfig）"
   elif [ -f app/build/outputs/apk/release/app-release-unsigned.apk ]; then
     APK="app/build/outputs/apk/release/app-release-unsigned.apk"
@@ -157,6 +158,13 @@ if [ "$MODE" = "release" ] && [ "$ALREADY_SIGNED" -eq 0 ]; then
   fi
 fi
 
+# 统一产物后缀：release 且已签名（AGP 或 apksigner）→ -signed；debug 保持原命名
+if [ "$MODE" = "release" ] && [ "$ALREADY_SIGNED" -eq 1 ]; then
+  SIGNED_SUFFIX="-signed"
+else
+  SIGNED_SUFFIX=""
+fi
+
 # ---------------------------------------------------------------------------
 # 5) 校验：manifest（debuggable/version/package）+ 签名
 # ---------------------------------------------------------------------------
@@ -202,7 +210,7 @@ printf '%s  %s\n' "$SHA256" "$(basename "$OUT")" > "$OUT.sha256"
 log "归档: $OUT"
 log "sha256: $SHA256"
 log "校验和文件: $OUT.sha256"
-if [ "$SIGNED_SUFFIX" = "" ] && [ "$MODE" = "release" ]; then
+if [ "$MODE" = "release" ] && [ "$ALREADY_SIGNED" -eq 0 ]; then
   warn "交付物为 UNSIGNED release APK：仅可内部验证，禁止对外分发"
 fi
 log "下一步：按 docs/RELEASE.md 的验收清单做真机 smoke + OEM 安装引导；分发时附上 .sha256"
