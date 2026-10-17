@@ -107,7 +107,7 @@
 | B3-13 | B1 审查遗留 | 重复导入（`ImportResult.Duplicate`）已有数据层语义，但 `importStaged` 仍只返回 `List<String>`，UI 无法提示"已存在 N 个"（B1-6 已知限制） | `importStaged` 返回带计数的结果类型（内部 API），ImportViewModel 展示"新导入 X / 已存在 Y" | S | 重复导入 UI 有可读提示；`importStaged` 调用方同步 |
 | B3-12 | ui P2-4 | composition 内 IO/副作用：`BenchmarkScreen.kt:84` 的 `remember { discoverModels(context) }` 在组合期 `listFiles`（debug 屏）；Settings/Import 侧已顺带修但未系统性排查 | 全局排查 `remember { ... }` 内的 IO/DB 调用，改 `LaunchedEffect + Dispatchers.IO` 或 VM 预计算；Benchmark 随 debug | S | grep 组合期 `listFiles/readText/File(` 清零（debug 源集含）；真机 StrictMode 0 违规 |
 
-### 批次 B4：工程化/发布/依赖（11 项）✅ 实现完成（2026-10-17，见 `B4_FIX_REPORT.md`；B4-8 CI 首绿为外部阻塞）
+### 批次 B4：工程化/发布/依赖（11 项）✅ 实现完成（2026-10-17，见 `B4_FIX_REPORT.md`；B4-8 CI 首绿已于 2026-10-18 达成）
 
 > 依赖 B1–B3 稳定后集中升级，避免边改边升。工作量约 **2.5–3 人日**（不含需用户决策项）。
 
@@ -122,7 +122,7 @@
 | B4-5 | infra P2-7 [partial]（与 B6-3 去重） | 仓库卫生：缺 LICENSE/NOTICE（vendored MIT）、`.zcode/plans` 被跟踪；语料/结果策略见 B6-3 | 补 LICENSE + `docs/reference/README` MIT 声明；移除 `.zcode/plans` 跟踪；已跟踪结果文件的去留交用户决策 | S | 仓库根有 LICENSE；`git ls-files` 无计划文件 |
 | B4-6 | device D3 | 发布链路：签名材料未 provision；OEM（OnePlus）全新安装弹"安装增强防护"引导，自动化安装需手工点 3 步 | 提供 `scripts/release.sh`（签名+verify+dist 命名）与 `docs/RELEASE.md`（密钥 provision、OEM 引导步骤、验收清单） | S | 按文档可产出 signed release；安装步骤脚本化/文档化 |
 | B4-7 | device D6 | release 非 debuggable，验收脚本取证口径未文档化 | `DEVICE_ACCEPTANCE.md` 增补 debug/release 各自取证方式（run-as vs UI/logcat） | S | 文档更新 |
-| B4-8 | infra P1-6 遗留 | CI 未在 GitHub 实跑；wrapper 镜像可达性未知 | 首次 push 验证 CI；必要时 wrapper 切官方源 + 缓存策略调整 | S | CI 首次绿灯记录（**外部阻塞：本机无 git remote，待用户提供远端；本地等价门禁已绿**） |
+| B4-8 | infra P1-6 遗留 | CI 未在 GitHub 实跑；wrapper 镜像可达性未知 | 首次 push 验证 CI；必要时 wrapper 切官方源 + 缓存策略调整 | S | ✅ CI 首绿（run 39048803130，5m7s；补齐 Linux classpath verification 校验和） |
 | B4-9 | Standards S3 | 流式 SHA-256 仍有 3 份实现（`ModelIntegrity` / `ModelFingerprint` / `IngestRepository`） | 抽 `core/model/Sha256.kt`（流式/文件/增量 digest 三种入口），三处复用；单测锁定结果一致 | S | 三处调用统一实现；`ModelIntegrityTest`/`ModelFingerprintTest` 保持绿 |
 
 ### 批次 B5：测试补强（3 项）
@@ -324,7 +324,7 @@ B6 (文档/脚本) 可并行；B6-1 文档漂移同步放到 B1–B4 行为稳�
 | 项 | 结果 |
 |---|---|
 | B4-1a/1b/1c、B4-2…B4-7、B4-9 | **代码完成**（B4-1c/B4-2/B4-6 的外部验证项已尽量在本地执行：strict 门禁、sha 值核对、真实 unsigned 发布脚本） |
-| B4-8 | **未完成（外部阻塞）**：无 git remote，无法产生 CI 首次绿灯；workflow 已加 wrapper-validation，本地等价门禁与 YAML 校验通过 |
+| B4-8 | **已完成**：远端就绪后 push，补 4 个 verification 校验和后 CI 首绿（run 39048803130，5m7s） |
 | 依赖升级 | Compose BOM 2025.01.00→2026.06.01、core-ktx 1.18.0、lifecycle 2.10.0、activity-compose 1.13.0、tasks-text 1.1.1（最新目标需 compileSdk 37+AGP 9.1，取兼容上限；AGP/Kotlin/KSP 未升，原因已记录） |
 | JVM 测试 | debug **235 tests / 0 failed**；release unit 215 tests 全绿 |
 | strict 依赖校验 | **通过**（565 components + aapt2 linux 手工校验和；生成命令已补全全部配置） |

@@ -11,7 +11,7 @@
 
 | 项目 | 结果 |
 |---|---|
-| B4 完成度 | **9/9 项代码完成**；其中 **B4-8 未完成**（无 git remote，CI 首绿无法产生，外部阻塞）；B4-1c/B4-2/B4-6 的 CI/实测验证依赖外部环境，已如实标注 |
+| B4 完成度 | **9/9 项完成**；B4-8 **CI 首次全绿已达成**（2026-10-18，run [39048803130](https://github.com/IAmKings/ZhiBox/actions/runs/39048803130)，commit `a8c9606`）；B4-1c/B4-2 的 CI 验证随首绿完成，B4-6 签名仍按用户决定不 provision |
 | JVM 测试 | **235 tests / 0 failed**（debug；release unit 215 tests 同步绿） |
 | 依赖校验 | **strict 模式（不带 `--write`）全绿**：`gradle/verification-metadata.xml` 565 components（另手工补 CI ubuntu 所需 aapt2 linux jar 校验和） |
 | Lint | **0 errors / 25 warnings**（`abortOnError=true`） |
@@ -78,9 +78,13 @@
 ### B4-7 debug/release 取证口径
 - `docs/review/DEVICE_ACCEPTANCE.md` 新增附录：debug（run-as 读私有目录、autostart EXTRA、StrictMode 日志）vs release（不可 run-as、不解析实验 extra、无 StrictMode、UI/logcat/SAF 取证）差异 + 发布验收最低清单。
 
-### B4-8 CI 首次验证（外部阻塞）
-- `ci.yml` 已通过 YAML 语法校验；本地等价门禁（assembleDebug + testDebugUnitTest + lintDebug + androidTest 编译）在 strict 依赖校验下全绿。
-- **无 git remote / 未 push**，无法产生 GitHub Actions 首次绿灯记录；`docs/RELEASE.md`/报告已记录"首次 push 后验证 CI；若镜像不可达切换官方源"的操作说明。此项标记为**外部阻塞**，待用户提供远端后执行。
+### B4-8 CI 首次验证（已完成，2026-10-18）
+
+- 远端：`git@github.com:IAmKings/ZhiBox.git`（SSH），默认分支 `master`。
+- 首次 push（commit `d0e36ed`）触发 run [39048127541](https://github.com/IAmKings/ZhiBox/actions/runs/39048127541)：docs/shell 门禁、wrapper-validation、JDK/Gradle 均通过；**Build+test+lint 因 dependency verification 缺失 3 个 buildscript classpath POM/MODULE 校验和失败**（Linux 解析路径与 macOS 生成元数据不一致：guava-parent 33.3.1-jre、junit-bom 5.10.2.module、kotlinx-coroutines-bom 1.8.0）。
+- 修复 commit `eb9250c` → run [39048644180](https://github.com/IAmKings/ZhiBox/actions/runs/39048644180) 继续失败于 `kspClasspath` 的 guava-parent 33.2.1-jre；补校验和 commit `a8c9606`。
+- **最终首绿**：run [39048803130](https://github.com/IAmKings/ZhiBox/actions/runs/39048803130) ✅ **5m7s**（assembleDebug + testDebugUnitTest + lintDebug + compileDebugAndroidTestKotlin + docs/shell 门禁全部通过）。
+- 说明：CI 在 ubuntu-latest 上从零解析严格依赖校验；新增/变更依赖后需重新生成 `verification-metadata.xml` 并在 Linux 侧确认（macOS 生成可能缺平台/classpath 路径的 POM/MODULE 条目）。
 
 ### B4-9 SHA-256 三实现统一
 - 新增 `core/model/Sha256.kt`：`hex(ByteArray)`、`hex(File)`（64KB 流式）、`hex(InputStream)`（不关闭，调用方管理）、`newDigest()` + `hex(MessageDigest)` 增量入口；输出小写 hex。
@@ -172,14 +176,14 @@ verification-metadata = 565 components
 |---|---|---|
 | B4-1a | implemented | 确认（constraints 0.18.0；metadata 仅 0.18.0） |
 | B4-1b | implemented | 确认（两 MediaPipe 同 1.1.1；28/28 与检索 smoke 通过；Path C 运行时未验证已记 §5#6） |
-| B4-1c | partial（CI 未跑） | **改善**：补 aapt2 linux 校验和；本地 strict 绿；CI 首跑仍属外部验证（B4-8） |
+| B4-1c | **已完成** | 补 aapt2 linux 校验和；本地 strict 绿；CI 首绿（run 39048803130）通过 |
 | B4-2 | partial（未实测下载） | 接受：sha 与官方值核对；镜像同源假设已记录；CI 加 wrapper-validation |
 | B4-3 | implemented | 确认；额外补 SearchService Locale.ROOT |
 | B4-4 | **wrong（release 被 R8 裁剪）→ 已修复** | 加 proguard keep；release dex 实测含 BUILD_GIT_SHA/BUILD_TIME |
 | B4-5 | implemented | 确认（LICENSE MIT/NOTICE/.zcode 0 跟踪） |
 | B4-6 | partial（未真实签名） | **改善**：真实 unsigned 端到端跑通（dist 命名+sha256）；签名路径需外部密钥（用户决策不 provision） |
 | B4-7 | implemented | 确认 |
-| B4-8 | partial → **未完成（外部阻塞）** | 无 git remote；本地等价门禁绿；如实标注，待用户提供远端后首跑 |
+| B4-8 | **已完成** | 远端就绪后首次 push；补齐 4 个 verification-metadata 缺失校验和后 **CI 首绿**（run 39048803130，5m7s）；B4-1c/B4-2 的 CI 验证同步闭环 |
 | B4-9 | implemented | 确认（main 唯一 MessageDigest；FIPS/流式/不关闭测试） |
 | 范围/兼容 | icons-core/serialization 合理；体积 +16~22MB 已记录；EXTRA/搜索/备份未变；MIT 用户确认 | 确认 |
 
