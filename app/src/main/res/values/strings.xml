@@ -1,4 +1,232 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ZhiBox Memory</string>
+
+    <!-- ==== 通用 ==== -->
+    <string name="action_back">返回</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_delete">删除</string>
+
+    <!-- ==== 首页（MainActivity / AppSkeleton） ==== -->
+    <string name="home_title">ZhiBox · 离线个人知识库</string>
+    <string name="home_summary">导入 → 端侧嵌入 → 本地检索，全程飞行模式可用</string>
+    <string name="home_open_search">检索</string>
+    <string name="home_open_import">导入</string>
+    <string name="home_open_sources">来源</string>
+    <string name="home_open_settings">设置</string>
+    <string name="home_open_diagnostics">实验/诊断</string>
+
+    <!-- ==== 检索（SearchScreen） ==== -->
+    <string name="search_title">离线检索</string>
+    <string name="search_placeholder">例如：蓝牙断开怎么恢复</string>
+    <string name="search_submit">检索</string>
+    <string name="search_refused_title">无法检索</string>
+    <string name="search_refused_hint">→ 前往 设置 → 模型商店 可下载/启用对应模型，或切回已有空间的模型</string>
+    <string name="search_summary">Top %1$d · %2$dms · 候选 向量%3$d/关键词%4$d · 空间 %5$s</string>
+    <string name="search_hit_meta">块#%1$d · 字符 %2$d-%3$d · RRF %4$s</string>
+    <string name="search_failed">检索失败：%1$s</string>
+
+    <!-- ==== 导入（ImportScreen） ==== -->
+    <string name="import_title">导入</string>
+    <string name="import_staging_pending">暂存待导入：%1$d 个文件</string>
+    <string name="import_staging_empty">暂存目录为空（files/import-staging/）</string>
+    <string name="import_staging_scanning">扫描中…</string>
+    <string name="import_cancel">取消导入</string>
+    <string name="import_all">全部导入</string>
+    <string name="import_in_progress">导入中…</string>
+    <string name="import_job_stage">阶段 %1$s · %2$d%%</string>
+    <string name="import_job_error">错误：%1$s</string>
+    <string name="import_retry_failed">重试失败导入（%1$d）</string>
+    <string name="import_retrying">重试中…</string>
+    <string name="import_retry_queued">已重新排队 %1$d 个失败任务</string>
+    <string name="import_retry_none">没有可重试的失败任务</string>
+    <string name="import_cancelled">已取消 %1$d 个排队任务</string>
+    <string name="import_failed">导入失败：%1$s</string>
+    <string name="import_cancel_failed">取消失败：%1$s</string>
+    <string name="import_retry_failed_error">重试失败：%1$s</string>
+    <string name="import_stage_queued">排队中</string>
+    <string name="import_stage_parsing">解析中</string>
+    <string name="import_stage_chunking">分块中</string>
+    <string name="import_stage_embedding">生成向量中</string>
+    <string name="import_stage_storing">写入索引中</string>
+    <string name="import_stage_done">完成</string>
+    <string name="import_stage_failed">失败</string>
+    <string name="import_stage_cancelled">已取消</string>
+    <string name="import_job_retry_hint">失败任务可点「重试失败导入」重新排队</string>
+
+    <!-- ==== 导入失败动作提示（B2-7：按 PipelineError 码给出下一步） ==== -->
+    <string name="import_error_action_model">→ 前往「设置 → 模型商店」下载或校验模型；修复后可在本页点「重试失败导入」</string>
+    <string name="import_error_action_space">→ 切换回生成这批向量的模型，或把文档重新导入到当前模型的空间</string>
+    <string name="import_error_action_oom">→ 关闭其他应用释放内存，或减小单文档大小后重试</string>
+    <string name="import_error_open_settings">去设置</string>
+    <string name="import_error_action_retry">→ 可点「重试失败导入」重新排队</string>
+
+    <!-- ==== 来源（SourcesScreen） ==== -->
+    <string name="sources_title">来源</string>
+    <string name="sources_summary">%1$d 个来源 · %2$d/%3$d 文档就绪</string>
+    <string name="sources_loading">正在加载来源…</string>
+    <string name="sources_empty">还没有来源。先到「导入」把文档放入知识库。</string>
+    <string name="sources_go_import">去导入</string>
+    <string name="sources_delete_title">删除来源</string>
+    <string name="sources_delete_message">将删除「%1$s」及其全部文档、分块、索引与向量（不可恢复）。</string>
+    <string name="sources_delete_failed">删除失败：%1$s</string>
+    <string name="sources_status_ready">就绪</string>
+    <string name="sources_status_processing">处理中</string>
+    <string name="sources_status_failed">失败</string>
+    <string name="sources_status_cancelled">已取消</string>
+    <string name="sources_status_queued">排队中</string>
+
+    <!-- ==== 证据详情（EvidenceScreen） ==== -->
+    <string name="evidence_title">证据详情</string>
+    <string name="evidence_source">来源：%1$s</string>
+    <string name="evidence_location">定位：文档内字符 %1$d–%2$d · 第 %3$d 块</string>
+    <string name="evidence_channels">通道：%1$s · 向量名次 %2$s · 关键词名次 %3$s</string>
+    <string name="evidence_content">原文片段</string>
+
+    <!-- ==== 设置（SettingsScreen） ==== -->
+    <string name="settings_title">设置</string>
+
+    <string name="settings_section_embedding">嵌入路径</string>
+    <string name="settings_current_model">当前生效：%1$s</string>
+    <string name="settings_no_model">未找到模型（filesDir/models 为空）</string>
+    <string name="settings_path_auto">自动</string>
+    <string name="settings_path_a">A·440M</string>
+    <string name="settings_path_b">B·270M</string>
+    <string name="settings_path_d">D·740M（性能上限）</string>
+    <string name="settings_path_hint">自动 = 按可用模型自动选择（440M 优先，270M 回退）；显式选择 D 可切到 740M（性能上限）；偏好模型缺失时自动回退。\n切换模型 = 切换向量空间：检索按空间指纹隔离，新空间需重新导入文档。</string>
+    <string name="settings_pref_save_failed">保存偏好失败：%1$s</string>
+
+    <string name="settings_section_store">模型商店</string>
+    <string name="settings_soc_line">本机 SOC：%1$s · 性能偏好切换后更新推荐</string>
+    <string name="settings_soc_unknown">未知</string>
+    <string name="settings_perf_balanced">均衡</string>
+    <string name="settings_perf_fast">极速</string>
+    <string name="settings_perf_light">轻量</string>
+    <string name="settings_recommended">推荐：%1$s（%2$dMB）</string>
+    <string name="settings_download">下载到共享目录</string>
+    <string name="settings_downloading">下载中 %1$d%%</string>
+    <string name="settings_in_library">已在库中 ✓</string>
+    <string name="settings_download_done">已下载：%1$s</string>
+    <string name="settings_download_failed">下载失败：%1$s</string>
+    <string name="settings_store_connected">共享目录已连接（%1$d 个模型，卸载不丢）</string>
+    <string name="settings_store_permission_lost">共享目录授权失效——文件仍在，重选一次目录即可恢复</string>
+    <string name="settings_store_not_configured">共享目录未配置（模型将存于应用私有目录，卸载即删）</string>
+    <string name="settings_store_change_dir">更换目录</string>
+    <string name="settings_store_choose_dir">选择目录</string>
+    <string name="settings_clear_shared">清空共享目录</string>
+    <string name="settings_shared_list">共享目录：%1$s</string>
+    <string name="settings_enable_hint">可启用（复制到运行缓存）：</string>
+    <string name="settings_enable">启用 %1$s</string>
+    <string name="settings_enabled">已启用：%1$s</string>
+    <string name="settings_enable_failed">启用失败：%1$s</string>
+    <string name="settings_dir_permission_failed">目录授权失败：%1$s</string>
+    <string name="settings_dir_permission_denied">系统拒绝了该目录的持久化授权（部分云盘/OEM 不支持）</string>
+    <string name="settings_store_op_failed">共享目录操作失败：%1$s</string>
+
+    <string name="settings_section_gpu">GPU 加速</string>
+    <string name="settings_gpu_auto">自动</string>
+    <string name="settings_gpu_cpu">CPU</string>
+    <string name="settings_gpu_gpu">GPU</string>
+    <string name="settings_gpu_hint">自动 = 先试 GPU（含探针首推理），失败回退 CPU。实测仅骁龙 8 Elite/Adreno 可用 GPU；天玑平台自动走 CPU。切换在下次导入/检索时生效。</string>
+
+    <string name="settings_section_models">模型文件（%1$d）</string>
+    <string name="settings_models_empty">无候选模型。投放位置：filesDir/models（EGemma2 .litertlm）</string>
+    <string name="settings_model_size_line">%1$s · %2$dMB</string>
+    <string name="settings_delete_model_title">删除模型</string>
+    <string name="settings_delete_model_message">将删除 %1$s（%2$s）。删除后新检索按剩余模型路由；该空间的既有向量将无法继续检索。</string>
+    <string name="settings_delete_model_failed">删除模型失败：%1$s</string>
+
+    <string name="settings_section_spaces">向量空间注册表</string>
+    <string name="settings_spaces_empty">（空）</string>
+    <string name="settings_space_line">%1$s · %2$d 条向量 · %3$dd</string>
+
+    <string name="settings_section_migration">知识库迁移</string>
+    <string name="settings_export">导出知识库</string>
+    <string name="settings_import">导入知识库</string>
+    <string name="settings_migration_hint">导出包含文档、分块、关键词索引与全部向量。导入到新设备时需本机装有对应模型：缺失会在导入预览中列出（可在模型商店下载后重试）；GPU 向量跨 GPU 家族建议丢弃重嵌入。</string>
+    <string name="settings_exporting">导出中…</string>
+    <string name="settings_export_done">已导出 %1$d 条向量</string>
+    <string name="settings_export_failed">导出失败：%1$s</string>
+    <string name="settings_backup_read_failed">读取失败：%1$s</string>
+    <string name="settings_backup_importing">导入中…</string>
+    <string name="settings_backup_import_done">已导入 %1$d 个 chunk</string>
+    <string name="settings_backup_import_failed">导入失败：%1$s</string>
+    <string name="settings_import_dialog_title">导入知识库</string>
+    <string name="settings_import_spaces_requirements">空间与模型需求：</string>
+    <string name="settings_import_space_line">· %1$s [%2$s] %3$s</string>
+    <string name="settings_import_space_ok">✓</string>
+    <string name="settings_import_space_need_download">✗ 需下载</string>
+    <string name="settings_import_space_missing">✗ 缺失（无可下载项）</string>
+    <string name="settings_import_blocked">缺少模型——请先到模型商店下载以上标记 ✗ 的模型，再重新导入。</string>
+    <string name="settings_import_drop_gpu">丢弃不兼容的 GPU 向量（导入后同步重建）</string>
+    <string name="settings_import_replace_warning">注意：导入将替换当前全部知识库数据。</string>
+    <string name="settings_import_confirm">导入</string>
+    <string name="settings_import_got_it">知道了</string>
+    <string name="settings_clear_all_title">清空共享目录</string>
+    <string name="settings_clear_all_message">将删除共享目录中由本应用管理的已知模型文件（只删本应用已知模型，不影响目录中的其他文件；不可恢复；运行缓存一并清理）。</string>
+    <string name="settings_clear_all_confirm">清空</string>
+    <string name="settings_clear_all_done">已清空 %1$d 个模型</string>
+    <string name="settings_clear_all_failed">清空共享目录失败：%1$s</string>
+
+    <string name="settings_reembed_section">旧数据同步（切换模型后自动补齐）</string>
+    <string name="settings_reembed_progress">重嵌入中 %1$d/%2$d</string>
+    <string name="settings_reembed_stop">停止同步</string>
+    <string name="settings_reembed_last_done">上次同步完成（%1$d 条）</string>
+    <string name="settings_reembed_none">暂无待同步数据</string>
+    <string name="settings_reembed_manual">同步旧数据到当前模型</string>
+    <string name="settings_reembed_enqueue_failed">启动同步失败：%1$s</string>
+
+    <string name="settings_section_diagnostics">索引诊断（B3-14：三表计数 / 孤儿明细）</string>
+    <string name="settings_index_checking">检查中…</string>
+    <string name="settings_index_healthy">索引一致（chunk / FTS / 向量无孤儿行）</string>
+    <string name="settings_index_unhealthy">索引不一致（%1$d 项原因）</string>
+    <string name="settings_index_counts">chunk %1$d 行 · FTS %2$d 行 · 向量 %3$d 行</string>
+    <string name="settings_index_orphans">孤儿行：FTS %1$d · 向量 %2$d</string>
+    <string name="settings_index_repair">检查并修复索引</string>
+    <string name="settings_index_repairing">修复中…</string>
+    <string name="settings_index_repair_done">修复完成：清理 FTS %1$d 行 / 向量 %2$d 行%3$s</string>
+    <string name="settings_index_rebuilt_suffix">（FTS 已重建）</string>
+    <string name="settings_index_before">修复前：chunk %1$d · FTS %2$d · 向量 %3$d</string>
+    <string name="settings_index_after">修复后：chunk %1$d · FTS %2$d · 向量 %3$d</string>
+    <string name="settings_index_failed">索引检查/修复失败：%1$s</string>
+    <string name="settings_fts_hint">检查三表计数与孤儿行；异常时清理孤儿并重建关键词索引（向量不受影响）。</string>
+
+    <string name="settings_section_kb">知识库</string>
+    <string name="settings_kb_summary">%1$d 个文档就绪 · %2$d 个块</string>
+
+    <string name="settings_section_privacy">隐私与离线声明</string>
+    <string name="settings_privacy_text">· 检索、嵌入、导入全链路离线运行，无 LLM 参与\n· 应用唯一联网路径是显式用户触发的模型下载（URL + SHA-256 校验）\n· 知识数据（文档/向量/索引）仅存于本机应用沙箱，不上传不备份</string>
+
+    <string name="settings_refresh_failed">刷新设置失败：%1$s</string>
+    <string name="settings_leave_title">下载仍在进行</string>
+    <string name="settings_leave_message">模型仍在下载。可以离开本页，下载任务会继续，稍后回到设置页可查看结果。</string>
+    <string name="settings_leave_confirm">继续离开</string>
+    <string name="settings_leave_stay">留在本页</string>
+
+    <!-- ==== B3-2 首查模型加载反馈 ==== -->
+    <string name="search_loading_model">首次检索需在端侧加载模型（约 5–10 秒）…</string>
+    <string name="search_empty_title">无命中</string>
+    <string name="search_empty_message">可尝试更换表述，或先导入更多文档</string>
+
+    <!-- ==== B3-13 / B3-9 导入批量结果与任务列表分页 ==== -->
+    <string name="import_batch_result">新导入 %1$d 个 / 已存在 %2$d 个</string>
+    <string name="import_batch_new">已登记 %1$d 个导入任务</string>
+    <string name="import_section_active">进行中</string>
+    <string name="import_section_recent">最近任务</string>
+    <string name="import_jobs_limited">仅显示最近 %1$d 条任务（更早记录可在来源页查看）</string>
+    <string name="import_empty_title">暂存目录为空</string>
+    <string name="import_empty_message">把 .md / .txt 文件放入 files/import-staging 后重新扫描</string>
+
+    <!-- ==== B3-5 通用状态动作 ==== -->
+    <string name="action_retry">重试</string>
+    <string name="action_dismiss">知道了</string>
+    <string name="settings_loading">加载中…</string>
+
+    <!-- ==== B7：旧模型空间兼容提示（不自动删除数据） ==== -->
+    <string name="settings_legacy_spaces_warning">检测到 %1$d 个旧模型空间，相关文档需重新导入才能检索。</string>
+    <string name="settings_legacy_spaces_detail">旧模型空间已停用：其向量仍保留在库中，但不参与当前模型（EGemma2）的检索。</string>
+    <string name="settings_legacy_spaces_row">· %1$s · %2$d 条向量</string>
+    <string name="settings_legacy_unknown_model">未知模型</string>
+    <string name="settings_legacy_spaces_error">旧模型空间检查失败：%1$s</string>
+    <string name="settings_legacy_spaces_hint">→ 本应用不会自动删除任何数据；如需让相关文档重新可检索，请在「来源」页删除旧来源后重新导入。</string>
 </resources>

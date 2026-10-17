@@ -33,3 +33,29 @@ models/
 # G1 桌面工具链与 HF 缓存（P0-3）
 .venv-g1/
 .hf-cache/
+
+# 发布产物：只作为本地交付归档，不入库（交付物记录 versionCode/commit 后单独归档）
+dist/
+*.apk
+*.aab
+
+# 修复过程基线快照（P0/P1 修复的 diff 审查基线，供本地比对，不入库）
+.fix-baseline/
+
+# Phase 1 评测/基准结果（ad-hoc JSON、跑批输出；语料与可复现脚本保留）
+docs/phase1/*-results/
+
+# 本地计划/会话文件（B4-5：不入库）
+.zcode/
+
+# 评测/基准原始结果（可复现脚本与语料入库；评审锁定基线 docs/review/*/baseline* 例外）
+docs/phase0/*-results/
+docs/phase1/prodbench/
+docs/phase1/thermal/
+
+# Python 运行缓存（脚本执行产物）
+__pycache__/
+*.pyc
+
+# 评审中间产物（最终 *_FIX_REPORT.md / 评审报告仍入库）
+.review/

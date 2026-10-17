@@ -1,0 +1,2279 @@
+{
+ "queries": [
+  {
+   "id": "q001",
+   "q": "泰坦尼克号残骸深度",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q002",
+   "q": "海底黑烟囱周围没有阳光为什么还有生物",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "03_深海热泉生态"
+   ]
+  },
+  {
+   "id": "q003",
+   "q": "定投为什么能摊薄持仓成本",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "34_基础理财原则"
+   ]
+  },
+  {
+   "id": "q004",
+   "q": "Saint-Remy asylum Theo",
+   "type": "exact",
+   "lang": "en",
+   "relevant": [
+    "48_English: Van Gogh"
+   ]
+  },
+  {
+   "id": "q005",
+   "q": "哪种鸟可以在空中停留不动，代谢为什么那么高",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "02_蜂鸟悬停机制"
+   ]
+  },
+  {
+   "id": "q006",
+   "q": "编译器把重复计算消除掉发生在哪个阶段",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "16_编译器优化层次"
+   ]
+  },
+  {
+   "id": "q007",
+   "q": "敦煌月牙泉水位下降原因",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q008",
+   "q": "分离冷凝器把纽科门机的煤耗降低了多少",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "21_工业革命蒸汽机"
+   ]
+  },
+  {
+   "id": "q009",
+   "q": "轻量级线程是怎么做到不经过内核切换的",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "12_协程调度器"
+   ]
+  },
+  {
+   "id": "q010",
+   "q": "每天户外活动两小时可使近视发生率降低多少",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "23_近视防控"
+   ]
+  },
+  {
+   "id": "q011",
+   "q": "富士山最近一次喷发是在哪一年",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "38_富士山与樱花"
+   ]
+  },
+  {
+   "id": "q012",
+   "q": "印度板块与欧亚板块碰撞",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "01_青藏高原隆升"
+   ]
+  },
+  {
+   "id": "q013",
+   "q": "为什么冬天气温下降胎压也跟着降",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "31_汽车冬季养护"
+   ]
+  },
+  {
+   "id": "q014",
+   "q": "珊瑚失去颜色变白是什么原因",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "08_大堡礁白化"
+   ]
+  },
+  {
+   "id": "q015",
+   "q": "庞贝古城发掘时间",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q016",
+   "q": "针灸足三里的主治",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q017",
+   "q": "六类网线多长以内能跑万兆",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "32_家庭网络布线"
+   ]
+  },
+  {
+   "id": "q018",
+   "q": "What made Roman roads drain rainwater effectively",
+   "type": "multihop",
+   "lang": "en",
+   "relevant": [
+    "44_English: Roman Roads"
+   ]
+  },
+  {
+   "id": "q019",
+   "q": "秦始皇兵马俑彩绘保护",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q020",
+   "q": "弗洛伊德的人格结构理论",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q021",
+   "q": "北欧神话诸神黄昏结局",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q022",
+   "q": "红楼梦后四十回作者是谁",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q023",
+   "q": "卡拉维尔帆船",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "20_大航海时代"
+   ]
+  },
+  {
+   "id": "q024",
+   "q": "milestones polygonal stone slabs",
+   "type": "exact",
+   "lang": "en",
+   "relevant": [
+    "44_English: Roman Roads"
+   ]
+  },
+  {
+   "id": "q025",
+   "q": "第一个踩上月球的人乘坐哪艘飞船",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "19_阿波罗计划"
+   ]
+  },
+  {
+   "id": "q026",
+   "q": "挑战者深渊大约多深",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "37_马里亚纳海沟"
+   ]
+  },
+  {
+   "id": "q027",
+   "q": "抗性淀粉",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "25_血糖指数"
+   ]
+  },
+  {
+   "id": "q028",
+   "q": "糖异生",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "26_运动与乳酸"
+   ]
+  },
+  {
+   "id": "q029",
+   "q": "特洛伊战争的历史真实性",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q030",
+   "q": "What source documents record van Gogh's artistic growth",
+   "type": "multihop",
+   "lang": "en",
+   "relevant": [
+    "48_English: Van Gogh"
+   ]
+  },
+  {
+   "id": "q031",
+   "q": "What else did the man who wrote about Fibonacci numbers bring to Europe",
+   "type": "multihop",
+   "lang": "en",
+   "relevant": [
+    "43_English: Fibonacci Sequence"
+   ]
+  },
+  {
+   "id": "q032",
+   "q": "腺苷受体 细胞色素",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "28_咖啡因代谢"
+   ]
+  },
+  {
+   "id": "q033",
+   "q": "衡量火山喷发强度的等级怎么算",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "06_火山指数VEI"
+   ]
+  },
+  {
+   "id": "q034",
+   "q": "蜂鸟悬停时心率达到多少",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "02_蜂鸟悬停机制"
+   ]
+  },
+  {
+   "id": "q035",
+   "q": "阿波罗计划一共有几次成功登月",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "19_阿波罗计划"
+   ]
+  },
+  {
+   "id": "q036",
+   "q": "每厘米三万伏",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "04_闪电形成原理"
+   ]
+  },
+  {
+   "id": "q037",
+   "q": "为什么灭活疫苗往往要打好几针",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "27_疫苗接种原理"
+   ]
+  },
+  {
+   "id": "q038",
+   "q": "恒温水浴煮牛排为什么嫩",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "29_低温慢煮"
+   ]
+  },
+  {
+   "id": "q039",
+   "q": "固体电解质界面膜",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "13_电池健康管理"
+   ]
+  },
+  {
+   "id": "q040",
+   "q": "间隔重复的复习节点是怎么安排的",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "33_记忆力技巧"
+   ]
+  },
+  {
+   "id": "q041",
+   "q": "应急金应该准备几个月的支出",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "34_基础理财原则"
+   ]
+  },
+  {
+   "id": "q042",
+   "q": "为什么干线高铁选轮轨不选磁悬浮",
+   "type": "synonym",
+   "lang": "mix",
+   "relevant": [
+    "50_混合 高铁轮轨"
+   ]
+  },
+  {
+   "id": "q043",
+   "q": "莱特兄弟首飞距离",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q044",
+   "q": "莫高窟那个装满古书的小洞是谁发现的",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "22_敦煌与藏经洞"
+   ]
+  },
+  {
+   "id": "q045",
+   "q": "高原隆升大约开始于多少万年前",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "01_青藏高原隆升"
+   ]
+  },
+  {
+   "id": "q046",
+   "q": "协程切换成本比线程低几个数量级",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "12_协程调度器"
+   ]
+  },
+  {
+   "id": "q047",
+   "q": "How do scientists cut DNA at a chosen location",
+   "type": "synonym",
+   "lang": "en",
+   "relevant": [
+    "46_English: CRISPR"
+   ]
+  },
+  {
+   "id": "q048",
+   "q": "链接时优化的作用边界是什么",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "16_编译器优化层次"
+   ]
+  },
+  {
+   "id": "q049",
+   "q": "区块链双花攻击的案例",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q050",
+   "q": "快速眼动 记忆巩固",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "07_睡眠周期研究"
+   ]
+  },
+  {
+   "id": "q051",
+   "q": "梵高星月夜创作年份",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q052",
+   "q": "瑞士银行保密制度历史",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q053",
+   "q": "水温超过多少度持续两周会触发白化",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "08_大堡礁白化"
+   ]
+  },
+  {
+   "id": "q054",
+   "q": "古代中国去欧洲的商路是谁开辟的",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "17_丝绸之路简史"
+   ]
+  },
+  {
+   "id": "q055",
+   "q": "工资到手怎么分配才合理",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "34_基础理财原则"
+   ]
+  },
+  {
+   "id": "q056",
+   "q": "莫扎特安魂曲未完成部分",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q057",
+   "q": "为什么乘积量化之后还要做重排",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "11_向量量化PQ"
+   ]
+  },
+  {
+   "id": "q058",
+   "q": "打疫苗是怎么让身体提前认识病毒的",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "27_疫苗接种原理"
+   ]
+  },
+  {
+   "id": "q059",
+   "q": "肌动蛋白在多少摄氏度变性",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "29_低温慢煮"
+   ]
+  },
+  {
+   "id": "q060",
+   "q": "蛋白酶 表面活性剂",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "30_衣物污渍处理"
+   ]
+  },
+  {
+   "id": "q061",
+   "q": "mRNA疫苗让人体细胞合成什么",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "27_疫苗接种原理"
+   ]
+  },
+  {
+   "id": "q062",
+   "q": "枯山水 桂离宫",
+   "type": "exact",
+   "lang": "mix",
+   "relevant": [
+    "41_混合 京都庭园"
+   ]
+  },
+  {
+   "id": "q063",
+   "q": "藏经洞内大约藏有多少件文书",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "22_敦煌与藏经洞"
+   ]
+  },
+  {
+   "id": "q064",
+   "q": "电瓶容量在零下十八度衰减多少",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "31_汽车冬季养护"
+   ]
+  },
+  {
+   "id": "q065",
+   "q": "古巴导弹危机的起因",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q066",
+   "q": "张骞出使之后哪些物产沿这条通道传播",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "17_丝绸之路简史"
+   ]
+  },
+  {
+   "id": "q067",
+   "q": "一九七七年的哪个发现推翻了生命依赖阳光的假设",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "03_深海热泉生态"
+   ]
+  },
+  {
+   "id": "q068",
+   "q": "大航海靠哪两项技术进步才成为可能",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "20_大航海时代"
+   ]
+  },
+  {
+   "id": "q069",
+   "q": "斑尾塍鹬不间断飞行了多少公里",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "05_候鸟迁徙导航"
+   ]
+  },
+  {
+   "id": "q070",
+   "q": "虫黄藻离开珊瑚后为什么珊瑚会饿死",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "08_大堡礁白化"
+   ]
+  },
+  {
+   "id": "q071",
+   "q": "的里雅斯特号一九六零年完成了什么",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "37_马里亚纳海沟"
+   ]
+  },
+  {
+   "id": "q072",
+   "q": "工作窃取算法在调度器里起什么作用",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "12_协程调度器"
+   ]
+  },
+  {
+   "id": "q073",
+   "q": "训练有素的马拉松选手乳酸阈能到多少",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "26_运动与乳酸"
+   ]
+  },
+  {
+   "id": "q074",
+   "q": "科学家用什么方法测定高原隆升历史，测得的加速期是哪段时间",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "01_青藏高原隆升"
+   ]
+  },
+  {
+   "id": "q075",
+   "q": "藏经洞文书大约有多少件",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "22_敦煌与藏经洞"
+   ]
+  },
+  {
+   "id": "q076",
+   "q": "茶马古道主干道从哪里到哪里",
+   "type": "fact",
+   "lang": "mix",
+   "relevant": [
+    "42_混合 茶马古道"
+   ]
+  },
+  {
+   "id": "q077",
+   "q": "耐甲氧西林金黄色葡萄球菌",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "24_抗生素耐药"
+   ]
+  },
+  {
+   "id": "q078",
+   "q": "五十三度 肌球蛋白",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "29_低温慢煮"
+   ]
+  },
+  {
+   "id": "q079",
+   "q": "zen garden 里用砂子代替水的做法叫什么",
+   "type": "synonym",
+   "lang": "mix",
+   "relevant": [
+    "41_混合 京都庭园"
+   ]
+  },
+  {
+   "id": "q080",
+   "q": "What do consecutive Fibonacci ratios converge to",
+   "type": "fact",
+   "lang": "en",
+   "relevant": [
+    "43_English: Fibonacci Sequence"
+   ]
+  },
+  {
+   "id": "q081",
+   "q": "工作窃取",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "12_协程调度器"
+   ]
+  },
+  {
+   "id": "q082",
+   "q": "磁铁矿晶体",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "05_候鸟迁徙导航"
+   ]
+  },
+  {
+   "id": "q083",
+   "q": "马拉松战役的伤亡",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q084",
+   "q": "欧洲人绕过非洲南端去印度是谁完成的",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "20_大航海时代"
+   ]
+  },
+  {
+   "id": "q085",
+   "q": "孩子预防近视最有效的免费办法",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "23_近视防控"
+   ]
+  },
+  {
+   "id": "q086",
+   "q": "工厂为什么能从河边搬进城市",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "21_工业革命蒸汽机"
+   ]
+  },
+  {
+   "id": "q087",
+   "q": "预写日志带来了什么代价",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "10_SQLite并发模型"
+   ]
+  },
+  {
+   "id": "q088",
+   "q": "遗忘曲线 记忆宫殿",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "33_记忆力技巧"
+   ]
+  },
+  {
+   "id": "q089",
+   "q": "打雷时的闪光是怎么产生的，为什么那么响",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "04_闪电形成原理"
+   ]
+  },
+  {
+   "id": "q090",
+   "q": "股票 K 线锤子形态含义",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q091",
+   "q": "毕昇的活字比古登堡早了约多少年",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "18_活字印刷"
+   ]
+  },
+  {
+   "id": "q092",
+   "q": "丝绸之路全长约多少公里",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "17_丝绸之路简史"
+   ]
+  },
+  {
+   "id": "q093",
+   "q": "https 建立加密连接比老协议快在哪里",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "09_TLS握手流程"
+   ]
+  },
+  {
+   "id": "q094",
+   "q": "In which year was the first black hole image released",
+   "type": "fact",
+   "lang": "en",
+   "relevant": [
+    "45_English: Black Holes"
+   ]
+  },
+  {
+   "id": "q095",
+   "q": "硅谷名称由来",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q096",
+   "q": "青藏高原平均海拔是多少",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "01_青藏高原隆升"
+   ]
+  },
+  {
+   "id": "q097",
+   "q": "How long is the Panama Canal",
+   "type": "fact",
+   "lang": "en",
+   "relevant": [
+    "40_English: Panama Canal"
+   ]
+  },
+  {
+   "id": "q098",
+   "q": "训练有素的马拉松选手乳酸阈可达最大摄氧量的百分之多少",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "26_运动与乳酸"
+   ]
+  },
+  {
+   "id": "q099",
+   "q": "拓扑学莫比乌斯带性质",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q100",
+   "q": "嵌入式数据库怎么处理多个连接同时写",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "10_SQLite并发模型"
+   ]
+  },
+  {
+   "id": "q101",
+   "q": "苏轼水调歌头词牌格律",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q102",
+   "q": "茶马互市 马帮",
+   "type": "exact",
+   "lang": "mix",
+   "relevant": [
+    "42_混合 茶马古道"
+   ]
+  },
+  {
+   "id": "q103",
+   "q": "蒸汽机热效率提升和城市化有什么联系",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "21_工业革命蒸汽机"
+   ]
+  },
+  {
+   "id": "q104",
+   "q": "米饭放凉了吃为什么升糖变慢",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "25_血糖指数"
+   ]
+  },
+  {
+   "id": "q105",
+   "q": "为什么服务器私钥泄露不影响历史会话安全",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "09_TLS握手流程"
+   ]
+  },
+  {
+   "id": "q106",
+   "q": "量子计算机的纠错码怎么实现",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q107",
+   "q": "格陵兰冰盖全部融化海平面升多少",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "39_格陵兰冰盖"
+   ]
+  },
+  {
+   "id": "q108",
+   "q": "三分熟牛排低温慢煮用多少度",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "29_低温慢煮"
+   ]
+  },
+  {
+   "id": "q109",
+   "q": "Which shortcut lets ships avoid rounding South America",
+   "type": "synonym",
+   "lang": "en",
+   "relevant": [
+    "40_English: Panama Canal"
+   ]
+  },
+  {
+   "id": "q110",
+   "q": "五零三零二零 货币基金",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "34_基础理财原则"
+   ]
+  },
+  {
+   "id": "q111",
+   "q": "零点一巴 防冻型",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "31_汽车冬季养护"
+   ]
+  },
+  {
+   "id": "q112",
+   "q": "波尔多左岸酒庄分级",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q113",
+   "q": "咖啡因戒断头痛和受体有什么关系",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "28_咖啡因代谢"
+   ]
+  },
+  {
+   "id": "q114",
+   "q": "活字印刷明明更快为什么明清还用雕版",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "18_活字印刷"
+   ]
+  },
+  {
+   "id": "q115",
+   "q": "TLS 1.3 握手需要几次往返",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "09_TLS握手流程"
+   ]
+  },
+  {
+   "id": "q116",
+   "q": "为什么说撒哈拉之眼不是陨石坑",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "35_撒哈拉之眼"
+   ]
+  },
+  {
+   "id": "q117",
+   "q": "What does one second of waggle dance correspond to",
+   "type": "fact",
+   "lang": "en",
+   "relevant": [
+    "47_English: Honeybee Dance"
+   ]
+  },
+  {
+   "id": "q118",
+   "q": "冬天早上车子难启动该怎么办",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "31_汽车冬季养护"
+   ]
+  },
+  {
+   "id": "q119",
+   "q": "浅充浅放能延长电池寿命多少倍",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "13_电池健康管理"
+   ]
+  },
+  {
+   "id": "q120",
+   "q": "墨子号卫星实现了什么级别的纠缠分发",
+   "type": "fact",
+   "lang": "mix",
+   "relevant": [
+    "49_混合 量子纠缠通信"
+   ]
+  },
+  {
+   "id": "q121",
+   "q": "When did van Gogh paint The Starry Night",
+   "type": "fact",
+   "lang": "en",
+   "relevant": [
+    "48_English: Van Gogh"
+   ]
+  },
+  {
+   "id": "q122",
+   "q": "麦哲伦船队哪一年开始环球航行",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "20_大航海时代"
+   ]
+  },
+  {
+   "id": "q123",
+   "q": "量子密钥为什么能发现窃听者",
+   "type": "synonym",
+   "lang": "mix",
+   "relevant": [
+    "49_混合 量子纠缠通信"
+   ]
+  },
+  {
+   "id": "q124",
+   "q": "李白将进酒的写作背景",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q125",
+   "q": "日本最高山多高山顶雪到几月",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "38_富士山与樱花"
+   ]
+  },
+  {
+   "id": "q126",
+   "q": "How do bees tell each other where flowers are",
+   "type": "synonym",
+   "lang": "en",
+   "relevant": [
+    "47_English: Honeybee Dance"
+   ]
+  },
+  {
+   "id": "q127",
+   "q": "富士山最近一次喷发是哪一年",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "38_富士山与樱花"
+   ]
+  },
+  {
+   "id": "q128",
+   "q": "马斯克星舰试飞记录",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q129",
+   "q": "大堡礁绵延多少公里",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "08_大堡礁白化"
+   ]
+  },
+  {
+   "id": "q130",
+   "q": "贝加尔湖最深处的深度是多少米",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "36_贝加尔湖"
+   ]
+  },
+  {
+   "id": "q131",
+   "q": "月球背面的陨石坑数量",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q132",
+   "q": "光猫改桥接为什么能提升网速",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "32_家庭网络布线"
+   ]
+  },
+  {
+   "id": "q133",
+   "q": "为什么考试自测比反复看书记得牢",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "33_记忆力技巧"
+   ]
+  },
+  {
+   "id": "q134",
+   "q": "受电弓离线率影响什么",
+   "type": "multihop",
+   "lang": "mix",
+   "relevant": [
+    "50_混合 高铁轮轨"
+   ]
+  },
+  {
+   "id": "q135",
+   "q": "Gatun Lake 26 meters",
+   "type": "exact",
+   "lang": "en",
+   "relevant": [
+    "40_English: Panama Canal"
+   ]
+  },
+  {
+   "id": "q136",
+   "q": "咖啡烘焙一爆温度",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q137",
+   "q": "北极那块大冰层有多厚",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "39_格陵兰冰盖"
+   ]
+  },
+  {
+   "id": "q138",
+   "q": "为什么下午喝咖啡晚上睡不着",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "28_咖啡因代谢"
+   ]
+  },
+  {
+   "id": "q139",
+   "q": "复兴号运营时速是多少",
+   "type": "fact",
+   "lang": "mix",
+   "relevant": [
+    "50_混合 高铁轮轨"
+   ]
+  },
+  {
+   "id": "q140",
+   "q": "相对论的场方程推导",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q141",
+   "q": "循环不变量外提",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "16_编译器优化层次"
+   ]
+  },
+  {
+   "id": "q142",
+   "q": "临时迪菲赫尔曼",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "09_TLS握手流程"
+   ]
+  },
+  {
+   "id": "q143",
+   "q": "麦哲伦船队哪一年开始环球航行",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "20_大航海时代"
+   ]
+  },
+  {
+   "id": "q144",
+   "q": "SQLite 预写日志模式下读写能并行吗",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "10_SQLite并发模型"
+   ]
+  },
+  {
+   "id": "q145",
+   "q": "微积分基本定理的内容",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q146",
+   "q": "运动后肌肉酸痛是乳酸堆积吗",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "26_运动与乳酸"
+   ]
+  },
+  {
+   "id": "q147",
+   "q": "六类网线 Mesh回程",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "32_家庭网络布线"
+   ]
+  },
+  {
+   "id": "q148",
+   "q": "南极科考站数量",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q149",
+   "q": "Python 的 GIL 为什么难移除",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q150",
+   "q": "海洋最深处叫什么名字压强多大",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "37_马里亚纳海沟"
+   ]
+  },
+  {
+   "id": "q151",
+   "q": "HTTP 3 的队头阻塞和 HTTP 2 有什么不同",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "14_HTTP3与QUIC"
+   ]
+  },
+  {
+   "id": "q152",
+   "q": "斑尾塍鹬不间断飞行多少公里",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "05_候鸟迁徙导航"
+   ]
+  },
+  {
+   "id": "q153",
+   "q": "How long was the Roman road network in total",
+   "type": "fact",
+   "lang": "en",
+   "relevant": [
+    "44_English: Roman Roads"
+   ]
+  },
+  {
+   "id": "q154",
+   "q": "乳酸在肝脏里参与什么代谢过程",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "26_运动与乳酸"
+   ]
+  },
+  {
+   "id": "q155",
+   "q": "瓦特的分离冷凝器把煤耗降低多少",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "21_工业革命蒸汽机"
+   ]
+  },
+  {
+   "id": "q156",
+   "q": "坦博拉火山是哪一年喷发的",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "06_火山指数VEI"
+   ]
+  },
+  {
+   "id": "q157",
+   "q": "waggle dance von Frisch",
+   "type": "exact",
+   "lang": "en",
+   "relevant": [
+    "47_English: Honeybee Dance"
+   ]
+  },
+  {
+   "id": "q158",
+   "q": "云里冰晶碰撞和雷声之间是什么关系",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "04_闪电形成原理"
+   ]
+  },
+  {
+   "id": "q159",
+   "q": "分离冷凝器 一七六五",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "21_工业革命蒸汽机"
+   ]
+  },
+  {
+   "id": "q160",
+   "q": "金字塔建造工人来源",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q161",
+   "q": "淡水里怎么会有海豹",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "36_贝加尔湖"
+   ]
+  },
+  {
+   "id": "q162",
+   "q": "可以重复使用的印刷字模是谁先做的",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "18_活字印刷"
+   ]
+  },
+  {
+   "id": "q163",
+   "q": "What natural system was CRISPR adapted from",
+   "type": "multihop",
+   "lang": "en",
+   "relevant": [
+    "46_English: CRISPR"
+   ]
+  },
+  {
+   "id": "q164",
+   "q": "为什么氯漂白剂不能洗羊毛",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "30_衣物污渍处理"
+   ]
+  },
+  {
+   "id": "q165",
+   "q": "What is the boundary where nothing can escape a collapsed star",
+   "type": "synonym",
+   "lang": "en",
+   "relevant": [
+    "45_English: Black Holes"
+   ]
+  },
+  {
+   "id": "q166",
+   "q": "为什么内联要配合逃逸分析才有效",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "16_编译器优化层次"
+   ]
+  },
+  {
+   "id": "q167",
+   "q": "撒哈拉之眼的直径有多大",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "35_撒哈拉之眼"
+   ]
+  },
+  {
+   "id": "q168",
+   "q": "码本 倒排索引",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "11_向量量化PQ"
+   ]
+  },
+  {
+   "id": "q169",
+   "q": "贝尔电话专利之争",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q170",
+   "q": "五千三百亿吨 冰芯",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "39_格陵兰冰盖"
+   ]
+  },
+  {
+   "id": "q171",
+   "q": "斑尾塍鹬迁徙前为什么要增重近一倍",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "05_候鸟迁徙导航"
+   ]
+  },
+  {
+   "id": "q172",
+   "q": "古代用茶叶换马的商路经过哪些地方",
+   "type": "synonym",
+   "lang": "mix",
+   "relevant": [
+    "42_混合 茶马古道"
+   ]
+  },
+  {
+   "id": "q173",
+   "q": "毕昇发明活字比古登堡早多少年",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "18_活字印刷"
+   ]
+  },
+  {
+   "id": "q174",
+   "q": "Liber Abaci 1202",
+   "type": "exact",
+   "lang": "en",
+   "relevant": [
+    "43_English: Fibonacci Sequence"
+   ]
+  },
+  {
+   "id": "q175",
+   "q": "新一代网页传输协议怎么解决换网络断线",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "14_HTTP3与QUIC"
+   ]
+  },
+  {
+   "id": "q176",
+   "q": "户外光照为什么能抑制近视发展",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "23_近视防控"
+   ]
+  },
+  {
+   "id": "q177",
+   "q": "不规范使用抗生素如何催生超级细菌",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "24_抗生素耐药"
+   ]
+  },
+  {
+   "id": "q178",
+   "q": "大规模向量检索怎么省内存",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "11_向量量化PQ"
+   ]
+  },
+  {
+   "id": "q179",
+   "q": "为什么药吃着吃着就不管用了",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "24_抗生素耐药"
+   ]
+  },
+  {
+   "id": "q180",
+   "q": "为什么西方建筑大师推崇桂离宫",
+   "type": "multihop",
+   "lang": "mix",
+   "relevant": [
+    "41_混合 京都庭园"
+   ]
+  },
+  {
+   "id": "q181",
+   "q": "血渍应该用冷水还是热水洗",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "30_衣物污渍处理"
+   ]
+  },
+  {
+   "id": "q182",
+   "q": "巴黎协定碳市场机制",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q183",
+   "q": "大熊猫栖息地面积变化",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q184",
+   "q": "睡觉时身体在什么阶段自我修复",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "07_睡眠周期研究"
+   ]
+  },
+  {
+   "id": "q185",
+   "q": "蜂鸟悬停时心率每分钟达到多少次",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "02_蜂鸟悬停机制"
+   ]
+  },
+  {
+   "id": "q186",
+   "q": "CR400 605 公里",
+   "type": "exact",
+   "lang": "mix",
+   "relevant": [
+    "50_混合 高铁轮轨"
+   ]
+  },
+  {
+   "id": "q187",
+   "q": "土星五号为什么至今仍是最大火箭",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "19_阿波罗计划"
+   ]
+  },
+  {
+   "id": "q188",
+   "q": "设备端加噪后上传为什么能保护隐私",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "15_差分隐私"
+   ]
+  },
+  {
+   "id": "q189",
+   "q": "Which number pattern appears in sunflower seeds",
+   "type": "synonym",
+   "lang": "en",
+   "relevant": [
+    "43_English: Fibonacci Sequence"
+   ]
+  },
+  {
+   "id": "q190",
+   "q": "民法典继承编的改动",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q191",
+   "q": "候鸟长途飞行靠什么辨别方向",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "05_候鸟迁徙导航"
+   ]
+  },
+  {
+   "id": "q192",
+   "q": "Who won the 2020 Nobel Prize for CRISPR",
+   "type": "fact",
+   "lang": "en",
+   "relevant": [
+    "46_English: CRISPR"
+   ]
+  },
+  {
+   "id": "q193",
+   "q": "手机电池怎么用才耐用",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "13_电池健康管理"
+   ]
+  },
+  {
+   "id": "q194",
+   "q": "一万零九百 的里雅斯特",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "37_马里亚纳海沟"
+   ]
+  },
+  {
+   "id": "q195",
+   "q": "耐药基因靠什么在细菌之间传播",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "24_抗生素耐药"
+   ]
+  },
+  {
+   "id": "q196",
+   "q": "Why does the canal need locks if sea level is the same at both ends",
+   "type": "multihop",
+   "lang": "en",
+   "relevant": [
+    "40_English: Panama Canal"
+   ]
+  },
+  {
+   "id": "q197",
+   "q": "龙安寺石庭有多少块石头",
+   "type": "fact",
+   "lang": "mix",
+   "relevant": [
+    "41_混合 京都庭园"
+   ]
+  },
+  {
+   "id": "q198",
+   "q": "土星五号 一百一十米",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "19_阿波罗计划"
+   ]
+  },
+  {
+   "id": "q199",
+   "q": "世界上淡水最多的湖在哪里",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "36_贝加尔湖"
+   ]
+  },
+  {
+   "id": "q200",
+   "q": "皮纳图博火山爆发是几级",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "06_火山指数VEI"
+   ]
+  },
+  {
+   "id": "q201",
+   "q": "血糖指数的基准参照是多少",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "25_血糖指数"
+   ]
+  },
+  {
+   "id": "q202",
+   "q": "二零一六年 大规模白化",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "08_大堡礁白化"
+   ]
+  },
+  {
+   "id": "q203",
+   "q": "沙漠里那个从太空能看到的大圆圈是什么",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "35_撒哈拉之眼"
+   ]
+  },
+  {
+   "id": "q204",
+   "q": "衣服沾了红酒第一时间怎么办",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "30_衣物污渍处理"
+   ]
+  },
+  {
+   "id": "q205",
+   "q": "Which scientist decoded the bee dance and when",
+   "type": "multihop",
+   "lang": "en",
+   "relevant": [
+    "47_English: Honeybee Dance"
+   ]
+  },
+  {
+   "id": "q206",
+   "q": "硫化氢 化学自养细菌",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "03_深海热泉生态"
+   ]
+  },
+  {
+   "id": "q207",
+   "q": "瑜伽体式串联起源",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q208",
+   "q": "河西走廊 张骞",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "17_丝绸之路简史"
+   ]
+  },
+  {
+   "id": "q209",
+   "q": "居里夫人两次诺奖领域",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q210",
+   "q": "每天户外活动多久能显著降低近视发生率",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "23_近视防控"
+   ]
+  },
+  {
+   "id": "q211",
+   "q": "视网膜多巴胺",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "23_近视防控"
+   ]
+  },
+  {
+   "id": "q212",
+   "q": "人的一个睡眠周期大约多少分钟",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "07_睡眠周期研究"
+   ]
+  },
+  {
+   "id": "q213",
+   "q": "哪些主食升糖慢适合糖尿病人",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "25_血糖指数"
+   ]
+  },
+  {
+   "id": "q214",
+   "q": "全球每秒大约发生多少次闪电",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "04_闪电形成原理"
+   ]
+  },
+  {
+   "id": "q215",
+   "q": "长期睡眠不足六小时对情绪中枢有什么影响",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "07_睡眠周期研究"
+   ]
+  },
+  {
+   "id": "q216",
+   "q": "为什么说敦煌学是国际显学，文书现在哪里",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "22_敦煌与藏经洞"
+   ]
+  },
+  {
+   "id": "q217",
+   "q": "BB84 Beijing-Shanghai",
+   "type": "exact",
+   "lang": "mix",
+   "relevant": [
+    "49_混合 量子纠缠通信"
+   ]
+  },
+  {
+   "id": "q218",
+   "q": "不依赖阳光的生命系统是哪一年发现的",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "03_深海热泉生态"
+   ]
+  },
+  {
+   "id": "q219",
+   "q": "多读单写",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "10_SQLite并发模型"
+   ]
+  },
+  {
+   "id": "q220",
+   "q": "亚马逊雨林退林速度",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q221",
+   "q": "王圆箓 一九零零",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "22_敦煌与藏经洞"
+   ]
+  },
+  {
+   "id": "q222",
+   "q": "长期睡眠低于几小时会使杏仁核反应增强",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "07_睡眠周期研究"
+   ]
+  },
+  {
+   "id": "q223",
+   "q": "How did the Event Horizon Telescope achieve Earth-sized resolution",
+   "type": "multihop",
+   "lang": "en",
+   "relevant": [
+    "45_English: Black Holes"
+   ]
+  },
+  {
+   "id": "q224",
+   "q": "乘积量化能把七百六十八维向量压缩多少倍",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "11_向量量化PQ"
+   ]
+  },
+  {
+   "id": "q225",
+   "q": "世界杯进球最多的球员",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q226",
+   "q": "爱因斯坦怎么评价量子纠缠",
+   "type": "multihop",
+   "lang": "mix",
+   "relevant": [
+    "49_混合 量子纠缠通信"
+   ]
+  },
+  {
+   "id": "q227",
+   "q": "世界屋脊是怎么形成的，有多高",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "01_青藏高原隆升"
+   ]
+  },
+  {
+   "id": "q228",
+   "q": "京剧脸谱红色的含义",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q229",
+   "q": "古奥运会起源于哪一年",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q230",
+   "q": "世界卫生组织预测耐药感染年死亡人数达千万是哪一年",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "24_抗生素耐药"
+   ]
+  },
+  {
+   "id": "q231",
+   "q": "为什么说染井吉野樱花都是一家的复制品",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "38_富士山与樱花"
+   ]
+  },
+  {
+   "id": "q232",
+   "q": "白米饭的血糖指数大约是多少",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "25_血糖指数"
+   ]
+  },
+  {
+   "id": "q233",
+   "q": "差分隐私的隐私预算符号是什么",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "15_差分隐私"
+   ]
+  },
+  {
+   "id": "q234",
+   "q": "减毒活疫苗",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "27_疫苗接种原理"
+   ]
+  },
+  {
+   "id": "q235",
+   "q": "土星五号火箭有多高",
+   "type": "numdate",
+   "lang": "zh",
+   "relevant": [
+    "19_阿波罗计划"
+   ]
+  },
+  {
+   "id": "q236",
+   "q": "Schwarzschild radius M87",
+   "type": "exact",
+   "lang": "en",
+   "relevant": [
+    "45_English: Black Holes"
+   ]
+  },
+  {
+   "id": "q237",
+   "q": "为什么酥油茶适合高原饮食",
+   "type": "multihop",
+   "lang": "mix",
+   "relevant": [
+    "42_混合 茶马古道"
+   ]
+  },
+  {
+   "id": "q238",
+   "q": "guide RNA base-edited",
+   "type": "exact",
+   "lang": "en",
+   "relevant": [
+    "46_English: CRISPR"
+   ]
+  },
+  {
+   "id": "q239",
+   "q": "高温满电存放为什么伤电池，一年损失多少",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "13_电池健康管理"
+   ]
+  },
+  {
+   "id": "q240",
+   "q": "一千六百四十二 裂谷",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "36_贝加尔湖"
+   ]
+  },
+  {
+   "id": "q241",
+   "q": "蜂鸟为什么每天要访问上千朵花",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "02_蜂鸟悬停机制"
+   ]
+  },
+  {
+   "id": "q242",
+   "q": "科学家怎么用冰芯研究古代气候",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "39_格陵兰冰盖"
+   ]
+  },
+  {
+   "id": "q243",
+   "q": "怎么背东西不容易忘",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "33_记忆力技巧"
+   ]
+  },
+  {
+   "id": "q244",
+   "q": "隐私预算",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "15_差分隐私"
+   ]
+  },
+  {
+   "id": "q245",
+   "q": "连接标识 UDP",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "14_HTTP3与QUIC"
+   ]
+  },
+  {
+   "id": "q246",
+   "q": "坦博拉火山 一八一五年",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "06_火山指数VEI"
+   ]
+  },
+  {
+   "id": "q247",
+   "q": "八字形轨迹",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "02_蜂鸟悬停机制"
+   ]
+  },
+  {
+   "id": "q248",
+   "q": "深海热泉喷口温度最高多少度",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "03_深海热泉生态"
+   ]
+  },
+  {
+   "id": "q249",
+   "q": "咖啡因半衰期大约多久",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "28_咖啡因代谢"
+   ]
+  },
+  {
+   "id": "q250",
+   "q": "三七七六 染井吉野",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "38_富士山与樱花"
+   ]
+  },
+  {
+   "id": "q251",
+   "q": "哪次火山爆发让全球气温下降了半度，喷发等级是多少",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "06_火山指数VEI"
+   ]
+  },
+  {
+   "id": "q252",
+   "q": "毛里塔尼亚 背斜",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "35_撒哈拉之眼"
+   ]
+  },
+  {
+   "id": "q253",
+   "q": "迪拜哈利法塔层数",
+   "type": "adversarial",
+   "lang": "zh",
+   "relevant": []
+  },
+  {
+   "id": "q254",
+   "q": "Which troubled painter almost never sold his work while alive",
+   "type": "synonym",
+   "lang": "en",
+   "relevant": [
+    "48_English: Van Gogh"
+   ]
+  },
+  {
+   "id": "q255",
+   "q": "How fast could ancient travelers move across the empire by road",
+   "type": "synonym",
+   "lang": "en",
+   "relevant": [
+    "44_English: Roman Roads"
+   ]
+  },
+  {
+   "id": "q256",
+   "q": "QUIC 首次连接需要几次往返",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "14_HTTP3与QUIC"
+   ]
+  },
+  {
+   "id": "q257",
+   "q": "胶泥活字 庆历",
+   "type": "exact",
+   "lang": "zh",
+   "relevant": [
+    "18_活字印刷"
+   ]
+  },
+  {
+   "id": "q258",
+   "q": "胶原蛋白在什么温度下变成明胶",
+   "type": "multihop",
+   "lang": "zh",
+   "relevant": [
+    "29_低温慢煮"
+   ]
+  },
+  {
+   "id": "q259",
+   "q": "家里无线信号死角怎么解决",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "32_家庭网络布线"
+   ]
+  },
+  {
+   "id": "q260",
+   "q": "贝加尔湖最深多少米",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "36_贝加尔湖"
+   ]
+  },
+  {
+   "id": "q261",
+   "q": "闪电回击电流有多少安培",
+   "type": "fact",
+   "lang": "zh",
+   "relevant": [
+    "04_闪电形成原理"
+   ]
+  },
+  {
+   "id": "q262",
+   "q": "统计用户数据又不泄露个人信息的数学方法",
+   "type": "synonym",
+   "lang": "zh",
+   "relevant": [
+    "15_差分隐私"
+   ]
+  }
+ ],
+ "n_docs": 50
+}

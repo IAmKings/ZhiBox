@@ -1,0 +1,3 @@
+混合 高铁轮轨
+
+中国高铁采用轮轨而非磁悬浮 maglev 作为干线技术，crucial 因素是 network 兼容性：列车可下既有线进站。CR400 复兴号运营时速 350 公里，world record 试验速度 605 公里。转向架 pivot 与 air spring 抑制蛇行失稳，pantograph 离线率低于百分之零点一保证受流质量。

@@ -1,0 +1,3 @@
+English: CRISPR
+
+CRISPR-Cas9 acts as programmable molecular scissors: a guide RNA matches a DNA sequence and the Cas9 enzyme cuts there. It was adapted from a bacterial immune system that stores fragments of invading viruses. Emmanuelle Charpentier and Jennifer Doudna won the 2020 Nobel Prize in Chemistry for its development, and base-edited therapies reached patients in 2022.

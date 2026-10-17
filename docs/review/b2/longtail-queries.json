@@ -1,0 +1,162 @@
+[
+  {
+    "query": "原隆",
+    "relevant": [
+      "01_青藏高原隆升"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "升青",
+    "relevant": [
+      "01_青藏高原隆升"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "鸟悬",
+    "relevant": [
+      "02_蜂鸟悬停机制"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "停机",
+    "relevant": [
+      "02_蜂鸟悬停机制"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "泉生",
+    "relevant": [
+      "03_深海热泉生态"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "态一",
+    "relevant": [
+      "03_深海热泉生态"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "电形",
+    "relevant": [
+      "04_闪电形成原理"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "成原",
+    "relevant": [
+      "04_闪电形成原理"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "鸟迁",
+    "relevant": [
+      "05_候鸟迁徙导航"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "徙导",
+    "relevant": [
+      "05_候鸟迁徙导航"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "山指",
+    "relevant": [
+      "06_火山指数VEI"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "发烈",
+    "relevant": [
+      "06_火山指数VEI"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "眠周",
+    "relevant": [
+      "07_睡眠周期研究"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "期研",
+    "relevant": [
+      "07_睡眠周期研究"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "礁白",
+    "relevant": [
+      "08_大堡礁白化"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "化大",
+    "relevant": [
+      "08_大堡礁白化"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "手流",
+    "relevant": [
+      "09_TLS握手流程"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "流程",
+    "relevant": [
+      "09_TLS握手流程"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "发模",
+    "relevant": [
+      "10_SQLite并发模型"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  },
+  {
+    "query": "模型",
+    "relevant": [
+      "10_SQLite并发模型"
+    ],
+    "lang": "zh",
+    "type": "longtail"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "suite": "evalset-220",
+  "n_queries": 262,
+  "refused": 0,
+  "errors": 0,
+  "p50_ms": 49,
+  "p95_ms": 57,
+  "R@1": 0.9636,
+  "R@5": 0.9909,
+  "R@10": 1.0,
+  "n_with_relevant": 220
+}

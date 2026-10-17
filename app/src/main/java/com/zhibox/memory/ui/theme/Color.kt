@@ -2,6 +2,12 @@ package com.zhibox.memory.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+// ZhiBox 固定色板（minSdk 24，不启用 Material You 动态取色）。
+// B3-3：补齐 Light/Dark 两套完整 role——此前 dark 只覆盖 6 个 role，其余落回 M3 基线紫，
+// 深色模式下 TopAppBar/Surface/错误色与自定义绿色系不协调。
+// 命名约定：Light 以基色命名，Dark 以 Dark 后缀；语义 role 在 Theme.kt 中映射。
+
+// ---- Light ----
 val Primary = Color(0xFF3F6C51)
 val OnPrimary = Color(0xFFFFFFFF)
 val PrimaryContainer = Color(0xFFC2E8CF)
@@ -10,6 +16,85 @@ val Secondary = Color(0xFF516352)
 val OnSecondary = Color(0xFFFFFFFF)
 val SecondaryContainer = Color(0xFFD3E8D2)
 val OnSecondaryContainer = Color(0xFF0F1F12)
+val Tertiary = Color(0xFF3B6470)
+val OnTertiary = Color(0xFFFFFFFF)
+val TertiaryContainer = Color(0xFFBFE9F7)
+val OnTertiaryContainer = Color(0xFF001F27)
+val BackgroundLight = Color(0xFFF6FBF3)
+val OnBackgroundLight = Color(0xFF191D17)
 val SurfaceLight = Color(0xFFF6FBF3)
+val OnSurfaceLight = Color(0xFF191D17)
+val SurfaceVariantLight = Color(0xFFDCE5D9)
+val OnSurfaceVariantLight = Color(0xFF40493F)
+val OutlineLight = Color(0xFF70796E)
+val OutlineVariantLight = Color(0xFFC0C9BD)
+val ErrorLight = Color(0xFFBA1A1A)
+val OnErrorLight = Color(0xFFFFFFFF)
+val ErrorContainerLight = Color(0xFFFFDAD6)
+val OnErrorContainerLight = Color(0xFF410002)
+val InverseSurfaceLight = Color(0xFF2E322C)
+val InverseOnSurfaceLight = Color(0xFFEFF1EB)
+val InversePrimaryLight = Color(0xFFA6D1B5)
+
+// ---- Dark ----
+val PrimaryDark = Color(0xFFA6D1B5)
+val OnPrimaryDark = Color(0xFF0D3520)
+val PrimaryContainerDark = Color(0xFF2A4F37)
+val OnPrimaryContainerDark = Color(0xFFC2E8CF)
+val SecondaryDark = Color(0xFFB7CCB7)
+val OnSecondaryDark = Color(0xFF233426)
+val SecondaryContainerDark = Color(0xFF394B3C)
+val OnSecondaryContainerDark = Color(0xFFD3E8D2)
+val TertiaryDark = Color(0xFFA3CDDB)
+val OnTertiaryDark = Color(0xFF00363F)
+val TertiaryContainerDark = Color(0xFF224C57)
+val OnTertiaryContainerDark = Color(0xFFBFE9F7)
+val BackgroundDark = Color(0xFF101510)
+val OnBackgroundDark = Color(0xFFDFE4DC)
 val SurfaceDark = Color(0xFF101510)
 val OnSurfaceDark = Color(0xFFDFE4DC)
+val SurfaceVariantDark = Color(0xFF40493F)
+val OnSurfaceVariantDark = Color(0xFFC0C9BD)
+val OutlineDark = Color(0xFF8A9388)
+val OutlineVariantDark = Color(0xFF40493F)
+val ErrorDark = Color(0xFFFFB4AB)
+val OnErrorDark = Color(0xFF690005)
+val ErrorContainerDark = Color(0xFF93000A)
+val OnErrorContainerDark = Color(0xFFFFDAD6)
+val InverseSurfaceDark = Color(0xFFDFE4DC)
+val InverseOnSurfaceDark = Color(0xFF2E322C)
+val InversePrimaryDark = Color(0xFF3F6C51)
+
+// ---- B3-3 审查修复：补齐 surfaceContainer*/surfaceDim/surfaceBright/surfaceTint/scrim/fixed roles ----
+// 原实现只映射 27 个 role，缺失的 surfaceContainer* 会让 M3 Card/FilledCard 回退基线紫色
+// （真机深色截图背景曾出现 #36343B 基线灰紫），与品牌绿色系冲突。
+val SurfaceDimLight = Color(0xFFD7E0D3)
+val SurfaceBrightLight = Color(0xFFF6FBF3)
+val SurfaceContainerLowestLight = Color(0xFFFFFFFF)
+val SurfaceContainerLowLight = Color(0xFFF0F6ED)
+val SurfaceContainerLight = Color(0xFFEAF2E7)
+val SurfaceContainerHighLight = Color(0xFFE4EDE1)
+val SurfaceContainerHighestLight = Color(0xFFDEE8DB)
+val SurfaceTintLight = Primary
+val Scrim = Color(0xFF000000)
+val PrimaryFixed = Color(0xFFC2E8CF)
+val PrimaryFixedDim = Color(0xFFA6D1B5)
+val OnPrimaryFixed = Color(0xFF00210E)
+val OnPrimaryFixedVariant = Color(0xFF264E33)
+val SecondaryFixed = Color(0xFFD3E8D2)
+val SecondaryFixedDim = Color(0xFFB7CCB7)
+val OnSecondaryFixed = Color(0xFF0F1F12)
+val OnSecondaryFixedVariant = Color(0xFF374A38)
+val TertiaryFixed = Color(0xFFBFE9F7)
+val TertiaryFixedDim = Color(0xFFA3CDDB)
+val OnTertiaryFixed = Color(0xFF001F27)
+val OnTertiaryFixedVariant = Color(0xFF234B56)
+
+val SurfaceDimDark = Color(0xFF0B100B)
+val SurfaceBrightDark = Color(0xFF363C34)
+val SurfaceContainerLowestDark = Color(0xFF0B100B)
+val SurfaceContainerLowDark = Color(0xFF171C16)
+val SurfaceContainerDark = Color(0xFF1B211A)
+val SurfaceContainerHighDark = Color(0xFF252B24)
+val SurfaceContainerHighestDark = Color(0xFF30362E)
+val SurfaceTintDark = PrimaryDark

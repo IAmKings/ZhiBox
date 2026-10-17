@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  P1-10 网络安全配置（显式 TLS + 域名白名单）
+
+  背景：本应用「本地优先 / 离线可用」，全项目唯一联网路径是用户显式触发的
+  模型下载器（ModelDownloader，URL 写死在 ModelCatalog + SHA-256 校验）。
+  下载源为 hf-mirror.com（HuggingFace 镜像，见 docs/UPSTREAM_VERSIONS.md）。
+
+  策略：
+  1. 默认（base-config）禁止一切明文 HTTP：`cleartextTrafficPermitted="false"`，
+     即任何未白名单域名的 http:// 都会被系统直接拒绝，防降级/劫持。
+  2. 白名单域名 hf-mirror.com（含子域）同样禁止明文，只允许 HTTPS：
+     domain-config 的作用是把该域纳入显式策略（同时便于未来加证书固定 pin-set），
+     而不是放行明文。注意：Android 的 TrustManager 默认信任系统 CA，
+     这里显式只信任 system 证书（不含 user 安装证书，降低中间人风险）。
+  3. 与代码侧 ModelDownloader 的 https/host 校验形成双保险（P1-10 另一半由 W1 负责）。
+
+  依据：docs/CODE_QUALITY_REVIEW.md P1-10；docs/review/infra.md P1-1。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- 模型下载唯一域名白名单：仅 HTTPS，禁止明文 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">hf-mirror.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

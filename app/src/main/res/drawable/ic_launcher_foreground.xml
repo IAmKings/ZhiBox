@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  自适应启动图标前景层（B3-4）：
+  · 复用既有品牌 logo 矢量 @drawable/ic_launcher（盾牌 #3F6C51 + 对勾 #C2E8CF），
+    避免同一份 pathData 在两处漂移；
+  · 自适应图标画布为 108dp，按官方设计规范四周各留 18dp → 实际内容落在 72dp 安全区内，
+    圆形/圆角矩形/方形等任意系统蒙版裁切都不会切到 logo。
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher"
+    android:insetBottom="18dp"
+    android:insetLeft="18dp"
+    android:insetRight="18dp"
+    android:insetTop="18dp" />

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- B3-3 深色模式基础主题：parent 切到深色 Material，windowBackground 用 values-night/colors.xml
+         的深色背景；Compose 侧由 isSystemInDarkTheme() 选择 DarkColors。 -->
+    <style name="Theme.ZhiBox" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/zhibox_window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

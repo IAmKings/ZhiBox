@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  圆形图标兜底背景（B3-4）：仅用于 API 24–25 的 android:roundIcon 旧式图标
+  （API 26+ 走 mipmap-anydpi-v26 自适应图标，由系统蒙版裁切，不需要此圆形底）。
+  同 ic_launcher_background 的品牌浅绿渐变，形状为圆形。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:angle="315"
+        android:endColor="#C2E8CF"
+        android:startColor="#F6FBF3"
+        android:type="linear" />
+</shape>

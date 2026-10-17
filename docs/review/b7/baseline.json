@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-17",
+  "release_apk_bytes": 64548559,
+  "release_apk_sha256": "f175e671613d87e6aff0573308cb7c165127f9b9cabd858749ddd978e6d55bc1",
+  "eval_220": {
+    "n": 262,
+    "refused": 0,
+    "p50": 49,
+    "p95": 63,
+    "R@1": 0.9636,
+    "R@5": 0.9909,
+    "R@10": 1.0,
+    "kw_avg": 6.83
+  },
+  "model_lineup": "EGemma2 440M/270M/740M + SM8750 NPU variants (target)",
+  "removed_routes": [
+    "old EmbeddingGemma .task (Path C / tasks-text)",
+    "Granite (Path B model route)",
+    "LFM2.5 (Path B engine)"
+  ],
+  "expected_release_apk_target_bytes": 49000000
+}

@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-17",
+  "host": "macOS / JVM (Android Studio JBR 21)",
+  "jvm_baseline": {
+    "vector_scan_10k_768": {
+      "rows": 10000,
+      "dim": 768,
+      "topK": 10,
+      "warmup": 3,
+      "rounds": 10,
+      "p50_ms": 4,
+      "p95_ms": 4,
+      "heap_delta_mb": 109,
+      "heap_used_mb_observed": [
+        46,
+        109,
+        235,
+        287
+      ],
+      "heap_measurement": "Runtime.totalMemory-freeMemory（used heap，非增量/峰值；受 GC 影响）"
+    },
+    "keyword_rerank_10k": {
+      "rows": 10000,
+      "content_chars": 1200,
+      "cap": 120,
+      "warmup": 3,
+      "rounds": 10,
+      "p50_ms": 416,
+      "p95_ms": 436,
+      "content_note": "300×\"合成语料\" = 1200 字符",
+      "note": "同机多轮 p50 401–416ms / p95 419–436ms（记录首轮 416/436）"
+    },
+    "streaming_100k": {
+      "rows": 100000,
+      "dim": 768,
+      "estimated_matrix_mb": 292,
+      "streaming": true,
+      "pages": 100,
+      "page_size": 1000
+    }
+  },
+  "device_baseline_fts_10k": {
+    "device": "OnePlus PJZ110 / Android 16",
+    "source": "Fts10kPerfTest (B2)",
+    "mid_hits": 4999,
+    "warm_p50_ms": 5,
+    "warm_p95_ms": 7,
+    "capped_hits": 5000
+  },
+  "thresholds": {
+    "vector_p95_limit_ms": 500,
+    "keyword_p95_limit_ms": 2000,
+    "heap_limit_mb": 1024,
+    "note": "仅病态兜底；基线以同机对比为准；heap 为 used heap 观测区间"
+  }
+}

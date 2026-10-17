@@ -1,0 +1,3 @@
+English: Fibonacci Sequence
+
+The Fibonacci sequence starts with zero and one, each subsequent number being the sum of the previous two. Ratios of consecutive terms converge to the golden ratio, approximately 1.618. Sunflower seed spirals typically follow 34 and 55 count helices, both Fibonacci numbers. In 1202 Leonardo of Pisa published the sequence in Liber Abaci, introducing Hindu-Arabic numerals to Europe.

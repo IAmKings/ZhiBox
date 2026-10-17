@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- MVP 骨架临时图标：单 vector drawable（API 24+ 可用）；正式图标在 Phase 1 UI 任务中替换 -->
+<!-- 应用图标矢量源（B3-4 起作为 adaptive icon foreground 复用；非临时占位） -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp"
     android:height="48dp"

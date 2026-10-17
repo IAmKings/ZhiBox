@@ -3,46 +3,29 @@
 # 前置：filesDir/models/ 已有 .litertlm（真实向量来源；无模型时用全随机向量，结果记 real=0）
 # 用法: ANDROID_SERIAL=<serial> ./scripts/run_g4_scan.sh
 set -euo pipefail
-
-ADB="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb"
-APK="app/build/outputs/apk/debug/app-debug.apk"
-PKG="com.zhibox.memory"
-
 cd "$(dirname "$0")/.."
+source scripts/lib/common.sh
 
-if [ ! -f "$APK" ]; then
-    echo "[构建] APK..."
-    export JAVA_HOME="${JAVA_HOME:-/Applications/Android Studio.app/Contents/jbr/Contents/Home}"
-    ./gradlew assembleDebug
-fi
+build_apk_if_missing
+require_adb
 
 echo "[1/4] 安装并清理旧结果"
-"$ADB" install -r "$APK" | tail -1
-"$ADB" shell "run-as $PKG rm -rf files/scan_bench" 2>/dev/null || true
+install_apk
+app_rm files/scan_bench
 
 echo "[2/4] 触发扫描基准（10k 向量构建 + 3 实现 × 3 规模 × 33 轮）"
-"$ADB" logcat -c 2>/dev/null || true
-"$ADB" shell "input keyevent KEYCODE_WAKEUP" 2>/dev/null || true
-"$ADB" shell "svc power stayon true" 2>/dev/null || true
-"$ADB" shell "am force-stop $PKG"; sleep 1
-"$ADB" shell am start -n "$PKG/.MainActivity" --ez autostart_scan true
-echo "  轮询等待完成（最长 8 分钟）..."
-for i in $(seq 1 48); do
-    sleep 10
-    DONE=$("$ADB" shell "run-as $PKG ls files/scan_bench 2>/dev/null | grep -c scan_bench_v1.json" | tr -d '\r')
-    [ "$DONE" = "1" ] && { echo "  完成（$((i*10))s）"; break; }
-done
-
-if [ "${DONE:-0}" != "1" ]; then
-    echo "超时未完成；logcat 摘要:"
-    "$ADB" logcat -d -s AndroidRuntime:E 2>/dev/null | tail -10
-    exit 1
-fi
+logcat_clear
+wake_and_stayon
+force_stop_app; sleep 1
+start_autostart autostart_scan
+echo "  轮询等待完成（每 10s，超时 8min）..."
+g4_done() { app_ls files/scan_bench | grep -q 'scan_bench_v1.json'; }
+poll_until "G4 结果" 480 10 g4_done || die "G4 扫描超时（见 logcat）"
 
 echo "[3/4] 拉取结果"
 mkdir -p docs/phase0/g4-results
-DEV_TAG=$("$ADB" get-serialno 2>/dev/null | tr -d '\r')
-"$ADB" shell "run-as $PKG cat files/scan_bench/scan_bench_v1.json" | tr -d '\r' > "docs/phase0/g4-results/${DEV_TAG}_scan_bench_v1.json"
+DEV_TAG=$(device_serial)
+pull_result files/scan_bench scan_bench_v1.json "docs/phase0/g4-results/${DEV_TAG}_scan_bench_v1.json"
 ls -la docs/phase0/g4-results/
 
 echo "[4/4] 摘要"

@@ -123,6 +123,13 @@ class ChunkerTest {
         assertEquals(6, cjk)
         assertEquals(1, latin)
     }
+
+    @Test
+    fun `or match query distinct and quoted`() {
+        // 空白先移除：蓝牙蓝牙 → bigrams 蓝牙/牙蓝/蓝牙 → 去重两项
+        assertEquals("\"蓝牙\" OR \"牙蓝\"", BigramTokenizer.toOrMatchQuery("蓝牙蓝牙"))
+        assertEquals("\"加速\" OR \"速度\"", BigramTokenizer.toOrMatchQuery("加速度"))
+    }
 }
 
 class DocumentParserTest {

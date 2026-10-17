@@ -1,0 +1,97 @@
+name: Android CI
+
+# P1-9 工程质量门禁：每次 push/PR 都执行
+#   0. scripts/check_docs_consistency.sh —— 文档一致性 + shell 语法门禁（B6-1；构建前 fail-fast）
+#   1. :app:assembleDebug          —— 主变体可构建
+#   2. :app:testDebugUnitTest      —— JVM 单测（模型/检索/备份/运行时等纯逻辑）
+#   3. :app:lintDebug              —— lint（abortOnError=true，error 级阻断）
+#   4. :app:compileDebugAndroidTestKotlin —— 仪器测试仅编译
+#
+# 为什么 androidTest 只编译不执行：
+#   app/build.gradle.kts 的 abiFilters 仅保留 arm64-v8a，MediaPipe/LiteRT 原生库
+#   也只有 arm64 产物；GitHub 托管 runner 没有 arm64 Android 真机/模拟器
+#   （x86_64 模拟器缺 native so，Instrumentation 会直接失败）。仪器测试（Room 迁移等）
+#   由本地 arm64 真机执行，结果记录在 docs/phase1/ 验收材料中。
+#
+# 注意：Gradle distributionUrl 当前指向国内镜像 mirrors.huaweicloud.com
+# （见 gradle/wrapper/gradle-wrapper.properties）。若 runner 无法访问该镜像，
+# 需在 P1-7 依赖治理项中切换为官方 services.gradle.org 或配置可达镜像后再启用 CI。
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同一分支的新推送取消旧跑，节省配额
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-lint:
+    name: assembleDebug + unitTest + lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # B6-1 文档一致性 + shell 语法门禁（不依赖 JDK/Android SDK；放在构建前 fail-fast）
+      #   · bash -n：scripts/*.sh + scripts/lib/common.sh + 本门禁脚本自身
+      #     （lib/common.sh 由 data-reviewer 重构，暂缺时告警跳过，出现后自动纳入）
+      #   · scripts/check_docs_consistency.sh：README/UPSTREAM_VERSIONS/评测规模/RELEASE_NOTES 事实校验
+      - name: Docs consistency & shell syntax check
+        run: |
+          set -euo pipefail
+          for f in scripts/*.sh scripts/lib/common.sh scripts/check_docs_consistency.sh; do
+            if [ -f "$f" ]; then
+              bash -n "$f"
+              echo "bash -n OK: $f"
+            else
+              echo "::warning title=Shell syntax::缺少 $f（可能仍在重构），本次跳过其语法检查"
+            fi
+          done
+          bash ./scripts/check_docs_consistency.sh
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Wrapper 供应链校验（B4-2/B4-8）：确认 gradle-wrapper.jar 与官方发布一致
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      # 缓存 ~/.gradle（wrapper dists、依赖、构建缓存），显著缩短后续构建
+      - name: Set up Gradle with cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build + unit tests + lint (debug)
+        run: |
+          ./gradlew --no-daemon --stacktrace \
+            :app:assembleDebug \
+            :app:testDebugUnitTest \
+            :app:lintDebug
+
+      # 仅编译仪器测试：证明 androidTest 源码与依赖可构建，不执行（需 arm64 真机）
+      - name: Compile instrumented tests (compile only)
+        run: ./gradlew --no-daemon --stacktrace :app:compileDebugAndroidTestKotlin
+
+      - name: Upload reports (lint / unit test)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.xml
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/test-results/testDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 7

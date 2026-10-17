@@ -1,0 +1,3 @@
+混合 量子纠缠通信
+
+quantum entanglement 中两粒子状态关联，measure 一方立即确定另一方，爱因斯坦称之为 spooky action at a distance。墨子号卫星实现了千公里级 entangled photon distribution，配合 BB84 协议可构建 eavesdropping 可察觉的 quantum key distribution。城际 quantum network 已在 Beijing-Shanghai 干线试运行，金融与政务 data 传输率先应用。

@@ -21,10 +21,10 @@ interface EmbeddingProvider : Closeable {
 
 /**
  * 向量空间描述。任何两个 descriptor 的 (providerId, modelId, modelRevision,
- * dimensions, normalization, 模板策略) 不完全一致时，向量不可混用比较。
+ * dimensions, normalization, 模板策略, accelerator) 不完全一致时，向量不可混用比较。
  */
 data class EmbeddingDescriptor(
-    val providerId: String,                  // mediapipe-universal / mediapipe-text / mlkit
+    val providerId: String,                  // mediapipe-universal / litertlm-engine（B7 后仅此两种）
     val modelId: String,
     val modelRevision: String? = null,       // 文件 SHA-256 前 12 位或版本号
     val dimensions: Int = -1,                // 首次推理后回填
@@ -32,6 +32,11 @@ data class EmbeddingDescriptor(
     val queryTaskTemplate: String? = null,
     val documentTaskTemplate: String? = null,
     val modality: String = "text",
+    val accelerator: String = "cpu",         // cpu / gpu / npu——GPU/NPU 编译随设备驱动而异，
+                                             // 实测向量跨设备不逐位一致（G1E：旗舰 6864bf58 vs K60U acd0ba1f），
+                                             // 必须并入空间指纹防混用
+    val quantization: String = "f32",        // 向量存储格式（f32 / int8——int8 演进时由 Provider 声明，
+                                             // P1-6 审查修复：embedding_meta 字段由 descriptor 生成而非硬编码）
 )
 
 /**

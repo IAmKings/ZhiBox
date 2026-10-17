@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  自适应启动图标背景层（B3-4）：
+  · 品牌色来自 ui/theme/Color.kt：Primary=#3F6C51、PrimaryContainer=#C2E8CF、SurfaceLight=#F6FBF3；
+  · 前景 logo 的盾牌本身是深绿 #3F6C51，故背景取品牌浅绿渐变保证对比度；
+  · 108dp 自适应画布全幅铺满，由启动器按圆形/圆角矩形等形状裁切。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:endColor="#C2E8CF"
+        android:startColor="#F6FBF3"
+        android:type="linear" />
+</shape>

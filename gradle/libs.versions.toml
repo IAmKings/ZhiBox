@@ -1,21 +1,75 @@
 [versions]
+# ============================================================================
+# B4-1b 依赖升级窗口（2026-10）
+#
+# 本轮实际升级（在「不升 AGP/Kotlin/KSP」约束下取 Google Maven 的兼容上限）：
+#   composeBom      2025.01.00 -> 2026.06.01  (compose ui/foundation/runtime 1.11.4, material3 1.4.0)
+#   coreKtx         1.15.0     -> 1.18.0
+#   lifecycle       2.8.7      -> 2.10.0      (lifecycle-runtime-ktx / lifecycle-viewmodel-compose)
+#   activityCompose 1.9.3      -> 1.13.0
+#
+# 为什么不用更新的版本（本轮原目标：core-ktx 1.19.1 / Compose BOM 2026.09.00 / lifecycle 2.11.0）：
+#   这些版本要求 minCompileSdk=37 且 minAndroidGradlePluginVersion=9.1.0
+#   （依据各 AAR 内 META-INF/com/android/build/gradle/aar-metadata.properties）：
+#     · core-ktx 1.19.1 / androidx.core:core 1.19.1      -> compileSdk 37 + AGP 9.1.0
+#     · Compose BOM 2026.08.00/2026.09.00 (compose-ui 1.12.x) -> compileSdk 37 + AGP 9.1.0
+#     · lifecycle 2.11.0 (lifecycle-viewmodel-compose-android) -> compileSdk 37 + AGP 9.1.0
+#   当前 compileSdk=36、AGP=8.13.2，直接升级会在依赖检查阶段报
+#   “Dependency requires compileSdk 37 / Android Gradle Plugin 9.1.0” 而构建失败。
+#   升 AGP 9.x + compileSdk 37 属于独立迁移批次（AGP 9 行为/DSL 变更 + 全量真机回归），
+#   本批次明确不做；因此取各版本线的最后一个兼容版本：
+#     · coreKtx 1.18.0          -> compileSdk 36 + AGP 8.9.1  ✅
+#     · composeBom 2026.06.01   -> compose 1.11.4 -> compileSdk 35 + AGP 8.6.0 ✅
+#     · lifecycle 2.10.0        -> viewmodel-compose 需 compileSdk 35 + AGP 8.6.0 ✅
+#     · activityCompose 1.13.0  -> activity 1.13.0 需 compileSdk 36 + AGP 8.9.1 ✅（本轮目标版本可用）
+#
+# 不升 AGP（保持 8.13.2）：8.x 最新；AGP 9.x（Google Maven 已有 9.1~9.4）需整体迁移，
+#   且是解锁上面更高 AndroidX 版本的前提，风险留后续独立批次。
+# 不升 Kotlin（保持 2.4.21）：Kotlin 2.5.0 与 KSP 2.3.12 未配对（KSP 版本与 Kotlin 编译器绑定），
+#   强行升级会导致 KSP 处理器（Room schema 生成）解析失败；待 KSP 发布 2.5.x 配对版本后单独批次处理。
+# 不升 KSP（保持 2.3.12）：与 Kotlin 2.4.21 配对。
+#
+# ── B7（2026-10 构建收敛）：tasks-text（旧 EmbeddingGemma .task / Path C）依赖已下线 ──
+#   只保留 tasks-retrieval：EGemma2 440M/740M 走 Path A（Universal Embedder），
+#   270M 走 Path B（LiteRT-LM 引擎），均由 tasks-retrieval/litertlm 支撑。
+#   移除 tasks-text 后 APK 不再携带其 dex 与 libmediapipe_tasks_textgenai_jni.so
+#   （arm64 未压缩约 15.5MB）。旧 .task 模型/旧空间向量的数据处理见 core.legacySpacesReport
+#   与设置页迁移提示（B7 核心/UI 批次）；本文件不再保留 mediapipeText 版本与 library 条目。
+# ============================================================================
 agp = "8.13.2"
 kotlin = "2.4.21"
-coreKtx = "1.15.0"
-lifecycle = "2.8.7"
-activityCompose = "1.9.3"
-composeBom = "2025.01.00"
+coreKtx = "1.18.0"
+lifecycle = "2.10.0"
+activityCompose = "1.13.0"
+composeBom = "2026.06.01"
 mediapipeRetrieval = "1.1.1"
 jieba = "1.0.2"
 ksp = "2.3.12"
 room = "2.8.5"
 work = "2.12.0"
+documentfile = "1.0.1"
+roomTesting = "2.8.5"
+androidxTestCore = "1.6.1"
+androidxTestRunner = "1.6.2"
 junit = "4.13.2"
 coroutinesTest = "1.10.2"
+kotlinxSerialization = "1.8.1"
+# B5：Robolectric（JVM Android 单测：Room in-memory / 导入状态机 / 备份回环）。
+# 版本选择：本机缓存为 4.14.1，但 Robolectric 官方兼容表 4.14.x 仅支持 Android API 21→35，
+# 本项目 compileSdk/targetSdk=36（Android 16）→ 默认 SDK 选择会失败（Unsupported SDK 36）。
+# 因此用 4.17（官方兼容表 API 23→37，支持 SDK 36；Android 16 单测要求 JDK 21——
+# 本机 Gradle 用 Android Studio JBR 21、CI 用 temurin 21，满足）。
+# 代价：首次 testDebugUnitTest 需联网下载 robolectric 4.17 及其 android-all-instrumented（仅 test classpath；
+# 该运行期下载不经过 Gradle，不在 verification-metadata 校验范围）。
+# B5 测试固定 @Config(sdk=[35])：本机/CI 已缓存 API35 android-all，稳定性优先；4.17 已具备 API36 支持，
+# 后续可切默认 targetSdk。
+robolectric = "4.17"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+# P1-8（W4/UI 状态）：ViewModel + Compose 集成。FIX_PLAN 接口契约 6：由 W2 先加，W4 直接使用。
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -23,14 +77,31 @@ androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+# B4-1b 升级后 material3 不再传递 material-icons-core；UI 使用 Icons.AutoMirrored 需显式声明
+androidx-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
 mediapipe-tasks-retrieval = { group = "com.google.mediapipe", name = "tasks-retrieval", version.ref = "mediapipeRetrieval" }
+# B7：tasks-text / Path C（旧 EmbeddingGemma .task）依赖已下线，library 条目已删除；
+# 保留 tasks-retrieval（440M/740M UE + 270M LiteRT-LM 引擎仍需要）。
 jieba-analysis = { group = "com.huaban", name = "jieba-analysis", version.ref = "jieba" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-test-core = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCore" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+# B4-1b：room-testing 2.8.5 GeneratedSerializer 需 1.8.1（见 app/build.gradle.kts 注释）
+kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
+# B5：Robolectric（仅 testImplementation classpath，不进 APK；版本依据见 [versions] robolectric 注释）
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+# B5：Compose UI 测试（版本由 Compose BOM 2026.06.01 管理 = 1.11.4，故不写 version.ref）
+#   · ui-test-junit4：androidTest（真机 instrumentation，createAndroidComposeRule / createComposeRule）
+#   · ui-test-manifest：debugImplementation（提供测试宿主 Activity，仅 debug 变体）
+androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

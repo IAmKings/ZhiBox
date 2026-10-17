@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 13+ 主题化图标单色层（B3-4）：
+  · 复用 logo 的盾牌与对勾 pathData，单色白 + fillType=evenOdd 把对勾挖空成镂空；
+  · group 缩放 1.5 倍并平移 (18,18)：48 视口 → 108dp 画布的 72dp 安全区，
+    与 ic_launcher_foreground 对齐，系统着主题色后仍是「盾牌 + 对勾」语义。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="1.5"
+        android:scaleY="1.5"
+        android:translateX="18"
+        android:translateY="18">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M24,4 L40,12 L40,28 C40,36 33,42 24,44 C15,42 8,36 8,28 L8,12 Z M15,22 L21,28 L33,16 L36,19 L21,34 L12,25 Z" />
+    </group>
+</vector>

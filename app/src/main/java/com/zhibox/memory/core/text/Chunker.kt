@@ -54,7 +54,15 @@ class Chunker(
                 flush()
                 var s = b.start
                 while (s < b.end) {
-                    val e = minOf(s + options.maxChars, b.end)
+                    var e = minOf(s + options.maxChars, b.end)
+                    // B2-4：硬切边界不得劈开 surrogate pair（emoji/CJK 扩展区等）。
+                    // 仅当切点确实落在 pair 中间时回退 1 个 UTF-16 char；BMP 文本的切分边界
+                    // 与旧实现逐位一致（220 评测基线不受影响）。maxChars=1 的退化配置无法保证。
+                    if (e < b.end && e > s + 1 &&
+                        normalizedText[e - 1].isHighSurrogate() && normalizedText[e].isLowSurrogate()
+                    ) {
+                        e -= 1
+                    }
                     emit(normalizedText.substring(s, e), s, e)
                     s = e
                 }
@@ -116,11 +124,19 @@ class Chunker(
     }
 
     companion object {
-        /** token 估算：CJK ≈1.35 token/字（按 800 字→1080 token 越界实测校准），其余≈4 字符/token */
+        /**
+         * token 估算：CJK ≈1.35 token/字（按 800 字→1080 token 越界实测校准），其余≈4 字符/token。
+         * B2-4：按 code point 计数（surrogate pair 计 1 个字符，与分词/语义一致）。
+         */
         fun estimateTokens(text: String): Int {
             var cjk = 0
             var other = 0
-            for (c in text) if (c.code > 0x2E80) cjk++ else other++
+            var i = 0
+            while (i < text.length) {
+                val codePoint = text.codePointAt(i)
+                if (codePoint > 0x2E80) cjk++ else other++
+                i += Character.charCount(codePoint)
+            }
             return Math.ceil(cjk * 1.35).toInt() + (other + 3) / 4
         }
     }

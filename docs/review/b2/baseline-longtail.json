@@ -1,0 +1,2209 @@
+{
+  "experiment": "search_eval",
+  "top_k": 10,
+  "n_queries": 20,
+  "total_hits": 200,
+  "refused": 0,
+  "rows": [
+    {
+      "query": "原隆",
+      "elapsed_ms": 4621,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "01_青藏高原隆升",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "青藏高原隆升\n\n青藏高原是印度板块与欧亚板块持续碰撞的产物，自约五千万年前开始隆升，至今平均海拔超过四千米，被称为世界屋"
+        },
+        {
+          "doc": "22_敦煌与藏经洞",
+          "ordinal": 0,
+          "char": "0-112",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "敦煌与藏经洞\n\n一九零零年道士王圆箓在莫高窟发现藏经洞，内藏四至十一世纪文书约五万件。斯坦因、伯希和等探险队以低价购走大"
+        },
+        {
+          "doc": "41_混合 京都庭园",
+          "ordinal": 0,
+          "char": "0-160",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "混合 京都庭园\n\n京都龙安寺的石庭是枯山水代表：十五块石头分组置於白砂之上，任何角度最多同时看到十四块。禅意庭园以砂纹模"
+        },
+        {
+          "doc": "19_阿波罗计划",
+          "ordinal": 0,
+          "char": "0-117",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "阿波罗计划\n\n阿波罗计划一九六一年启动，一九六九年阿波罗十一号实现载人登月，尼尔阿姆斯特朗成为第一个踏上月球的人。整个计"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        },
+        {
+          "doc": "08_大堡礁白化",
+          "ordinal": 0,
+          "char": "0-119",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "大堡礁白化\n\n大堡礁是世界最大的珊瑚礁系统，绵延两千三百公里。珊瑚白化源于水温持续偏高导致共生虫黄藻排出，珊瑚失去百分之"
+        },
+        {
+          "doc": "03_深海热泉生态",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "深海热泉生态\n\n一九七七年，科学家在加拉帕戈斯裂谷两千五百米深处发现了不依赖阳光的生命系统。深海热泉喷口的硫化氢滋养了化"
+        },
+        {
+          "doc": "pb_3_古希腊哲学",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "古希腊哲学\n\n苏格拉底以诘问法追问定义，认为未经省察的人生不值得过。柏拉图建立学园，理念论主张可感世界只是理念世界的摹本"
+        },
+        {
+          "doc": "36_贝加尔湖",
+          "ordinal": 0,
+          "char": "0-107",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "贝加尔湖\n\n贝加尔湖是世界上最深的湖泊，最深处一千六百四十二米，淡水储量占全球液态淡水五分之一。湖龄两千五百万年，由裂谷"
+        },
+        {
+          "doc": "38_富士山与樱花",
+          "ordinal": 0,
+          "char": "0-112",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "富士山与樱花\n\n富士山海拔三七七六米，是日本最高峰，最近一次喷发在一七零七年。山顶冬季积雪至次年六月。樱花前线从南向北推"
+        }
+      ]
+    },
+    {
+      "query": "升青",
+      "elapsed_ms": 39,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 0,
+      "hits": [
+        {
+          "doc": "01_青藏高原隆升",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 1,
+          "k_rank": null,
+          "rrf": 0.01639344262295082,
+          "snippet": "青藏高原隆升\n\n青藏高原是印度板块与欧亚板块持续碰撞的产物，自约五千万年前开始隆升，至今平均海拔超过四千米，被称为世界屋"
+        },
+        {
+          "doc": "pb_10_登山适应",
+          "ordinal": 0,
+          "char": "0-132",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "登山适应\n\n高海拔适应的核心是通气量提升与红细胞增多。进入海拔两千五百米以上后，外周化学感受器驱动呼吸加深加快，血液偏碱"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        },
+        {
+          "doc": "19_阿波罗计划",
+          "ordinal": 0,
+          "char": "0-117",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "阿波罗计划\n\n阿波罗计划一九六一年启动，一九六九年阿波罗十一号实现载人登月，尼尔阿姆斯特朗成为第一个踏上月球的人。整个计"
+        },
+        {
+          "doc": "pb_4_茶叶加工",
+          "ordinal": 0,
+          "char": "0-134",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "茶叶加工\n\n茶叶按加工氧化程度分六大类：绿茶不发酵，白茶微发酵，乌龙半发酵，红茶全发酵，黑茶后发酵。茶多酚在多酚氧化酶作"
+        },
+        {
+          "doc": "38_富士山与樱花",
+          "ordinal": 0,
+          "char": "0-112",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "富士山与樱花\n\n富士山海拔三七七六米，是日本最高峰，最近一次喷发在一七零七年。山顶冬季积雪至次年六月。樱花前线从南向北推"
+        },
+        {
+          "doc": "pb_7_摄影曝光",
+          "ordinal": 0,
+          "char": "0-125",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "摄影曝光\n\n曝光三角指光圈、快门与感光度的组合。光圈控制进光量与景深，f值每减半进光翻倍；快门决定凝固或拖影，安全快门约"
+        },
+        {
+          "doc": "06_火山指数VEI",
+          "ordinal": 0,
+          "char": "0-138",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "火山指数VEI\n\n火山爆发烈度采用爆炸指数衡量，从零到八级，每升一级喷发体积增加十倍。一九九一年皮纳图博火山爆发为六级，"
+        },
+        {
+          "doc": "39_格陵兰冰盖",
+          "ordinal": 0,
+          "char": "0-110",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "格陵兰冰盖\n\n格陵兰冰盖面积一百七十一万平方公里，最厚处超过三公里，全部融化将使全球海平面上升约七米。冰盖通过冰川入海与"
+        },
+        {
+          "doc": "27_疫苗接种原理",
+          "ordinal": 0,
+          "char": "0-120",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "疫苗接种原理\n\n疫苗通过模拟病原体训练免疫系统：减毒活疫苗产生接近自然感染的免疫记忆，灭活疫苗安全性更高但需多剂次加强。"
+        }
+      ]
+    },
+    {
+      "query": "鸟悬",
+      "elapsed_ms": 34,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "02_蜂鸟悬停机制",
+          "ordinal": 0,
+          "char": "0-114",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "蜂鸟悬停机制\n\n蜂鸟是唯一能长时间悬停的鸟类，其翅膀在水平面内划出八字形轨迹，产生近似恒定的升力。悬停时心率可达每分钟一"
+        },
+        {
+          "doc": "05_候鸟迁徙导航",
+          "ordinal": 0,
+          "char": "0-119",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "候鸟迁徙导航\n\n斑尾塍鹬保持不间断飞行世界纪录：从阿拉斯加到新西兰连续飞行约一万两千公里，历时十一天。研究表明候鸟综合运"
+        },
+        {
+          "doc": "49_混合 量子纠缠通信",
+          "ordinal": 0,
+          "char": "0-259",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "混合 量子纠缠通信\n\nquantum entanglement 中两粒子状态关联，measure 一方立即确定另一方，爱"
+        },
+        {
+          "doc": "47_English: Honeybee Dance",
+          "ordinal": 0,
+          "char": "0-350",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "English: Honeybee Dance\n\nHoneybees communicate food location"
+        },
+        {
+          "doc": "12_协程调度器",
+          "ordinal": 0,
+          "char": "0-122",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "协程调度器\n\nKotlin协程调度器将协程映射到线程池：调度器通过限制并发数实现背压，调度队列采用工作窃取算法平衡负载。"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        },
+        {
+          "doc": "14_HTTP3与QUIC",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "HTTP3与QUIC\n\nHTTP三是基于QUIC协议的新一代传输层，QUIC运行在UDP之上，把传输层握手与加密握手合并"
+        },
+        {
+          "doc": "01_青藏高原隆升",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "青藏高原隆升\n\n青藏高原是印度板块与欧亚板块持续碰撞的产物，自约五千万年前开始隆升，至今平均海拔超过四千米，被称为世界屋"
+        },
+        {
+          "doc": "22_敦煌与藏经洞",
+          "ordinal": 0,
+          "char": "0-112",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "敦煌与藏经洞\n\n一九零零年道士王圆箓在莫高窟发现藏经洞，内藏四至十一世纪文书约五万件。斯坦因、伯希和等探险队以低价购走大"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        }
+      ]
+    },
+    {
+      "query": "停机",
+      "elapsed_ms": 33,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "02_蜂鸟悬停机制",
+          "ordinal": 0,
+          "char": "0-114",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "蜂鸟悬停机制\n\n蜂鸟是唯一能长时间悬停的鸟类，其翅膀在水平面内划出八字形轨迹，产生近似恒定的升力。悬停时心率可达每分钟一"
+        },
+        {
+          "doc": "12_协程调度器",
+          "ordinal": 0,
+          "char": "0-122",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "协程调度器\n\nKotlin协程调度器将协程映射到线程池：调度器通过限制并发数实现背压，调度队列采用工作窃取算法平衡负载。"
+        },
+        {
+          "doc": "14_HTTP3与QUIC",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "HTTP3与QUIC\n\nHTTP三是基于QUIC协议的新一代传输层，QUIC运行在UDP之上，把传输层握手与加密握手合并"
+        },
+        {
+          "doc": "28_咖啡因代谢",
+          "ordinal": 0,
+          "char": "0-111",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "咖啡因代谢\n\n咖啡因半衰期约五小时，由肝脏细胞色素酶代谢，个体基因差异使代谢速度相差四倍。腺苷受体阻断是其提神机制，长期"
+        },
+        {
+          "doc": "19_阿波罗计划",
+          "ordinal": 0,
+          "char": "0-117",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "阿波罗计划\n\n阿波罗计划一九六一年启动，一九六九年阿波罗十一号实现载人登月，尼尔阿姆斯特朗成为第一个踏上月球的人。整个计"
+        },
+        {
+          "doc": "05_候鸟迁徙导航",
+          "ordinal": 0,
+          "char": "0-119",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "候鸟迁徙导航\n\n斑尾塍鹬保持不间断飞行世界纪录：从阿拉斯加到新西兰连续飞行约一万两千公里，历时十一天。研究表明候鸟综合运"
+        },
+        {
+          "doc": "15_差分隐私",
+          "ordinal": 0,
+          "char": "0-117",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "差分隐私\n\n差分隐私通过在查询结果中加入校准噪声保护个体：隐私预算伊普西龙控制噪声与效用的平衡，预算越小隐私越强。苹果在"
+        },
+        {
+          "doc": "49_混合 量子纠缠通信",
+          "ordinal": 0,
+          "char": "0-259",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "混合 量子纠缠通信\n\nquantum entanglement 中两粒子状态关联，measure 一方立即确定另一方，爱"
+        },
+        {
+          "doc": "pb_9_声音掩蔽",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "声音掩蔽\n\n人耳的听觉掩蔽效应指一个声音使另一个声音不可察觉：频域掩蔽发生在邻近频率，时域掩蔽可先于或后于强信号数十毫秒"
+        },
+        {
+          "doc": "29_低温慢煮",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "低温慢煮\n\n低温慢煮将食材密封后恒温水浴，牛排五十三度一小时中心恰好达到三分熟，温度均匀性远胜明火。蛋白质变性在特定温度"
+        }
+      ]
+    },
+    {
+      "query": "泉生",
+      "elapsed_ms": 45,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "03_深海热泉生态",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "深海热泉生态\n\n一九七七年，科学家在加拉帕戈斯裂谷两千五百米深处发现了不依赖阳光的生命系统。深海热泉喷口的硫化氢滋养了化"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        },
+        {
+          "doc": "38_富士山与樱花",
+          "ordinal": 0,
+          "char": "0-112",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "富士山与樱花\n\n富士山海拔三七七六米，是日本最高峰，最近一次喷发在一七零七年。山顶冬季积雪至次年六月。樱花前线从南向北推"
+        },
+        {
+          "doc": "pb_3_古希腊哲学",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "古希腊哲学\n\n苏格拉底以诘问法追问定义，认为未经省察的人生不值得过。柏拉图建立学园，理念论主张可感世界只是理念世界的摹本"
+        },
+        {
+          "doc": "41_混合 京都庭园",
+          "ordinal": 0,
+          "char": "0-160",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "混合 京都庭园\n\n京都龙安寺的石庭是枯山水代表：十五块石头分组置於白砂之上，任何角度最多同时看到十四块。禅意庭园以砂纹模"
+        },
+        {
+          "doc": "pb_8_货币史",
+          "ordinal": 0,
+          "char": "0-136",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "货币史\n\n货币形态从贝壳、金属称量、铸币、纸币演进到电子支付。交子出现于北宋四川，是世界最早的纸币，起于铁钱笨重的民间凭"
+        },
+        {
+          "doc": "pb_6_免疫记忆",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "免疫记忆\n\n适应性免疫的核心是记忆：初次感染后，记忆B细胞与记忆T细胞长期驻留于骨髓与淋巴组织。再次遇到同一病原体时，记"
+        },
+        {
+          "doc": "36_贝加尔湖",
+          "ordinal": 0,
+          "char": "0-107",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "贝加尔湖\n\n贝加尔湖是世界上最深的湖泊，最深处一千六百四十二米，淡水储量占全球液态淡水五分之一。湖龄两千五百万年，由裂谷"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        },
+        {
+          "doc": "04_闪电形成原理",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "闪电形成原理\n\n闪电源于云内冰晶与霰粒碰撞导致的电荷分离，云上部带正电、下部带负电。当电位差达到每厘米三万伏的击穿阈值，"
+        }
+      ]
+    },
+    {
+      "query": "态一",
+      "elapsed_ms": 42,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 0,
+      "hits": [
+        {
+          "doc": "09_TLS握手流程",
+          "ordinal": 0,
+          "char": "0-130",
+          "channels": "向量",
+          "v_rank": 1,
+          "k_rank": null,
+          "rrf": 0.01639344262295082,
+          "snippet": "TLS握手流程\n\nTLS一点三将握手从两次往返压缩到一次：客户端在首个消息中直接发送密钥交换素材，服务器返回密钥与加密后"
+        },
+        {
+          "doc": "06_火山指数VEI",
+          "ordinal": 0,
+          "char": "0-138",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "火山指数VEI\n\n火山爆发烈度采用爆炸指数衡量，从零到八级，每升一级喷发体积增加十倍。一九九一年皮纳图博火山爆发为六级，"
+        },
+        {
+          "doc": "49_混合 量子纠缠通信",
+          "ordinal": 0,
+          "char": "0-259",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "混合 量子纠缠通信\n\nquantum entanglement 中两粒子状态关联，measure 一方立即确定另一方，爱"
+        },
+        {
+          "doc": "36_贝加尔湖",
+          "ordinal": 0,
+          "char": "0-107",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "贝加尔湖\n\n贝加尔湖是世界上最深的湖泊，最深处一千六百四十二米，淡水储量占全球液态淡水五分之一。湖龄两千五百万年，由裂谷"
+        },
+        {
+          "doc": "12_协程调度器",
+          "ordinal": 0,
+          "char": "0-122",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "协程调度器\n\nKotlin协程调度器将协程映射到线程池：调度器通过限制并发数实现背压，调度队列采用工作窃取算法平衡负载。"
+        },
+        {
+          "doc": "15_差分隐私",
+          "ordinal": 0,
+          "char": "0-117",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "差分隐私\n\n差分隐私通过在查询结果中加入校准噪声保护个体：隐私预算伊普西龙控制噪声与效用的平衡，预算越小隐私越强。苹果在"
+        },
+        {
+          "doc": "10_SQLite并发模型",
+          "ordinal": 0,
+          "char": "0-128",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "SQLite并发模型\n\nSQLite采用库级锁实现并发：多读单写。写入时通过回滚日志或预写日志保证原子性，预写日志模式下"
+        },
+        {
+          "doc": "pb_7_摄影曝光",
+          "ordinal": 0,
+          "char": "0-125",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "摄影曝光\n\n曝光三角指光圈、快门与感光度的组合。光圈控制进光量与景深，f值每减半进光翻倍；快门决定凝固或拖影，安全快门约"
+        },
+        {
+          "doc": "pb_1_区块链共识",
+          "ordinal": 0,
+          "char": "0-161",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "区块链共识\n\n区块链共识算法解决无中心环境下的记账一致性问题。工作量证明通过算力竞争出块，比特币将其间隔控制在约十分钟，"
+        },
+        {
+          "doc": "11_向量量化PQ",
+          "ordinal": 0,
+          "char": "0-122",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "向量量化PQ\n\n乘积量化将高维向量切成若干子段，每段独立聚类为码本，原始向量只需存储码本索引，七百六十八维向量可压缩三十"
+        }
+      ]
+    },
+    {
+      "query": "电形",
+      "elapsed_ms": 42,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "04_闪电形成原理",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "闪电形成原理\n\n闪电源于云内冰晶与霰粒碰撞导致的电荷分离，云上部带正电、下部带负电。当电位差达到每厘米三万伏的击穿阈值，"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        },
+        {
+          "doc": "pb_8_货币史",
+          "ordinal": 0,
+          "char": "0-136",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "货币史\n\n货币形态从贝壳、金属称量、铸币、纸币演进到电子支付。交子出现于北宋四川，是世界最早的纸币，起于铁钱笨重的民间凭"
+        },
+        {
+          "doc": "49_混合 量子纠缠通信",
+          "ordinal": 0,
+          "char": "0-259",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "混合 量子纠缠通信\n\nquantum entanglement 中两粒子状态关联，measure 一方立即确定另一方，爱"
+        },
+        {
+          "doc": "11_向量量化PQ",
+          "ordinal": 0,
+          "char": "0-122",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "向量量化PQ\n\n乘积量化将高维向量切成若干子段，每段独立聚类为码本，原始向量只需存储码本索引，七百六十八维向量可压缩三十"
+        },
+        {
+          "doc": "pb_2_新能源汽车",
+          "ordinal": 0,
+          "char": "0-153",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "新能源汽车\n\n新能源汽车的三电系统指电池、电机与电控。磷酸铁锂电池能量密度约每公斤一百六十瓦时，循环寿命超过三千次但低温"
+        },
+        {
+          "doc": "13_电池健康管理",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "电池健康管理\n\n锂电池老化主要来自电极表面固体电解质界面膜增厚与活性锂损失。放电深度越深、倍率越高，循环寿命越短；在百分"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        },
+        {
+          "doc": "10_SQLite并发模型",
+          "ordinal": 0,
+          "char": "0-128",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "SQLite并发模型\n\nSQLite采用库级锁实现并发：多读单写。写入时通过回滚日志或预写日志保证原子性，预写日志模式下"
+        },
+        {
+          "doc": "pb_3_古希腊哲学",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "古希腊哲学\n\n苏格拉底以诘问法追问定义，认为未经省察的人生不值得过。柏拉图建立学园，理念论主张可感世界只是理念世界的摹本"
+        }
+      ]
+    },
+    {
+      "query": "成原",
+      "elapsed_ms": 49,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "04_闪电形成原理",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量+关键词",
+          "v_rank": 30,
+          "k_rank": 1,
+          "rrf": 0.02750455373406193,
+          "snippet": "闪电形成原理\n\n闪电源于云内冰晶与霰粒碰撞导致的电荷分离，云上部带正电、下部带负电。当电位差达到每厘米三万伏的击穿阈值，"
+        },
+        {
+          "doc": "01_青藏高原隆升",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 1,
+          "k_rank": null,
+          "rrf": 0.01639344262295082,
+          "snippet": "青藏高原隆升\n\n青藏高原是印度板块与欧亚板块持续碰撞的产物，自约五千万年前开始隆升，至今平均海拔超过四千米，被称为世界屋"
+        },
+        {
+          "doc": "35_撒哈拉之眼",
+          "ordinal": 0,
+          "char": "0-110",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "撒哈拉之眼\n\n理查特结构位于毛里塔尼亚撒哈拉沙漠，直径约五十公里，从太空清晰可见，曾长期被当作陨石坑。地质研究显示它是深"
+        },
+        {
+          "doc": "22_敦煌与藏经洞",
+          "ordinal": 0,
+          "char": "0-112",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "敦煌与藏经洞\n\n一九零零年道士王圆箓在莫高窟发现藏经洞，内藏四至十一世纪文书约五万件。斯坦因、伯希和等探险队以低价购走大"
+        },
+        {
+          "doc": "36_贝加尔湖",
+          "ordinal": 0,
+          "char": "0-107",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "贝加尔湖\n\n贝加尔湖是世界上最深的湖泊，最深处一千六百四十二米，淡水储量占全球液态淡水五分之一。湖龄两千五百万年，由裂谷"
+        },
+        {
+          "doc": "pb_3_古希腊哲学",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "古希腊哲学\n\n苏格拉底以诘问法追问定义，认为未经省察的人生不值得过。柏拉图建立学园，理念论主张可感世界只是理念世界的摹本"
+        },
+        {
+          "doc": "19_阿波罗计划",
+          "ordinal": 0,
+          "char": "0-117",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "阿波罗计划\n\n阿波罗计划一九六一年启动，一九六九年阿波罗十一号实现载人登月，尼尔阿姆斯特朗成为第一个踏上月球的人。整个计"
+        },
+        {
+          "doc": "pb_5_城市规划",
+          "ordinal": 0,
+          "char": "0-136",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "城市规划\n\n现代城市规划的邻里单位思想主张以小学服务半径划定居住单元，减少穿越交通。公共交通导向开发以站点为中心高密度混"
+        },
+        {
+          "doc": "08_大堡礁白化",
+          "ordinal": 0,
+          "char": "0-119",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "大堡礁白化\n\n大堡礁是世界最大的珊瑚礁系统，绵延两千三百公里。珊瑚白化源于水温持续偏高导致共生虫黄藻排出，珊瑚失去百分之"
+        },
+        {
+          "doc": "41_混合 京都庭园",
+          "ordinal": 0,
+          "char": "0-160",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "混合 京都庭园\n\n京都龙安寺的石庭是枯山水代表：十五块石头分组置於白砂之上，任何角度最多同时看到十四块。禅意庭园以砂纹模"
+        }
+      ]
+    },
+    {
+      "query": "鸟迁",
+      "elapsed_ms": 36,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "05_候鸟迁徙导航",
+          "ordinal": 0,
+          "char": "0-119",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "候鸟迁徙导航\n\n斑尾塍鹬保持不间断飞行世界纪录：从阿拉斯加到新西兰连续飞行约一万两千公里，历时十一天。研究表明候鸟综合运"
+        },
+        {
+          "doc": "02_蜂鸟悬停机制",
+          "ordinal": 0,
+          "char": "0-114",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "蜂鸟悬停机制\n\n蜂鸟是唯一能长时间悬停的鸟类，其翅膀在水平面内划出八字形轨迹，产生近似恒定的升力。悬停时心率可达每分钟一"
+        },
+        {
+          "doc": "49_混合 量子纠缠通信",
+          "ordinal": 0,
+          "char": "0-259",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "混合 量子纠缠通信\n\nquantum entanglement 中两粒子状态关联，measure 一方立即确定另一方，爱"
+        },
+        {
+          "doc": "47_English: Honeybee Dance",
+          "ordinal": 0,
+          "char": "0-350",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "English: Honeybee Dance\n\nHoneybees communicate food location"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        },
+        {
+          "doc": "08_大堡礁白化",
+          "ordinal": 0,
+          "char": "0-119",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "大堡礁白化\n\n大堡礁是世界最大的珊瑚礁系统，绵延两千三百公里。珊瑚白化源于水温持续偏高导致共生虫黄藻排出，珊瑚失去百分之"
+        },
+        {
+          "doc": "11_向量量化PQ",
+          "ordinal": 0,
+          "char": "0-122",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "向量量化PQ\n\n乘积量化将高维向量切成若干子段，每段独立聚类为码本，原始向量只需存储码本索引，七百六十八维向量可压缩三十"
+        },
+        {
+          "doc": "14_HTTP3与QUIC",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "HTTP3与QUIC\n\nHTTP三是基于QUIC协议的新一代传输层，QUIC运行在UDP之上，把传输层握手与加密握手合并"
+        },
+        {
+          "doc": "01_青藏高原隆升",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "青藏高原隆升\n\n青藏高原是印度板块与欧亚板块持续碰撞的产物，自约五千万年前开始隆升，至今平均海拔超过四千米，被称为世界屋"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        }
+      ]
+    },
+    {
+      "query": "徙导",
+      "elapsed_ms": 37,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "05_候鸟迁徙导航",
+          "ordinal": 0,
+          "char": "0-119",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "候鸟迁徙导航\n\n斑尾塍鹬保持不间断飞行世界纪录：从阿拉斯加到新西兰连续飞行约一万两千公里，历时十一天。研究表明候鸟综合运"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        },
+        {
+          "doc": "32_家庭网络布线",
+          "ordinal": 0,
+          "char": "0-115",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "家庭网络布线\n\n千兆内网建议六类网线，六类线在五十五米内可跑万兆。路由器摆放避开微波炉与金属柜，两点四吉赫频段穿墙好但干"
+        },
+        {
+          "doc": "20_大航海时代",
+          "ordinal": 0,
+          "char": "0-121",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "大航海时代\n\n一四八八年迪亚士抵达好望角，一四九八年达伽马绕行非洲抵达印度，一五一九年麦哲伦船队开始环球航行。航海革命的"
+        },
+        {
+          "doc": "pb_5_城市规划",
+          "ordinal": 0,
+          "char": "0-136",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "城市规划\n\n现代城市规划的邻里单位思想主张以小学服务半径划定居住单元，减少穿越交通。公共交通导向开发以站点为中心高密度混"
+        },
+        {
+          "doc": "pb_10_登山适应",
+          "ordinal": 0,
+          "char": "0-132",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "登山适应\n\n高海拔适应的核心是通气量提升与红细胞增多。进入海拔两千五百米以上后，外周化学感受器驱动呼吸加深加快，血液偏碱"
+        },
+        {
+          "doc": "27_疫苗接种原理",
+          "ordinal": 0,
+          "char": "0-120",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "疫苗接种原理\n\n疫苗通过模拟病原体训练免疫系统：减毒活疫苗产生接近自然感染的免疫记忆，灭活疫苗安全性更高但需多剂次加强。"
+        },
+        {
+          "doc": "pb_6_免疫记忆",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "免疫记忆\n\n适应性免疫的核心是记忆：初次感染后，记忆B细胞与记忆T细胞长期驻留于骨髓与淋巴组织。再次遇到同一病原体时，记"
+        },
+        {
+          "doc": "pb_7_摄影曝光",
+          "ordinal": 0,
+          "char": "0-125",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "摄影曝光\n\n曝光三角指光圈、快门与感光度的组合。光圈控制进光量与景深，f值每减半进光翻倍；快门决定凝固或拖影，安全快门约"
+        },
+        {
+          "doc": "14_HTTP3与QUIC",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "HTTP3与QUIC\n\nHTTP三是基于QUIC协议的新一代传输层，QUIC运行在UDP之上，把传输层握手与加密握手合并"
+        }
+      ]
+    },
+    {
+      "query": "山指",
+      "elapsed_ms": 51,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "06_火山指数VEI",
+          "ordinal": 0,
+          "char": "0-138",
+          "channels": "向量+关键词",
+          "v_rank": 3,
+          "k_rank": 1,
+          "rrf": 0.032266458495966696,
+          "snippet": "火山指数VEI\n\n火山爆发烈度采用爆炸指数衡量，从零到八级，每升一级喷发体积增加十倍。一九九一年皮纳图博火山爆发为六级，"
+        },
+        {
+          "doc": "38_富士山与樱花",
+          "ordinal": 0,
+          "char": "0-112",
+          "channels": "向量",
+          "v_rank": 1,
+          "k_rank": null,
+          "rrf": 0.01639344262295082,
+          "snippet": "富士山与樱花\n\n富士山海拔三七七六米，是日本最高峰，最近一次喷发在一七零七年。山顶冬季积雪至次年六月。樱花前线从南向北推"
+        },
+        {
+          "doc": "pb_10_登山适应",
+          "ordinal": 0,
+          "char": "0-132",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "登山适应\n\n高海拔适应的核心是通气量提升与红细胞增多。进入海拔两千五百米以上后，外周化学感受器驱动呼吸加深加快，血液偏碱"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        },
+        {
+          "doc": "pb_7_摄影曝光",
+          "ordinal": 0,
+          "char": "0-125",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "摄影曝光\n\n曝光三角指光圈、快门与感光度的组合。光圈控制进光量与景深，f值每减半进光翻倍；快门决定凝固或拖影，安全快门约"
+        },
+        {
+          "doc": "01_青藏高原隆升",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "青藏高原隆升\n\n青藏高原是印度板块与欧亚板块持续碰撞的产物，自约五千万年前开始隆升，至今平均海拔超过四千米，被称为世界屋"
+        },
+        {
+          "doc": "25_血糖指数",
+          "ordinal": 0,
+          "char": "0-115",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "血糖指数\n\n血糖指数衡量食物升糖速度，葡萄糖为一百。低GI食物低于五十五，如燕麦、豆类；白米饭约八十属高GI。烹饪与加工"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        },
+        {
+          "doc": "35_撒哈拉之眼",
+          "ordinal": 0,
+          "char": "0-110",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "撒哈拉之眼\n\n理查特结构位于毛里塔尼亚撒哈拉沙漠，直径约五十公里，从太空清晰可见，曾长期被当作陨石坑。地质研究显示它是深"
+        },
+        {
+          "doc": "09_TLS握手流程",
+          "ordinal": 0,
+          "char": "0-130",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "TLS握手流程\n\nTLS一点三将握手从两次往返压缩到一次：客户端在首个消息中直接发送密钥交换素材，服务器返回密钥与加密后"
+        }
+      ]
+    },
+    {
+      "query": "发烈",
+      "elapsed_ms": 48,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "06_火山指数VEI",
+          "ordinal": 0,
+          "char": "0-138",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "火山指数VEI\n\n火山爆发烈度采用爆炸指数衡量，从零到八级，每升一级喷发体积增加十倍。一九九一年皮纳图博火山爆发为六级，"
+        },
+        {
+          "doc": "04_闪电形成原理",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "闪电形成原理\n\n闪电源于云内冰晶与霰粒碰撞导致的电荷分离，云上部带正电、下部带负电。当电位差达到每厘米三万伏的击穿阈值，"
+        },
+        {
+          "doc": "26_运动与乳酸",
+          "ordinal": 0,
+          "char": "0-121",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "运动与乳酸\n\n乳酸并非疲劳废物，而是可被肌肉与心脏氧化供能的燃料，也是肝脏糖异生的原料。血乳酸阈对应运动强度从有氧过渡到"
+        },
+        {
+          "doc": "pb_7_摄影曝光",
+          "ordinal": 0,
+          "char": "0-125",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "摄影曝光\n\n曝光三角指光圈、快门与感光度的组合。光圈控制进光量与景深，f值每减半进光翻倍；快门决定凝固或拖影，安全快门约"
+        },
+        {
+          "doc": "08_大堡礁白化",
+          "ordinal": 0,
+          "char": "0-119",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "大堡礁白化\n\n大堡礁是世界最大的珊瑚礁系统，绵延两千三百公里。珊瑚白化源于水温持续偏高导致共生虫黄藻排出，珊瑚失去百分之"
+        },
+        {
+          "doc": "13_电池健康管理",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "电池健康管理\n\n锂电池老化主要来自电极表面固体电解质界面膜增厚与活性锂损失。放电深度越深、倍率越高，循环寿命越短；在百分"
+        },
+        {
+          "doc": "pb_3_古希腊哲学",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "古希腊哲学\n\n苏格拉底以诘问法追问定义，认为未经省察的人生不值得过。柏拉图建立学园，理念论主张可感世界只是理念世界的摹本"
+        },
+        {
+          "doc": "34_基础理财原则",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "基础理财原则\n\n应急金应为三到六个月支出，存于随时可取的货币基金。五零三零二零预算法将税后收入分为必要开支、储蓄投资与弹"
+        },
+        {
+          "doc": "03_深海热泉生态",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "深海热泉生态\n\n一九七七年，科学家在加拉帕戈斯裂谷两千五百米深处发现了不依赖阳光的生命系统。深海热泉喷口的硫化氢滋养了化"
+        },
+        {
+          "doc": "28_咖啡因代谢",
+          "ordinal": 0,
+          "char": "0-111",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "咖啡因代谢\n\n咖啡因半衰期约五小时，由肝脏细胞色素酶代谢，个体基因差异使代谢速度相差四倍。腺苷受体阻断是其提神机制，长期"
+        }
+      ]
+    },
+    {
+      "query": "眠周",
+      "elapsed_ms": 48,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "07_睡眠周期研究",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "睡眠周期研究\n\n人类睡眠由约九十分钟一个的周期构成，每周期经历浅睡、深睡与快速眼动三个阶段。深睡期生长激素分泌达到高峰，"
+        },
+        {
+          "doc": "28_咖啡因代谢",
+          "ordinal": 0,
+          "char": "0-111",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "咖啡因代谢\n\n咖啡因半衰期约五小时，由肝脏细胞色素酶代谢，个体基因差异使代谢速度相差四倍。腺苷受体阻断是其提神机制，长期"
+        },
+        {
+          "doc": "33_记忆力技巧",
+          "ordinal": 0,
+          "char": "0-116",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "记忆力技巧\n\n间隔重复利用遗忘曲线安排复习：学习后一天、三天、七天、二十一天各复习一次，记忆保持率可超过百分之九十。主动"
+        },
+        {
+          "doc": "02_蜂鸟悬停机制",
+          "ordinal": 0,
+          "char": "0-114",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "蜂鸟悬停机制\n\n蜂鸟是唯一能长时间悬停的鸟类，其翅膀在水平面内划出八字形轨迹，产生近似恒定的升力。悬停时心率可达每分钟一"
+        },
+        {
+          "doc": "pb_9_声音掩蔽",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "声音掩蔽\n\n人耳的听觉掩蔽效应指一个声音使另一个声音不可察觉：频域掩蔽发生在邻近频率，时域掩蔽可先于或后于强信号数十毫秒"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        },
+        {
+          "doc": "23_近视防控",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "近视防控\n\n近视的主要环境风险是户外光照不足：视网膜多巴胺在强光下分泌增加，抑制眼轴增长。每天两小时以上户外活动可使儿童"
+        },
+        {
+          "doc": "pb_6_免疫记忆",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "免疫记忆\n\n适应性免疫的核心是记忆：初次感染后，记忆B细胞与记忆T细胞长期驻留于骨髓与淋巴组织。再次遇到同一病原体时，记"
+        },
+        {
+          "doc": "15_差分隐私",
+          "ordinal": 0,
+          "char": "0-117",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "差分隐私\n\n差分隐私通过在查询结果中加入校准噪声保护个体：隐私预算伊普西龙控制噪声与效用的平衡，预算越小隐私越强。苹果在"
+        },
+        {
+          "doc": "10_SQLite并发模型",
+          "ordinal": 0,
+          "char": "0-128",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "SQLite并发模型\n\nSQLite采用库级锁实现并发：多读单写。写入时通过回滚日志或预写日志保证原子性，预写日志模式下"
+        }
+      ]
+    },
+    {
+      "query": "期研",
+      "elapsed_ms": 49,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "07_睡眠周期研究",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "睡眠周期研究\n\n人类睡眠由约九十分钟一个的周期构成，每周期经历浅睡、深睡与快速眼动三个阶段。深睡期生长激素分泌达到高峰，"
+        },
+        {
+          "doc": "pb_3_古希腊哲学",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "古希腊哲学\n\n苏格拉底以诘问法追问定义，认为未经省察的人生不值得过。柏拉图建立学园，理念论主张可感世界只是理念世界的摹本"
+        },
+        {
+          "doc": "15_差分隐私",
+          "ordinal": 0,
+          "char": "0-117",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "差分隐私\n\n差分隐私通过在查询结果中加入校准噪声保护个体：隐私预算伊普西龙控制噪声与效用的平衡，预算越小隐私越强。苹果在"
+        },
+        {
+          "doc": "41_混合 京都庭园",
+          "ordinal": 0,
+          "char": "0-160",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "混合 京都庭园\n\n京都龙安寺的石庭是枯山水代表：十五块石头分组置於白砂之上，任何角度最多同时看到十四块。禅意庭园以砂纹模"
+        },
+        {
+          "doc": "22_敦煌与藏经洞",
+          "ordinal": 0,
+          "char": "0-112",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "敦煌与藏经洞\n\n一九零零年道士王圆箓在莫高窟发现藏经洞，内藏四至十一世纪文书约五万件。斯坦因、伯希和等探险队以低价购走大"
+        },
+        {
+          "doc": "27_疫苗接种原理",
+          "ordinal": 0,
+          "char": "0-120",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "疫苗接种原理\n\n疫苗通过模拟病原体训练免疫系统：减毒活疫苗产生接近自然感染的免疫记忆，灭活疫苗安全性更高但需多剂次加强。"
+        },
+        {
+          "doc": "49_混合 量子纠缠通信",
+          "ordinal": 0,
+          "char": "0-259",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "混合 量子纠缠通信\n\nquantum entanglement 中两粒子状态关联，measure 一方立即确定另一方，爱"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        },
+        {
+          "doc": "11_向量量化PQ",
+          "ordinal": 0,
+          "char": "0-122",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "向量量化PQ\n\n乘积量化将高维向量切成若干子段，每段独立聚类为码本，原始向量只需存储码本索引，七百六十八维向量可压缩三十"
+        },
+        {
+          "doc": "23_近视防控",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "近视防控\n\n近视的主要环境风险是户外光照不足：视网膜多巴胺在强光下分泌增加，抑制眼轴增长。每天两小时以上户外活动可使儿童"
+        }
+      ]
+    },
+    {
+      "query": "礁白",
+      "elapsed_ms": 55,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "08_大堡礁白化",
+          "ordinal": 0,
+          "char": "0-119",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "大堡礁白化\n\n大堡礁是世界最大的珊瑚礁系统，绵延两千三百公里。珊瑚白化源于水温持续偏高导致共生虫黄藻排出，珊瑚失去百分之"
+        },
+        {
+          "doc": "03_深海热泉生态",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "深海热泉生态\n\n一九七七年，科学家在加拉帕戈斯裂谷两千五百米深处发现了不依赖阳光的生命系统。深海热泉喷口的硫化氢滋养了化"
+        },
+        {
+          "doc": "36_贝加尔湖",
+          "ordinal": 0,
+          "char": "0-107",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "贝加尔湖\n\n贝加尔湖是世界上最深的湖泊，最深处一千六百四十二米，淡水储量占全球液态淡水五分之一。湖龄两千五百万年，由裂谷"
+        },
+        {
+          "doc": "30_衣物污渍处理",
+          "ordinal": 0,
+          "char": "0-111",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "衣物污渍处理\n\n蛋白类污渍如血渍需冷水清洗，热水会使蛋白质变性固着；油脂污渍相反需要温水和表面活性剂。单宁类如红酒先用盐"
+        },
+        {
+          "doc": "01_青藏高原隆升",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "青藏高原隆升\n\n青藏高原是印度板块与欧亚板块持续碰撞的产物，自约五千万年前开始隆升，至今平均海拔超过四千米，被称为世界屋"
+        },
+        {
+          "doc": "37_马里亚纳海沟",
+          "ordinal": 0,
+          "char": "0-114",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "马里亚纳海沟\n\n马里亚纳海沟最深处为挑战者深渊，约一万零九百米，压强相当于一千一百个大气压。一九六零年雅克皮卡德与唐沃尔"
+        },
+        {
+          "doc": "39_格陵兰冰盖",
+          "ordinal": 0,
+          "char": "0-110",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "格陵兰冰盖\n\n格陵兰冰盖面积一百七十一万平方公里，最厚处超过三公里，全部融化将使全球海平面上升约七米。冰盖通过冰川入海与"
+        },
+        {
+          "doc": "35_撒哈拉之眼",
+          "ordinal": 0,
+          "char": "0-110",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "撒哈拉之眼\n\n理查特结构位于毛里塔尼亚撒哈拉沙漠，直径约五十公里，从太空清晰可见，曾长期被当作陨石坑。地质研究显示它是深"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        },
+        {
+          "doc": "pb_4_茶叶加工",
+          "ordinal": 0,
+          "char": "0-134",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "茶叶加工\n\n茶叶按加工氧化程度分六大类：绿茶不发酵，白茶微发酵，乌龙半发酵，红茶全发酵，黑茶后发酵。茶多酚在多酚氧化酶作"
+        }
+      ]
+    },
+    {
+      "query": "化大",
+      "elapsed_ms": 50,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 0,
+      "hits": [
+        {
+          "doc": "08_大堡礁白化",
+          "ordinal": 0,
+          "char": "0-119",
+          "channels": "向量",
+          "v_rank": 1,
+          "k_rank": null,
+          "rrf": 0.01639344262295082,
+          "snippet": "大堡礁白化\n\n大堡礁是世界最大的珊瑚礁系统，绵延两千三百公里。珊瑚白化源于水温持续偏高导致共生虫黄藻排出，珊瑚失去百分之"
+        },
+        {
+          "doc": "20_大航海时代",
+          "ordinal": 0,
+          "char": "0-121",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "大航海时代\n\n一四八八年迪亚士抵达好望角，一四九八年达伽马绕行非洲抵达印度，一五一九年麦哲伦船队开始环球航行。航海革命的"
+        },
+        {
+          "doc": "06_火山指数VEI",
+          "ordinal": 0,
+          "char": "0-138",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "火山指数VEI\n\n火山爆发烈度采用爆炸指数衡量，从零到八级，每升一级喷发体积增加十倍。一九九一年皮纳图博火山爆发为六级，"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        },
+        {
+          "doc": "36_贝加尔湖",
+          "ordinal": 0,
+          "char": "0-107",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "贝加尔湖\n\n贝加尔湖是世界上最深的湖泊，最深处一千六百四十二米，淡水储量占全球液态淡水五分之一。湖龄两千五百万年，由裂谷"
+        },
+        {
+          "doc": "11_向量量化PQ",
+          "ordinal": 0,
+          "char": "0-122",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "向量量化PQ\n\n乘积量化将高维向量切成若干子段，每段独立聚类为码本，原始向量只需存储码本索引，七百六十八维向量可压缩三十"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        },
+        {
+          "doc": "01_青藏高原隆升",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "青藏高原隆升\n\n青藏高原是印度板块与欧亚板块持续碰撞的产物，自约五千万年前开始隆升，至今平均海拔超过四千米，被称为世界屋"
+        },
+        {
+          "doc": "35_撒哈拉之眼",
+          "ordinal": 0,
+          "char": "0-110",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "撒哈拉之眼\n\n理查特结构位于毛里塔尼亚撒哈拉沙漠，直径约五十公里，从太空清晰可见，曾长期被当作陨石坑。地质研究显示它是深"
+        },
+        {
+          "doc": "pb_4_茶叶加工",
+          "ordinal": 0,
+          "char": "0-134",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "茶叶加工\n\n茶叶按加工氧化程度分六大类：绿茶不发酵，白茶微发酵，乌龙半发酵，红茶全发酵，黑茶后发酵。茶多酚在多酚氧化酶作"
+        }
+      ]
+    },
+    {
+      "query": "手流",
+      "elapsed_ms": 54,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "09_TLS握手流程",
+          "ordinal": 0,
+          "char": "0-130",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "TLS握手流程\n\nTLS一点三将握手从两次往返压缩到一次：客户端在首个消息中直接发送密钥交换素材，服务器返回密钥与加密后"
+        },
+        {
+          "doc": "41_混合 京都庭园",
+          "ordinal": 0,
+          "char": "0-160",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "混合 京都庭园\n\n京都龙安寺的石庭是枯山水代表：十五块石头分组置於白砂之上，任何角度最多同时看到十四块。禅意庭园以砂纹模"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        },
+        {
+          "doc": "pb_8_货币史",
+          "ordinal": 0,
+          "char": "0-136",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "货币史\n\n货币形态从贝壳、金属称量、铸币、纸币演进到电子支付。交子出现于北宋四川，是世界最早的纸币，起于铁钱笨重的民间凭"
+        },
+        {
+          "doc": "04_闪电形成原理",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "闪电形成原理\n\n闪电源于云内冰晶与霰粒碰撞导致的电荷分离，云上部带正电、下部带负电。当电位差达到每厘米三万伏的击穿阈值，"
+        },
+        {
+          "doc": "10_SQLite并发模型",
+          "ordinal": 0,
+          "char": "0-128",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "SQLite并发模型\n\nSQLite采用库级锁实现并发：多读单写。写入时通过回滚日志或预写日志保证原子性，预写日志模式下"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        },
+        {
+          "doc": "pb_3_古希腊哲学",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "古希腊哲学\n\n苏格拉底以诘问法追问定义，认为未经省察的人生不值得过。柏拉图建立学园，理念论主张可感世界只是理念世界的摹本"
+        },
+        {
+          "doc": "14_HTTP3与QUIC",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "HTTP3与QUIC\n\nHTTP三是基于QUIC协议的新一代传输层，QUIC运行在UDP之上，把传输层握手与加密握手合并"
+        },
+        {
+          "doc": "32_家庭网络布线",
+          "ordinal": 0,
+          "char": "0-115",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "家庭网络布线\n\n千兆内网建议六类网线，六类线在五十五米内可跑万兆。路由器摆放避开微波炉与金属柜，两点四吉赫频段穿墙好但干"
+        }
+      ]
+    },
+    {
+      "query": "流程",
+      "elapsed_ms": 47,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "09_TLS握手流程",
+          "ordinal": 0,
+          "char": "0-130",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "TLS握手流程\n\nTLS一点三将握手从两次往返压缩到一次：客户端在首个消息中直接发送密钥交换素材，服务器返回密钥与加密后"
+        },
+        {
+          "doc": "12_协程调度器",
+          "ordinal": 0,
+          "char": "0-122",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "协程调度器\n\nKotlin协程调度器将协程映射到线程池：调度器通过限制并发数实现背压，调度队列采用工作窃取算法平衡负载。"
+        },
+        {
+          "doc": "14_HTTP3与QUIC",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "HTTP3与QUIC\n\nHTTP三是基于QUIC协议的新一代传输层，QUIC运行在UDP之上，把传输层握手与加密握手合并"
+        },
+        {
+          "doc": "16_编译器优化层次",
+          "ordinal": 0,
+          "char": "0-127",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "编译器优化层次\n\n现代编译器优化分三个层次：前端做语言无关的常量折叠与死代码消除；中端做过程间分析与循环不变量外提；后端"
+        },
+        {
+          "doc": "27_疫苗接种原理",
+          "ordinal": 0,
+          "char": "0-120",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "疫苗接种原理\n\n疫苗通过模拟病原体训练免疫系统：减毒活疫苗产生接近自然感染的免疫记忆，灭活疫苗安全性更高但需多剂次加强。"
+        },
+        {
+          "doc": "17_丝绸之路简史",
+          "ordinal": 0,
+          "char": "0-114",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "丝绸之路简史\n\n丝绸之路正式开辟于西汉张骞两次出使西域之后，从长安经河西走廊、西域绿洲到达地中海，全长约七千公里。除丝绸"
+        },
+        {
+          "doc": "pb_1_区块链共识",
+          "ordinal": 0,
+          "char": "0-161",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "区块链共识\n\n区块链共识算法解决无中心环境下的记账一致性问题。工作量证明通过算力竞争出块，比特币将其间隔控制在约十分钟，"
+        },
+        {
+          "doc": "pb_4_茶叶加工",
+          "ordinal": 0,
+          "char": "0-134",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "茶叶加工\n\n茶叶按加工氧化程度分六大类：绿茶不发酵，白茶微发酵，乌龙半发酵，红茶全发酵，黑茶后发酵。茶多酚在多酚氧化酶作"
+        },
+        {
+          "doc": "10_SQLite并发模型",
+          "ordinal": 0,
+          "char": "0-128",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "SQLite并发模型\n\nSQLite采用库级锁实现并发：多读单写。写入时通过回滚日志或预写日志保证原子性，预写日志模式下"
+        },
+        {
+          "doc": "42_混合 茶马古道",
+          "ordinal": 0,
+          "char": "0-135",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "混合 茶马古道\n\n茶马古道以茶马互市得名，主干道从云南普洱经丽江、香格里拉入藏，海拔落差逾三千米。酥油茶提供高原必需的 "
+        }
+      ]
+    },
+    {
+      "query": "发模",
+      "elapsed_ms": 50,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "10_SQLite并发模型",
+          "ordinal": 0,
+          "char": "0-128",
+          "channels": "向量+关键词",
+          "v_rank": 11,
+          "k_rank": 1,
+          "rrf": 0.03047794966520434,
+          "snippet": "SQLite并发模型\n\nSQLite采用库级锁实现并发：多读单写。写入时通过回滚日志或预写日志保证原子性，预写日志模式下"
+        },
+        {
+          "doc": "pb_7_摄影曝光",
+          "ordinal": 0,
+          "char": "0-125",
+          "channels": "向量",
+          "v_rank": 1,
+          "k_rank": null,
+          "rrf": 0.01639344262295082,
+          "snippet": "摄影曝光\n\n曝光三角指光圈、快门与感光度的组合。光圈控制进光量与景深，f值每减半进光翻倍；快门决定凝固或拖影，安全快门约"
+        },
+        {
+          "doc": "04_闪电形成原理",
+          "ordinal": 0,
+          "char": "0-118",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "闪电形成原理\n\n闪电源于云内冰晶与霰粒碰撞导致的电荷分离，云上部带正电、下部带负电。当电位差达到每厘米三万伏的击穿阈值，"
+        },
+        {
+          "doc": "pb_8_货币史",
+          "ordinal": 0,
+          "char": "0-136",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "货币史\n\n货币形态从贝壳、金属称量、铸币、纸币演进到电子支付。交子出现于北宋四川，是世界最早的纸币，起于铁钱笨重的民间凭"
+        },
+        {
+          "doc": "18_活字印刷",
+          "ordinal": 0,
+          "char": "0-113",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "活字印刷\n\n北宋庆历年间毕昇发明胶泥活字，早于古登堡金属活字约四百年。活字印刷对雕版的优势在于复用：一部大书雕版需数年，"
+        },
+        {
+          "doc": "pb_5_城市规划",
+          "ordinal": 0,
+          "char": "0-136",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "城市规划\n\n现代城市规划的邻里单位思想主张以小学服务半径划定居住单元，减少穿越交通。公共交通导向开发以站点为中心高密度混"
+        },
+        {
+          "doc": "06_火山指数VEI",
+          "ordinal": 0,
+          "char": "0-138",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "火山指数VEI\n\n火山爆发烈度采用爆炸指数衡量，从零到八级，每升一级喷发体积增加十倍。一九九一年皮纳图博火山爆发为六级，"
+        },
+        {
+          "doc": "30_衣物污渍处理",
+          "ordinal": 0,
+          "char": "0-111",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "衣物污渍处理\n\n蛋白类污渍如血渍需冷水清洗，热水会使蛋白质变性固着；油脂污渍相反需要温水和表面活性剂。单宁类如红酒先用盐"
+        },
+        {
+          "doc": "pb_9_声音掩蔽",
+          "ordinal": 0,
+          "char": "0-126",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "声音掩蔽\n\n人耳的听觉掩蔽效应指一个声音使另一个声音不可察觉：频域掩蔽发生在邻近频率，时域掩蔽可先于或后于强信号数十毫秒"
+        },
+        {
+          "doc": "33_记忆力技巧",
+          "ordinal": 0,
+          "char": "0-116",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "记忆力技巧\n\n间隔重复利用遗忘曲线安排复习：学习后一天、三天、七天、二十一天各复习一次，记忆保持率可超过百分之九十。主动"
+        }
+      ]
+    },
+    {
+      "query": "模型",
+      "elapsed_ms": 51,
+      "space": "mediapipe-universal\/embeddinggemma-2-text-vision-440m\/raw-symmetric-v1-gpu",
+      "model": "embeddinggemma-2-text-vision-440m",
+      "vector_candidates": 30,
+      "keyword_candidates": 1,
+      "hits": [
+        {
+          "doc": "10_SQLite并发模型",
+          "ordinal": 0,
+          "char": "0-128",
+          "channels": "向量+关键词",
+          "v_rank": 1,
+          "k_rank": 1,
+          "rrf": 0.03278688524590164,
+          "snippet": "SQLite并发模型\n\nSQLite采用库级锁实现并发：多读单写。写入时通过回滚日志或预写日志保证原子性，预写日志模式下"
+        },
+        {
+          "doc": "pb_5_城市规划",
+          "ordinal": 0,
+          "char": "0-136",
+          "channels": "向量",
+          "v_rank": 2,
+          "k_rank": null,
+          "rrf": 0.016129032258064516,
+          "snippet": "城市规划\n\n现代城市规划的邻里单位思想主张以小学服务半径划定居住单元，减少穿越交通。公共交通导向开发以站点为中心高密度混"
+        },
+        {
+          "doc": "pb_8_货币史",
+          "ordinal": 0,
+          "char": "0-136",
+          "channels": "向量",
+          "v_rank": 3,
+          "k_rank": null,
+          "rrf": 0.015873015873015872,
+          "snippet": "货币史\n\n货币形态从贝壳、金属称量、铸币、纸币演进到电子支付。交子出现于北宋四川，是世界最早的纸币，起于铁钱笨重的民间凭"
+        },
+        {
+          "doc": "41_混合 京都庭园",
+          "ordinal": 0,
+          "char": "0-160",
+          "channels": "向量",
+          "v_rank": 4,
+          "k_rank": null,
+          "rrf": 0.015625,
+          "snippet": "混合 京都庭园\n\n京都龙安寺的石庭是枯山水代表：十五块石头分组置於白砂之上，任何角度最多同时看到十四块。禅意庭园以砂纹模"
+        },
+        {
+          "doc": "pb_3_古希腊哲学",
+          "ordinal": 0,
+          "char": "0-137",
+          "channels": "向量",
+          "v_rank": 5,
+          "k_rank": null,
+          "rrf": 0.015384615384615385,
+          "snippet": "古希腊哲学\n\n苏格拉底以诘问法追问定义，认为未经省察的人生不值得过。柏拉图建立学园，理念论主张可感世界只是理念世界的摹本"
+        },
+        {
+          "doc": "11_向量量化PQ",
+          "ordinal": 0,
+          "char": "0-122",
+          "channels": "向量",
+          "v_rank": 6,
+          "k_rank": null,
+          "rrf": 0.015151515151515152,
+          "snippet": "向量量化PQ\n\n乘积量化将高维向量切成若干子段，每段独立聚类为码本，原始向量只需存储码本索引，七百六十八维向量可压缩三十"
+        },
+        {
+          "doc": "06_火山指数VEI",
+          "ordinal": 0,
+          "char": "0-138",
+          "channels": "向量",
+          "v_rank": 7,
+          "k_rank": null,
+          "rrf": 0.014925373134328358,
+          "snippet": "火山指数VEI\n\n火山爆发烈度采用爆炸指数衡量，从零到八级，每升一级喷发体积增加十倍。一九九一年皮纳图博火山爆发为六级，"
+        },
+        {
+          "doc": "16_编译器优化层次",
+          "ordinal": 0,
+          "char": "0-127",
+          "channels": "向量",
+          "v_rank": 8,
+          "k_rank": null,
+          "rrf": 0.014705882352941176,
+          "snippet": "编译器优化层次\n\n现代编译器优化分三个层次：前端做语言无关的常量折叠与死代码消除；中端做过程间分析与循环不变量外提；后端"
+        },
+        {
+          "doc": "27_疫苗接种原理",
+          "ordinal": 0,
+          "char": "0-120",
+          "channels": "向量",
+          "v_rank": 9,
+          "k_rank": null,
+          "rrf": 0.014492753623188406,
+          "snippet": "疫苗接种原理\n\n疫苗通过模拟病原体训练免疫系统：减毒活疫苗产生接近自然感染的免疫记忆，灭活疫苗安全性更高但需多剂次加强。"
+        },
+        {
+          "doc": "49_混合 量子纠缠通信",
+          "ordinal": 0,
+          "char": "0-259",
+          "channels": "向量",
+          "v_rank": 10,
+          "k_rank": null,
+          "rrf": 0.014285714285714285,
+          "snippet": "混合 量子纠缠通信\n\nquantum entanglement 中两粒子状态关联，measure 一方立即确定另一方，爱"
+        }
+      ]
+    }
+  ]
+}

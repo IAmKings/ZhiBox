@@ -1,0 +1,10 @@
+{
+  "suite": "longtail-20",
+  "refused": 0,
+  "hits": 200,
+  "n": 20,
+  "R@1": 0.95,
+  "R@5": 0.95,
+  "R@10": 0.95,
+  "keyword_candidates_avg": 0.85
+}

@@ -1,0 +1,226 @@
+# ZhiBox 发布手册（Release Runbook）
+
+> 适用版本：`versionName = 0.1.0-mvp`（`app/build.gradle.kts`）
+> 对应批次：P2 B4（构建/依赖/发布）。相关实现：`app/build.gradle.kts`、`scripts/release.sh`、
+> `gradle/wrapper/gradle-wrapper.properties`、`gradle/verification-metadata.xml`。
+> 原则：**任何密钥/口令都不入仓库**；发布物必须可验签、可追溯、可回滚。
+
+---
+
+## 0. 构建/依赖基线（B4 升级后）
+
+| 项 | 版本 | 说明 |
+|---|---|---|
+| compileSdk / targetSdk | 36 / 36 | AGP 8.13.2 支持上限内 |
+| minSdk | 24 | 仅 arm64-v8a |
+| AGP | 8.13.2 | 本批次不升级（AGP 9.x 需整体迁移） |
+| Kotlin / KSP | 2.4.21 / 2.3.12 | 配对；Kotlin 2.5 与 KSP 2.3.12 未配对 |
+| Compose BOM | 2026.06.01 | compose 1.11.4；2026.09.00 需 compileSdk 37 + AGP 9.1.0，不可用 |
+| core-ktx | 1.18.0 | 1.19.x 需 compileSdk 37 + AGP 9.1.0，不可用 |
+| lifecycle | 2.10.0 | 2.11.0 的 viewmodel-compose 需 compileSdk 37 + AGP 9.1.0，不可用 |
+| activity-compose | 1.13.0 | 兼容（activity 1.13.0 需 compileSdk 36 + AGP 8.9.1） |
+| mediapipe tasks-retrieval | 1.1.1 | EGemma2 440M/740M 的 UniversalEmbedder 通道；**tasks-text 已于 B7 下线**（旧 EmbeddingGemma `.task`/Path C 移除） |
+| Gradle wrapper | 8.14.3 | `distributionSha256Sum` 已锁定 |
+
+**体积提示（B7 起）**：旧 Path C（tasks-text / `.task`）下线后，release APK 从 64.55MB 降到
+**≈49.07MB**（移除 `libmediapipe_tasks_textgenai_jni.so` 15.48MB）；保留 EGemma2 三模型路线所需的
+tasks-retrieval + litertlm。模型资产本身不进入 APK（运行时投放）。
+
+**升级/旧数据注意（B7）**：
+- 旧 Granite / 旧 EmbeddingGemma `.task` / LFM2.5 模型空间已停用；升级后设置页会提示"检测到 N 个旧模型空间"，
+  相关文档需**重新导入**才能被 EGemma2 检索（数据不会自动删除）。
+- 含旧模型空间的旧备份包导入会被拒绝（可读错误提示），请用新模型重新导入原始文档后再导出备份。
+- 新导出的备份包会把"仅有旧模型向量"的文档标记为 failed（`ready` 但无受支持向量的文档不再静默出现）：
+  恢复后可在导入页看到失败任务，重新导入原始文件即可重建 EGemma2 向量（failed 文档允许同 checksum 重导）。
+
+---
+
+## 1. 签名密钥 provision（用户自备，不入库）
+
+ZhiBox 的 release 签名材料从不入库；仓库只读取**环境变量**或**用户级 Gradle 属性**。
+两种方式二选一：
+
+### 1.1 生成 keystore（一次性，自行安全备份）
+
+```bash
+# 在仓库之外的目录执行；口令自行设定并妥善保管（丢失将无法升级已发布版本）
+keytool -genkeypair -v \
+  -keystore ~/keystores/zhibox-release.jks \
+  -alias zhibox \
+  -keyalg RSA -keysize 4096 -validity 10000 \
+  -storetype PKCS12
+```
+
+要求：
+- 文件权限收紧：`chmod 600 ~/keystores/zhibox-release.jks`；
+- **备份 keystore + 口令**（换机/重装后丢失即无法发布升级包）；
+- 不放入仓库、不放入 `dist/`、不贴进 issue/日志；`.gitignore` 已忽略 `*.jks`/`*.keystore`。
+
+### 1.2 方式 A（推荐）：`scripts/release.sh` + 环境变量
+
+脚本在构建 unsigned APK 后用 `zipalign + apksigner` 签名；口令以 `env:` 形式传给 apksigner，
+不出现在进程命令行：
+
+```bash
+export ANDROID_KEYSTORE_FILE="$HOME/keystores/zhibox-release.jks"
+export ANDROID_KEYSTORE_PASSWORD='***'
+export ANDROID_KEY_ALIAS='zhibox'
+export ANDROID_KEY_PASSWORD='***'
+./scripts/release.sh
+```
+
+未设置 `ANDROID_KEYSTORE_FILE` 时脚本会保留 unsigned 产物并醒目告警（仅可内部验证）。
+
+### 1.3 方式 B：Gradle signingConfig（`ZHIBOX_*`）
+
+写入**用户级** `~/.gradle/gradle.properties`（不是仓库的 `gradle.properties`）：
+
+```properties
+ZHIBOX_STORE_FILE=/Users/<you>/keystores/zhibox-release.jks
+ZHIBOX_STORE_PASSWORD=***
+ZHIBOX_KEY_ALIAS=zhibox
+ZHIBOX_KEY_PASSWORD=***
+```
+
+之后 `./gradlew :app:assembleRelease` 直接产出已签名 `app-release.apk`；
+`scripts/release.sh` 会识别并跳过二次签名。四项缺任意一项时 AGP 不签名（unsigned，不阻塞构建）。
+
+### 1.4 验签
+
+```bash
+apksigner verify --print-certs dist/zhibox-<version>-<sha>-release-signed.apk
+# 期望：DOES NOT ERROR / 输出 Signer #1 certificate DN + SHA-256
+```
+
+---
+
+## 2. 构建与归档
+
+```bash
+# 内部验收（debug，debug key 自动签名，允许 run-as/调试器）
+./scripts/release.sh --debug
+
+# 发布候选（release；有密钥则签名，无则为 unsigned 并告警）
+./scripts/release.sh
+
+# 纯 Gradle 方式
+./gradlew :app:assembleRelease
+```
+
+产物命名（`scripts/release.sh` 自动归档到 `dist/`，该目录已在 `.gitignore`）：
+
+```
+dist/zhibox-<versionName>-<gitSha7>[-dirty]-release[-signed].apk
+dist/zhibox-<versionName>-<gitSha7>[-dirty]-debug.apk
+dist/...apk.sha256        # SHA-256 sidecar（分发时必须附带）
+```
+
+`versionCode` 位于 `app/build.gradle.kts` 的 `defaultConfig`；**每次对外发布必须递增**，
+否则无法覆盖安装。发布前确认 `git status` 干净（脚本对 dirty 工作区会加 `-dirty` 标记并告警）。
+
+---
+
+## 3. 依赖校验与 Gradle 发行包完整性
+
+- **Gradle 包完整性**：wrapper 已锁定 `distributionSha256Sum`（Gradle 8.14.3 官方值）。
+  换版本必须同步更新；镜像重新打包导致校验失败时应改用官方源（见 wrapper 注释），
+  **不要**通过删除校验绕过。
+- **依赖校验（verification metadata）**：模板见 `gradle/verification-metadata.xml`。
+  > ⚠️ 该文件存在即启用 strict 校验。首次/依赖变更后必须先生成再跑门禁：
+  ```bash
+  ./gradlew --write-verification-metadata sha256 :app:assembleDebug
+  git add gradle/verification-metadata.xml
+  ```
+  之后任何未登记/被替换的依赖都会让构建失败。临时排障可加
+  `--dependency-verification=off`；若决定暂不启用，删除该文件并记录原因。
+
+---
+
+## 4. 构建可追溯（BuildConfig）
+
+`app/build.gradle.kts` 向 `BuildConfig` 注入：
+
+- `BUILD_GIT_SHA`：`git rev-parse --short=7 HEAD`，失败/非 git 工作区回退 `unknown`；
+- `BUILD_TIME`：ISO-8601 UTC；设置 `SOURCE_DATE_EPOCH` 时用于可复现构建。
+
+注意：release 开启 R8 后，未被引用的 BuildConfig 常量可能被裁剪，因此**对外追溯口径**为：
+`versionName`（APK badging）+ 归档文件名中的 `gitSha7` + `.sha256` + 发布记录里的 commit/tag。
+debug 包可用 `apkanalyzer dex packages/code` 直接核对 `com.zhibox.memory.BuildConfig`。
+
+---
+
+## 5. 真机安装（OEM 增强防护引导）
+
+OnePlus / ColorOS / OxygenOS（以及多数国产 ROM）会拦截“外部来源 APK”。按顺序尝试：
+
+1. **允许安装未知应用**：设置 → 应用 → 特殊应用权限 → 安装未知应用 → 选择你要用的
+   文件管理器/浏览器 → 允许。
+2. **关闭安装校验/增强防护**：设置 → 安全（或“密码与安全/系统安全”）→ 找到
+   “应用安装校验 / 安装前安全检测 / 增强防护” → 关闭（不同 OxygenOS 版本菜单名略有差异；
+   部分机型在“支付保护/安全防护”二级菜单内）。
+3. **兜底安装方式**：仍被拦截时，用 `adb install -r -d <apk>`（需开启开发者选项 USB 调试），
+   或临时开飞行模式后从文件管理器安装（安装完恢复网络）。
+
+安装后若“应用未安装/解析包错误”：先确认 ABI（仅 arm64-v8a，x86 模拟器不支持）、
+再确认与已安装版本签名一致（换签名必须卸载旧版，**卸载前先导出知识库备份**）。
+
+---
+
+## 6. 发布验收清单（Checklist）
+
+构建与产物
+
+- [ ] `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleRelease` 全绿
+- [ ] `scripts/release.sh` 或等价流程产出 `dist/...apk`，命名含 versionName + gitSha7 + 模式
+- [ ] 附带 `.sha256`，并与 `shasum -a 256 <apk>` 一致
+- [ ] `apksigner verify --print-certs <apk>` 通过（signed 产物）
+
+Manifest / 安全（P0-3、P1-10 回归）
+
+- [ ] `aapt2 dump badging <apk>`：无 `application-debuggable`（release）；package/versionCode/versionName 正确；
+      `native-code: 'arm64-v8a'`；`targetSdkVersion:'36'`
+- [ ] `aapt2 dump xmltree --file AndroidManifest.xml <apk>`：`allowBackup=false`、
+      `networkSecurityConfig` 指向的 XML 中 `cleartextTrafficPermitted=false`、白名单仅 `hf-mirror.com`
+- [ ] release dex 中无 `com.zhibox.memory.benchmark` / 实验 UI（`apkanalyzer dex packages`）
+
+功能 smoke（真机，arm64）
+
+- [ ] 冷启动 → 首页无“实验/诊断”入口（release）
+- [ ] 导入一个文件 → 文档 ready → 关键词/向量检索命中 → 证据页返回不丢结果
+- [ ] 备份导出 → 导入恢复（v2 格式）→ 再导出 vectors 数不降
+- [ ] 模型路线（B7 后仅 EGemma2）：Path A 440M/740M（UniversalEmbedder）与 Path B 270M（litertlm EmbeddingEngine）
+      分别加载并输出有限向量；三档强度推荐（270M/440M/740M）可切换
+- [ ] 旧数据兼容：含旧模型空间的库升级后设置页出现"旧模型空间"警告；旧备份导入被可读拒绝；删除旧文档后重新导入可恢复检索
+- [ ] 空间切换/重建向量流程可用；设置页模型下载 SHA 校验通过
+
+可追溯与回滚
+
+- [ ] 记录本次发布 commit/tag、versionCode/versionName、APK sha256
+- [ ] 上一发布版 APK + 对应 commit 已归档（回滚用）
+- [ ] 崩溃排查材料：保留 `app/build/outputs/mapping/release/mapping.txt` 与 commit 对应
+
+---
+
+## 7. 回滚说明
+
+1. **先保数据**：回滚/卸载前让用户执行“导出知识库备份”（设置页），避免个人知识库丢失。
+2. **同 versionCode 不能降级安装**：Android 不允许 versionCode 回退。
+   - 若只是回退代码但保持/提高 versionCode：用旧代码 + 更高 versionCode 重新构建发布（推荐）；
+   - 若必须装回旧包：先 `adb uninstall com.zhibox.memory`（会清数据！）再安装旧 APK。
+3. **数据库迁移不可逆**：Room 迁移已升级的库无法自动降级。回滚到旧 schema 前必须用
+   备份导出→导入方式迁移数据；发布前确认迁移测试（androidTest）在目标版本上通过。
+4. **签名一致性**：回滚包必须与已安装版本同签名（同一 keystore），否则只能卸载重装。
+5. 回滚后验证：`apksigner verify` → 安装 → 冷启动 → 导入/检索 smoke → 比对 sha256 与发布记录。
+
+---
+
+## 8. 常见问题
+
+| 现象 | 原因/处理 |
+|---|---|
+| `apksigner verify` 失败/缺 META-INF | 产物是 unsigned：按第 1 节配置密钥后重新签；unsigned 禁止对外分发 |
+| 安装提示签名不一致 | 与已装版本 keystore 不同：用户卸载（先导出备份）或沿用原 keystore |
+| 安装被 OEM 拦截 | 见第 5 节 3 步；兜底 `adb install -r -d` |
+| `Dependency requires compileSdk 37 / AGP 9.1.0` | 依赖版本超出兼容上限（见第 0 节表格），回退到兼容版本或整体迁移 AGP 9.x + compileSdk 37 |
+| Gradle wrapper sha256 校验失败 | 镜像包与官方不一致：切换官方 `services.gradle.org` 源，勿删除校验 |
+| release 崩溃但 debug 正常 | 用对应 commit 的 `mapping.txt` 反混淆；核对 proguard keep（MediaPipe/LiteRT-LM/Room/WorkManager）是否覆盖新依赖 |
