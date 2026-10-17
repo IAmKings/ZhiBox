@@ -120,7 +120,7 @@
 | B4-3 | infra P2-3 [partial] | ModelCatalog 维护性：`isVerifiedForNpu` 已删；维度/名单口径分散（`EXPECTED_DIM=768` vs catalog dims 1024）、`lowercase()` 受 locale 影响 | 维度单一来源（catalog）；`lowercase(Locale.ROOT)`；名单收敛到 ModelRouter | M | 单测覆盖 LFM 1024d；无 `EXPECTED_DIM` 散落 |
 | B4-4 | infra P2-8 | 交付产物不可追溯（无 build-info/git sha/构建元数据） | CI 注入 `buildInfo`（git sha/构建时间）到 assets 或 BuildConfig；dist 文件名带 tag | S | APK 内可读到 build-info |
 | B4-5 | infra P2-7 [partial]（与 B6-3 去重） | 仓库卫生：缺 LICENSE/NOTICE（vendored MIT）、`.zcode/plans` 被跟踪；语料/结果策略见 B6-3 | 补 LICENSE + `docs/reference/README` MIT 声明；移除 `.zcode/plans` 跟踪；已跟踪结果文件的去留交用户决策 | S | 仓库根有 LICENSE；`git ls-files` 无计划文件 |
-| B4-6 | device D3 | 发布链路：签名材料未 provision；OEM（OnePlus）全新安装弹"安装增强防护"引导，自动化安装需手工点 3 步 | 提供 `scripts/release.sh`（签名+verify+dist 命名）与 `docs/RELEASE.md`（密钥 provision、OEM 引导步骤、验收清单） | S | 按文档可产出 signed release；安装步骤脚本化/文档化 |
+| B4-6 | device D3 | 发布链路：签名材料未 provision；OEM（OnePlus）全新安装弹"安装增强防护"引导，自动化安装需手工点 3 步 | `scripts/release.sh` + `docs/RELEASE.md`；新增 tag 自动签名发布 workflow + GitHub Secrets | S | ✅ 已完成：tag `v0.1.0-mvp` → GitHub Release signed APK（49,096,275B，sha256 `d042895a…`），真机 smoke 通过 |
 | B4-7 | device D6 | release 非 debuggable，验收脚本取证口径未文档化 | `DEVICE_ACCEPTANCE.md` 增补 debug/release 各自取证方式（run-as vs UI/logcat） | S | 文档更新 |
 | B4-8 | infra P1-6 遗留 | CI 未在 GitHub 实跑；wrapper 镜像可达性未知 | 首次 push 验证 CI；必要时 wrapper 切官方源 + 缓存策略调整 | S | ✅ CI 首绿（run 39048803130，5m7s；补齐 Linux classpath verification 校验和） |
 | B4-9 | Standards S3 | 流式 SHA-256 仍有 3 份实现（`ModelIntegrity` / `ModelFingerprint` / `IngestRepository`） | 抽 `core/model/Sha256.kt`（流式/文件/增量 digest 三种入口），三处复用；单测锁定结果一致 | S | 三处调用统一实现；`ModelIntegrityTest`/`ModelFingerprintTest` 保持绿 |
@@ -247,13 +247,13 @@ B6 (文档/脚本) 可并行；B6-1 文档漂移同步放到 B1–B4 行为稳�
 | B2-6"需改 ordinal 唯一约束"表述有误 | 修正为"ordinal 唯一约束不受影响；需接受 chunk 区间重叠并重跑评测" |
 | B2-7 job.error 编码未定 | 明确结构化编码（`{code, detail}` 或 `CODE:detail`）并保留旧文本兼容 |
 | B3-11 估时偏低 | 提升为 M/L（约 1.5 人日） |
-| B4-8/B4-6 依赖外部条件（GitHub 仓库、签名密钥） | 标注"外部依赖"，不阻塞其他批次；未具备条件时以文档/脚本交付 |
+| B4-8/B4-6 依赖外部条件（GitHub 仓库、签名密钥） | 均已闭环：CI 首绿 + tag 自动签名发布（release keystore 本地 + GitHub Secrets） |
 
 ### 9.3 审查后仍未闭环（已显式接受，不隐藏）
 
 1. **生产迁移前快照**：Room 打开即迁移，应用层无可靠 pre-migrate 钩子；以"迁移事务回滚 + 真实 v4 快照测试 + 发布说明提示手动备份"替代（§6/§7）。
 2. **FTS5 / 分块重叠**：保持"仅评估/文档记录"（§6）。
-3. **B4-6/B4-8 外部依赖**：签名密钥与 GitHub 仓库就绪前无法完成实跑，作为发布前置条件跟踪。
+3. **B4-6/B4-8 外部依赖**：已闭环（签名密钥本地生成并配置 Secrets；GitHub 仓库 CI 首绿；tag Release 成功）。
 
 ---
 
@@ -323,7 +323,7 @@ B6 (文档/脚本) 可并行；B6-1 文档漂移同步放到 B1–B4 行为稳�
 
 | 项 | 结果 |
 |---|---|
-| B4-1a/1b/1c、B4-2…B4-7、B4-9 | **代码完成**（B4-1c/B4-2/B4-6 的外部验证项已尽量在本地执行：strict 门禁、sha 值核对、真实 unsigned 发布脚本） |
+| B4-1a/1b/1c、B4-2…B4-7、B4-9 | **全部完成**（含 B4-6 真实 signed release + GitHub Release、B4-8 CI 首绿） |
 | B4-8 | **已完成**：远端就绪后 push，补 4 个 verification 校验和后 CI 首绿（run 39048803130，5m7s） |
 | 依赖升级 | Compose BOM 2025.01.00→2026.06.01、core-ktx 1.18.0、lifecycle 2.10.0、activity-compose 1.13.0、tasks-text 1.1.1（最新目标需 compileSdk 37+AGP 9.1，取兼容上限；AGP/Kotlin/KSP 未升，原因已记录） |
 | JVM 测试 | debug **235 tests / 0 failed**；release unit 215 tests 全绿 |

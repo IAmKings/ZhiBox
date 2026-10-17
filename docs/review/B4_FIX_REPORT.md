@@ -11,7 +11,7 @@
 
 | 项目 | 结果 |
 |---|---|
-| B4 完成度 | **9/9 项完成**；B4-8 **CI 首次全绿已达成**（2026-10-18，run [39048803130](https://github.com/IAmKings/ZhiBox/actions/runs/39048803130)，commit `a8c9606`）；B4-1c/B4-2 的 CI 验证随首绿完成，B4-6 签名仍按用户决定不 provision |
+| B4 完成度 | **9/9 项完成**；B4-8 **CI 首绿**（run [39048803130](https://github.com/IAmKings/ZhiBox/actions/runs/39048803130)）；B4-6 **已生成 release keystore + GitHub Actions tag 自动签名发布**，成功产出 [GitHub Release v0.1.0-mvp](https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.0-mvp)（signed APK 49,096,275 B，SHA-256 `d042895a…`） |
 | JVM 测试 | **235 tests / 0 failed**（debug；release unit 215 tests 同步绿） |
 | 依赖校验 | **strict 模式（不带 `--write`）全绿**：`gradle/verification-metadata.xml` 565 components（另手工补 CI ubuntu 所需 aapt2 linux jar 校验和） |
 | Lint | **0 errors / 25 warnings**（`abortOnError=true`） |
@@ -70,10 +70,17 @@
 - 新增根 `LICENSE`（**MIT**，用户决策）与 `docs/reference/THIRD_PARTY_NOTICES.md`（AndroidX/Kotlin/MediaPipe/LiteRT-LM Apache-2.0、jieba MIT debug-only、org.json Public Domain test-only、模型资产声明）。
 - `.zcode/plans/*.md` 取消跟踪（`git ls-files .zcode` 为空），`.zcode/` 加入 `.gitignore`；已跟踪结果文件按用户决策保留。
 
-### B4-6 发布链路
-- 新增 `scripts/release.sh`（755）：`assembleRelease` → 若提供 `ANDROID_KEYSTORE_FILE/PASSWORD/ALIAS/KEY_PASSWORD` 则 zipalign+apksigner 签名（口令经 `env:` 传递，不落盘/不出现在 argv/日志）→ `apksigner verify --print-certs` → aapt2 检查（debuggable 直接失败）→ 归档 `dist/zhibox-<versionName>-<gitSha7>[-dirty]-<variant>[-signed].apk` + `.sha256`；无密钥则保留 unsigned 并醒目告警。
-- 新增 `docs/RELEASE.md`：密钥 provision（用户自备，不入库）、构建/产物命名、依赖校验、可追溯、OnePlus 安装增强防护 3 步引导 + adb 兜底、验收清单、回滚说明。
-- 遵守"不 provision 签名"决策：仓库无密钥；release 产物为 unsigned。
+### B4-6 发布链路（已完成，2026-10-18）
+- 本地 `scripts/release.sh`：`assembleRelease` → 有密钥时 AGP 签名/或 zipalign+apksigner → `apksigner verify --print-certs` → aapt2 检查（debuggable 直接失败）→ 归档 `dist/zhibox-<versionName>-<gitSha7>[-dirty]-<variant>[-signed].apk` + `.sha256`；无密钥保留 unsigned 并告警。
+- **release keystore（用户授权生成）**：`~/.zhibox-release/zhibox-release.jks`（RSA 4096 / PKCS12 / alias `zhibox` / 10000 天），口令与路径见同目录 `credentials.properties`（600）；证书 SHA-256 `B1:D1:36:BA:DC:C7:E0:32:A3:9D:85:04:FB:05:0F:98:F4:44:01:7A:EB:5F:5C:FC:E6:62:56:AF:EC:1D:B1:D1`。**须离线备份 keystore + 口令**。
+- **CI tag 自动发布**：新增 `.github/workflows/release.yml`，tag `v*` 触发；tag 与 versionName 强校验 → 解码 Secrets 中的 keystore → `:app:assembleRelease` → `apksigner verify` / 非 debuggable 校验 → 上传 signed APK + sha256 + R8 mapping 到 GitHub Release（`permissions: contents: write`）。
+- 仓库 Secrets 已通过 `gh secret set` 配置（`ZHIBOX_STORE_BASE64/ZHIBOX_STORE_PASSWORD/ZHIBOX_KEY_ALIAS/ZHIBOX_KEY_PASSWORD`，值不入库）。
+- **端到端验收**：tag `v0.1.0-mvp` → run [39051276434](https://github.com/IAmKings/ZhiBox/actions/runs/39051276434) ✅；Release [v0.1.0-mvp](https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.0-mvp) 资产：
+  - `zhibox-0.1.0-mvp-4a7f699-release-signed.apk`（49,096,275 B，SHA-256 `d042895a7078687e8f9ef0bf704a4deec74f29fb23c58bde0913ca95036d206f`）
+  - `.apk.sha256`、`-mapping.txt`（R8 mapping，约 56MB）
+  - 签名证书与本地一致（SHA-256 同上）；`aapt2` 显示非 debuggable、versionName `0.1.0-mvp`。
+- 真机 smoke：K40（`6D8H6TXSDYXC85PZ`）卸载 debug 后安装 signed release → 启动首页正常、`dumpsys package` flags 无 `DEBUGGABLE`（截图 `docs/review/b4-6-signed-release-smoke.png`）；结束后已恢复 debug 包 + 原 DB + 440M 模型。
+- 本地签名构建亦通过（`dist/zhibox-0.1.0-mvp-*-release-signed.apk`，证书一致）；修正 release.sh 对 AGP 已签名产物的 `-signed` 后缀与 unsigned 告警误报。
 
 ### B4-7 debug/release 取证口径
 - `docs/review/DEVICE_ACCEPTANCE.md` 新增附录：debug（run-as 读私有目录、autostart EXTRA、StrictMode 日志）vs release（不可 run-as、不解析实验 extra、无 StrictMode、UI/logcat/SAF 取证）差异 + 发布验收最低清单。
@@ -131,7 +138,7 @@ verification-metadata = 565 components
 | 4 | B4-1c "CI 依赖校验通过" | 本地 strict 门禁通过；metadata 补 aapt2 linux；CI 仍未实跑 | 无 git remote；CI 首跑可能仍因平台其他 artifact 缺校验和失败，需首次 push 后按报告处理 |
 | 5 | B4-4 "assets 或 BuildConfig" | 仅 BuildConfig | 无 assets 注入任务，避免无法跑 Gradle 时引入自定义 Task 风险；R8 裁剪口径已文档化 |
 | 6 | B4-5 "vendored MIT 声明" | LICENSE=MIT（用户确认）+ 第三方 NOTICE | 符合决策 |
-| 7 | B4-6 "按文档产出 signed release" | 脚本支持外部密钥签名；仓库未 provision 密钥 | 遵守用户"不 provision 签名"决策；unsigned 分支可产出并验签流程已备 |
+| 7 | B4-6 "按文档产出 signed release" | **已完成**：生成 release keystore（用户授权）+ 配置仓库 Secrets + tag 自动签名发布 workflow；tag `v0.1.0-mvp` 产出 GitHub Release signed APK | 密钥仅本地 + GitHub Secrets，不入库；须离线备份 |
 | 8 | B4-2 "wrapper 校验通过" | 写入官方 sha256（已与 Gradle 官方 8.14.3 值核对）；未实测镜像包下载校验 | 镜像与官方包同源；若镜像返回不同字节校验会失败（符合预期保护）；CI 侧可加 `gradle/actions/wrapper-validation`（已加入 workflow） |
 | 9 | 未计划 | APK 体积：debug 62.5→83.8MB、release 48.6→64.5MB | tasks-text 1.1.1 新增 genai native so（~15.5MB）+ serialization-core；已记录，若不可接受可评估 jniLibs excludes（需真机确认 Path C 不用） |
 | 10 | 未计划 | release 加 R8 keep 规则保留 BuildConfig 字段 | B4-4 验收要求 APK 内可读；keep 后 release dex 已实测含两字段 |
@@ -181,7 +188,7 @@ verification-metadata = 565 components
 | B4-3 | implemented | 确认；额外补 SearchService Locale.ROOT |
 | B4-4 | **wrong（release 被 R8 裁剪）→ 已修复** | 加 proguard keep；release dex 实测含 BUILD_GIT_SHA/BUILD_TIME |
 | B4-5 | implemented | 确认（LICENSE MIT/NOTICE/.zcode 0 跟踪） |
-| B4-6 | partial（未真实签名） | **改善**：真实 unsigned 端到端跑通（dist 命名+sha256）；签名路径需外部密钥（用户决策不 provision） |
+| B4-6 | **已完成** | 生成 keystore + GitHub Secrets + `.github/workflows/release.yml`；tag `v0.1.0-mvp` Release 资产验签/非 debuggable/sha256 全通过；真机 signed release smoke 通过 |
 | B4-7 | implemented | 确认 |
 | B4-8 | **已完成** | 远端就绪后首次 push；补齐 4 个 verification-metadata 缺失校验和后 **CI 首绿**（run 39048803130，5m7s）；B4-1c/B4-2 的 CI 验证同步闭环 |
 | B4-9 | implemented | 确认（main 唯一 MessageDigest；FIPS/流式/不关闭测试） |
