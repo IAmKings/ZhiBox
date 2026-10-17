@@ -183,7 +183,11 @@ TXT/Markdown 导入 → 本地分块 → 端侧 embedding → SQLite 存储与�
 
 ---
 
-## 7. Phase 2/3 路线图（简述，另行立项）
+## 7. Phase 2/3 路线图（简述；2026-10-18 已由后续 PRD/路线图细化取代）
+
+> **后续计划**：`docs/product/PRD_ZhiBox_SAG_App_v1.0.md`（P0 事件-实体索引/多跳检索/引用问答/图谱）与
+> `docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md`（B8–B12 批次）已细化本节的 Phase 2/3；
+> 对齐证据见 `docs/review/SAG_APP_ALIGNMENT_REPORT.md`。以下保留为 2026-10-16 的历史简述。
 
 - **Phase 2 关系检索（预计 1–2 周 + 质量不可控预留）**：event/entity schema 与 SQL 关系扩展（对照参考素材 `db/models.py`）、规则版 extractor（对照 `prompts/extract_document.yaml` 设计规则，或远程 LLM 混合）、候选融合引入关系分数。**增益验证门**：关系扩展对 Recall/MRR 的提升不显著则坦然接受"高质量离线搜索"定位，不强推（调查报告 R5）。
 - **Phase 3 可选生成与生产化（2–4 周）**：远程 LLM AnswerGenerator（显式联网授权 + 引用校验）或本地 LLM 评估；备份/导出、诊断页、遥测（本地）。

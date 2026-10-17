@@ -245,6 +245,36 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 7) 后续规划文档存在性与结构（PRD/ROADMAP/对齐报告）
+# ---------------------------------------------------------------------------
+section "7) 后续规划文档（PRD/ROADMAP/对齐报告）"
+PRD_DOC="docs/product/PRD_ZhiBox_SAG_App_v1.0.md"
+ROADMAP_DOC="docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md"
+ALIGN_DOC="docs/review/SAG_APP_ALIGNMENT_REPORT.md"
+for f in "$PRD_DOC" "$ROADMAP_DOC" "$ALIGN_DOC"; do
+  if [ -f "$f" ]; then pass "存在 $(basename "$f")"; else fail "缺少规划文档：$f"; fi
+done
+if [ -f "$PRD_DOC" ]; then
+  MISSING_FR=""
+  for n in 01 02 03 04 05 06 07 08 09 10 11; do
+    grep -q "FR-$n" "$PRD_DOC" || MISSING_FR="$MISSING_FR FR-$n"
+  done
+  if [ -z "$MISSING_FR" ]; then pass "PRD 覆盖 FR-01..FR-11"; else fail "PRD 缺少需求编号：$MISSING_FR"; fi
+fi
+if [ -f "$ROADMAP_DOC" ]; then
+  MISSING_B=""
+  for b in 8 9 10 11 12; do grep -q "B$b" "$ROADMAP_DOC" || MISSING_B="$MISSING_B B$b"; done
+  if [ -z "$MISSING_B" ]; then pass "ROADMAP 覆盖 B8–B12"; else fail "ROADMAP 缺少批次：$MISSING_B"; fi
+fi
+if [ -f "$ALIGN_DOC" ]; then
+  if grep -q "总体不对齐" "$ALIGN_DOC" && grep -q "能力对齐矩阵" "$ALIGN_DOC"; then
+    pass "对齐报告含结论与能力矩阵"
+  else
+    fail "对齐报告缺少'总体不对齐'结论或'能力对齐矩阵'章节"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # 汇总
 # ---------------------------------------------------------------------------
 printf '\n────────────────────────────────────────────\n'

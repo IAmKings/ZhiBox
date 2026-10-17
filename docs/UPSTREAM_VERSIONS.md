@@ -9,6 +9,17 @@
 > 本文件是实施计划（docs/SAG_Android_MVP_Implementation_Plan_v1.0.md）第 2 节"参考版本"决策的落地记录。
 > 规则：实施期间不追新；任何锚点变更须走独立 PR 并重新执行对照 diff（见 docs/reference/zleap-sag-0.14.0/README.md 升级流程）。
 
+## SAG 应用/论文锚点（2026-10-18 记录，用于后续功能 PRD/对齐报告）
+
+| 锚点 | 值 | 说明 |
+|---|---|---|
+| SAG 应用 README-CN | main commit `a6f6a00f36ce0cbe43cd2fc0445b479e4ae4fff6`；README-CN blob `6b0df82e0a90457dc8f83efbd258b20d0b2b4596`（33,492 B） | 2026-10-16 抓取；产品功能/接口/集成/解析器/部署说明来源 |
+| SAG 论文 | **arXiv:2606.15971v2**（SAG: SQL-Retrieval Augmented Generation with Query-Time Dynamic Hyperedges；2026-08-25 修订） | 事件-实体索引、动态超边、双路径检索、消融/局限/成本；后续 PRD 的机制依据 |
+| 应用要求引擎版本 | `zleap-sag==0.13.0`（README-CN 当前要求） | 与本地参考 **0.14.0** 存在版本漂移；对齐报告已标注，升级参考须独立 PR + diff |
+
+> 说明：应用仓库 README 约定了 `zleap-sag==0.13.0`，而本工程 `docs/reference/zleap-sag-0.14.0/` 为 0.14.0
+> wheel 提取；引用其 API/行为时以本地参考为准，涉及应用层行为时以 README-CN 对应 commit 为准。
+
 ## 锚点三件套（2026-10-15 记录）
 
 | 锚点 | 值 | 说明 |

@@ -74,7 +74,7 @@
 ## W4-2 评测集 v2（2026-10-16 深夜，K60U × 440M 默认）
 
 **升级**：50 卡（+5 en：Roman Roads/Black Holes/CRISPR/Honeybee/Van Gogh）；
-**262 查询** = fact/synonym/multihop/exact 各 50 + **numdate 20（数字/日期单列，§9.3 要求落地）**
+**262 查询** = fact/synonym/multihop/exact 各 50 + **adversarial 42** + **numdate 20（数字/日期单列，§9.3 要求落地）**
 + 对抗 42（去碰撞：删"量子计算机纠错码/敦煌月牙泉"两条与语料共享实体的，补微积分/古巴导弹危机）；
 en 28 条（原 8）。
 
