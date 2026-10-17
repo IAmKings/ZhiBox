@@ -48,9 +48,17 @@
     "capped_hits": 5000
   },
   "thresholds": {
-    "vector_p95_limit_ms": 500,
-    "keyword_p95_limit_ms": 2000,
+    "vector_p95_limit_ms": 2000,
+    "keyword_p95_limit_ms": 10000,
     "heap_limit_mb": 1024,
-    "note": "仅病态兜底；基线以同机对比为准；heap 为 used heap 观测区间"
+    "note": "仅病态兜底，非性能门禁；本机 vs GitHub 共享 runner 差值约 3–6x；基线以同机对比为准"
+  },
+  "ci_runner": {
+    "vector_p50_ms": 12,
+    "vector_p95_ms": 13,
+    "keyword_p50_ms": 2156,
+    "keyword_p95_ms": 2534,
+    "run": 39050373093,
+    "note": "GitHub Actions ubuntu-latest 共享 runner 实测（2026-10-17）"
   }
 }

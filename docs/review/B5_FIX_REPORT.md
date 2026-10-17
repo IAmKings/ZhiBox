@@ -82,7 +82,7 @@ lint = 0 errors / 25 warnings
 | 场景 | 结果 |
 |---|---|
 | 10k×768 向量扫描（JVM） | p50=4ms、p95=4ms；矩阵 29MB；used heap 46–287MB（GC 波动） |
-| 10k 关键词重排（JVM，1200 字/条） | p50=416ms、p95=436ms（多轮 401–436） |
+| 10k 关键词重排（JVM，1200 字/条） | 本机 p50=416ms/p95=436ms；GitHub runner p50≈2156ms/p95≈2534ms（CI 阈值 10s 防 flaky） |
 | 100k 矩阵 | 预估 292MB；流式门限生效（100 页 ×1000） |
 | 10k FTS DAO（真机，B2） | warm p50=5ms、p95=7ms |
 
@@ -110,7 +110,7 @@ lint = 0 errors / 25 warnings
 |---|---|---|---|
 | 1 | Robolectric 首次运行需联网 | 需下载 `android-all-instrumented`（API 35/36） | CI/新机器首次需网络；缓存后离线可跑；文档已注明 |
 | 2 | Robolectric 使用真实 AppDatabase | 依赖反射清空单例（main 无 DI） | 测试隔离已验证；若未来加 DI seam 可简化 |
-| 3 | 10k 关键词重排 416ms 偏高 | 极端场景（10k 候选×1200 字符）纯 JVM | 作为回归基线；生产 83 chunk 无影响；超基线时人工/CI 预警 |
+| 3 | 10k 关键词重排 416ms 偏高 | 极端场景（10k 候选×1200 字符）纯 JVM；共享 CI 可到 ~2.5s | 作为回归基线；阈值 10s 仅兜底避免 CI flaky；生产 83 chunk 无影响 |
 | 4 | 100k 未做端到端 | 仅门限与预估内存 | 计划允许；需要时上真机/宏基准（B6/后续） |
 | 5 | Compose 覆盖不全 | 未覆盖 Import/Settings 交互、真实搜索链路（需模型/DB） | 已有 fake 状态链；后续可补 TestActivity/DI |
 | 6 | recreate 用例用真实 MainActivity | ui-test-manifest 的空 ComponentActivity 不 setContent | 已用 ActivityScenario；稳定通过；如需 fake-content 重建需 androidTest 专用 TestActivity |

@@ -24,9 +24,11 @@ class SyntheticRetrievalScalingTest {
         const val WARMUP = 3
         const val ROUNDS = 10
         const val TOP_K = 10
-        // 阈值只做病态兜底（实测向量 p95=4ms、关键词 p95=436ms，留 ~100x/4x 余量防慢机误报）
-        const val VECTOR_P95_LIMIT_MS = 500L
-        const val KEYWORD_P95_LIMIT_MS = 2_000L
+        // 阈值只做病态兜底，不是性能门禁：本机（Apple Silicon JVM）向量 p95=4ms、关键词 p95=436ms；
+        // GitHub 共享 runner 实测向量 p95=13ms、关键词 p95=2534ms（CPU 争用/降频），
+        // 因此留足 ~150x / ~4x 余量，避免 CI 因基础设施抖动误红（基线值仍打印到日志/JSON）。
+        const val VECTOR_P95_LIMIT_MS = 2_000L
+        const val KEYWORD_P95_LIMIT_MS = 10_000L
         // 数据量：10_000×768 float = 29MB。used heap（非增量/峰值）受 GC 时机影响，
         // debug/release-unit 实测 46–235MB 波动 → 仅作病态兜底，基线以打印值为准
         // （见 docs/review/b5/10k-baseline.json）。
