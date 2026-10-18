@@ -10,6 +10,14 @@ import com.zhibox.memory.R
 import com.zhibox.memory.core.backup.KnowledgeBackup
 import com.zhibox.memory.core.embedding.EmbeddingRuntime
 import com.zhibox.memory.core.ingest.IngestRepository
+import com.zhibox.memory.core.llm.KeystoreLlmConfigStore
+import com.zhibox.memory.core.llm.LlmConfig
+import com.zhibox.memory.core.llm.LlmConfigStore
+import com.zhibox.memory.core.llm.LlmErrorCode
+import com.zhibox.memory.core.llm.LlmStoreException
+import com.zhibox.memory.core.llm.LlmPreferences
+import com.zhibox.memory.core.llm.LlmTestResult
+import com.zhibox.memory.core.llm.OpenAiCompatibleLlmProvider
 import com.zhibox.memory.core.ingest.ReembedScheduler
 import com.zhibox.memory.core.model.ModelCatalog
 import com.zhibox.memory.core.model.PathPreferences
@@ -31,6 +39,17 @@ import java.util.Locale
 
 /** 模型文件条目：文件大小在 ViewModel 的 IO 阶段算好，composition 内不再做 `File.length()` 磁盘 IO。 */
 data class ModelFileItem(val file: File, val label: String, val sizeBytes: Long)
+
+/**
+ * B8：设置页 LLM 配置视图模型（**只含掩码 key**，明文 apiKey 永不进入 UiState/日志/错误文案）。
+ */
+data class LlmConfigUi(
+    val baseUrl: String,
+    val model: String,
+    val timeoutSeconds: Int,
+    /** 形如 "sk-***abcd"；null = 未保存密钥 */
+    val maskedKey: String?,
+)
 
 /** 向量空间条目：维度取自 `embedding_meta.dimensions`（不再解析 spaceId 推断，P1-6）。 */
 data class SpaceInfo(val id: String, val count: Int, val dimensions: Int)
@@ -82,6 +101,21 @@ data class SettingsUiState(
     val diagMessage: String? = null,
     val importPreview: KnowledgeBackup.ImportPreview? = null,
     val importUri: Uri? = null,
+    // ---- B8：SAG 增强 / LLM（未配置时离线检索不受影响；默认禁网） ----
+    /** LLM 配置（仅掩码 key）；null = 未配置 */
+    val llm: LlmConfigUi? = null,
+    /** 连接测试进行中（finally 复位） */
+    val llmTesting: Boolean = false,
+    /** 连接测试结果/保存/清除结果（可读；不含明文 key） */
+    val llmTestMessage: String? = null,
+    /** LLM 配置读取/存储错误（如 Keystore 解密失败；可读且不含 key） */
+    val llmError: String? = null,
+    /** SAG 增强（事件/实体抽取）开关 */
+    val sagEnabled: Boolean = false,
+    /** 问答生成开关 */
+    val answerEnabled: Boolean = false,
+    /** 禁止网络总开关（true = 拒绝所有 LLM 调用；默认 true） */
+    val networkDisabled: Boolean = true,
 )
 
 /**
@@ -129,6 +163,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val indexHealth: IngestRepository.IndexHealth?,
         val legacySpaces: List<LegacySpaceUi>,
         val legacySpacesError: String?,
+        // B8
+        val llm: LlmConfigUi?,
+        val llmError: String?,
+        val sagEnabled: Boolean,
+        val answerEnabled: Boolean,
+        val networkDisabled: Boolean,
     )
 
     fun refresh() {
@@ -164,6 +204,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         indexHealth = s.indexHealth,
                         legacySpaces = s.legacySpaces,
                         legacySpacesError = s.legacySpacesError,
+                        llm = s.llm,
+                        llmError = s.llmError,
+                        sagEnabled = s.sagEnabled,
+                        answerEnabled = s.answerEnabled,
+                        networkDisabled = s.networkDisabled,
                     )
                 }
             } catch (e: CancellationException) {
@@ -215,6 +260,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 t.readableMessage(),
             )
         }
+        // B8：LLM 配置（只取掩码 key）与隐私开关。store/prefs 为同步轻量 API，此处已在 IO 上下文。
+        // load() 在配置损坏/解密失败时抛 LlmStoreException（message 中文可读）：
+        // 不静默吞——把可读原因放进 llmError 展示，同时不阻塞设置页其余内容刷新。
+        val llmSnapshot = readLlmSnapshot()
+        val llm = llmSnapshot.config
+        val llmError = llmSnapshot.error
+        val sagEnabled = LlmPreferences.sagEnabled(app)
+        val answerEnabled = LlmPreferences.answerEnabled(app)
+        val networkDisabled = !LlmPreferences.networkAllowed(app)
         val storeState = SharedModelStore.state(app)
         val sharedNames = if (storeState == SharedModelStore.State.CONNECTED) {
             SharedModelStore.listNamesSync(app)
@@ -237,6 +291,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             indexHealth = indexHealth,
             legacySpaces = legacySpaces,
             legacySpacesError = legacySpacesError,
+            llm = llm,
+            llmError = llmError,
+            sagEnabled = sagEnabled,
+            answerEnabled = answerEnabled,
+            networkDisabled = networkDisabled,
         )
     }
 
@@ -505,6 +564,252 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
+
+    // ───────────────────────── B8：SAG 增强 / LLM（设置页骨架） ─────────────────────────
+
+    /** 加密配置存储（Keystore AES/GCM）。构造/读写均为轻量同步 API，调用方须在 IO 上下文。 */
+    private val llmStore: LlmConfigStore by lazy { KeystoreLlmConfigStore(app) }
+
+    /** B8：LLM 配置读取结果（config=null 且 error=null 表示未配置）。 */
+    private data class LlmSnapshot(val config: LlmConfigUi?, val error: String?)
+
+    /**
+     * 读取 LLM 配置为 UI 模型：**只调用 maskedKey()**，不把明文 apiKey 带出 core/llm。
+     * core 约定：未配置返回 null；配置损坏/解密失败抛 LlmStoreException（message 中文可读）。
+     * 这里把失败原因转成可读文案（不含 key），不阻塞设置页其余内容刷新。
+     */
+    private fun readLlmSnapshot(): LlmSnapshot = try {
+        val store = llmStore
+        val config = store.load()
+        if (config == null) {
+            LlmSnapshot(config = null, error = null)
+        } else {
+            LlmSnapshot(
+                config = LlmConfigUi(
+                    baseUrl = config.baseUrl,
+                    model = config.model,
+                    timeoutSeconds = config.timeoutSeconds,
+                    maskedKey = store.maskedKey(),
+                ),
+                error = null,
+            )
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (t: Throwable) {
+        LlmSnapshot(
+            config = null,
+            error = str(R.string.settings_llm_load_failed, t.readableMessage()),
+        )
+    }
+
+    /**
+     * 保存 LLM 配置。`apiKey` 为空 = 保留已保存密钥；无任何可用密钥时给出可读提示。
+     * 错误文案会做明文 key 脱敏兜底（正常情况下 core 的异常/toString 已脱敏）。
+     */
+    fun saveLlmConfig(baseUrl: String, model: String, apiKey: String, timeoutSeconds: Int) {
+        val trimmedKey = apiKey.trim()
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        llmTestMessage = str(
+                            R.string.settings_llm_save_failed,
+                            redactSecret(t.readableMessage(), trimmedKey),
+                        ),
+                    )
+                }
+            },
+        ) {
+            val saved = withContext(Dispatchers.IO) {
+                val store = llmStore
+                val effectiveKey = if (trimmedKey.isNotBlank()) {
+                    trimmedKey
+                } else {
+                    // 不 runCatching：配置损坏时 load() 的 LlmStoreException 需冒泡为可读错误，
+                    // 而不是误报“请填写 API Key”。
+                    store.load()?.apiKey.orEmpty()
+                }
+                check(effectiveKey.isNotBlank()) { str(R.string.settings_llm_api_key_required) }
+                store.save(
+                    LlmConfig(
+                        baseUrl = baseUrl.trim(),
+                        model = model.trim(),
+                        apiKey = effectiveKey,
+                        timeoutSeconds = timeoutSeconds.coerceIn(1, 120),
+                    ),
+                )
+                LlmConfigUi(
+                    baseUrl = baseUrl.trim(),
+                    model = model.trim(),
+                    timeoutSeconds = timeoutSeconds.coerceIn(1, 120),
+                    maskedKey = store.maskedKey(),
+                )
+            }
+            update {
+                it.copy(
+                    llm = saved,
+                    llmTestMessage = str(R.string.settings_llm_saved),
+                )
+            }
+        }
+    }
+
+    /**
+     * 测试连接：统一走 Provider（禁网由 Provider 内部按隐私策略强制返回 LLM_OFFLINE 且零请求，
+     * UI **不**仅靠本地开关短路，保证任何调用方都无法绕过网络策略）；保存的配置缺失时提示先保存。
+     * 成功展示延迟/模型；失败展示 core 的 `readableMessage()`（不含明文 key），
+     * 本地存储损坏与网络错误分开提示。
+     */
+    fun testLlmConnection() {
+        if (_state.value.llmTesting) return
+        update { it.copy(llmTesting = true, llmTestMessage = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        llmTesting = false,
+                        llmTestMessage = str(R.string.settings_llm_test_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            try {
+                val result = try {
+                    withContext(Dispatchers.IO) {
+                        // 不 runCatching：配置损坏时 LlmStoreException 由下面单独归类展示
+                        val config = llmStore.load()
+                        if (config == null) {
+                            null
+                        } else {
+                            OpenAiCompatibleLlmProvider.from(app).testConnection(config)
+                        }
+                    }
+                } catch (e: LlmStoreException) {
+                    // 本地存储/解密错误 ≠ 网络错误：展示“LLM 配置读取失败”并给出恢复入口
+                    update {
+                        it.copy(
+                            llmTesting = false,
+                            llmTestMessage = str(
+                                R.string.settings_llm_load_failed,
+                                e.readableMessage(),
+                            ),
+                        )
+                    }
+                    return@safeLaunch
+                }
+                update {
+                    it.copy(
+                        llmTesting = false,
+                        llmTestMessage = when (result) {
+                            null -> str(R.string.settings_llm_test_needs_saved)
+                            is LlmTestResult.Success -> if (result.model.isBlank()) {
+                                str(R.string.settings_llm_test_ok_no_model, result.latencyMs)
+                            } else {
+                                str(R.string.settings_llm_test_ok, result.latencyMs, result.model)
+                            }
+                            is LlmTestResult.Failure -> when (result.code) {
+                                // Provider 在禁网时强制零请求：展示“已拦截”而非笼统连接失败
+                                LlmErrorCode.OFFLINE ->
+                                    str(R.string.settings_llm_test_network_blocked)
+                                else -> buildString {
+                                    append(
+                                        str(
+                                            R.string.settings_llm_test_failed,
+                                            result.readableMessage(),
+                                        ),
+                                    )
+                                    // 按稳定错误码追加可执行动作提示；未知 code 保留 readableMessage 兜底
+                                    append(
+                                        when (result.code) {
+                                            LlmErrorCode.AUTH -> str(R.string.settings_llm_hint_auth)
+                                            LlmErrorCode.INSECURE_URL ->
+                                                str(R.string.settings_llm_hint_https)
+                                            LlmErrorCode.RATE_LIMITED ->
+                                                str(R.string.settings_llm_hint_rate_limited)
+                                            LlmErrorCode.TIMEOUT,
+                                            LlmErrorCode.NETWORK ->
+                                                str(R.string.settings_llm_hint_network)
+                                            else -> ""
+                                        },
+                                    )
+                                }
+                            }
+                        },
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } finally {
+                update { it.copy(llmTesting = false) }
+            }
+        }
+    }
+
+    /**
+     * 清除本机保存的 LLM 配置（core `clear()` 会删除整份配置：baseUrl/model/加密 key；下次保存
+     * 自动重建 Keystore key）。离线检索与已索引数据不受影响；表单本地输入会保留便于重填。
+     */
+    fun clearLlmKey() {
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        llmTestMessage = str(R.string.settings_llm_clear_key_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            withContext(Dispatchers.IO) { llmStore.clear() }
+            update {
+                // core 的 clear() 清除整份配置（含 URL/模型），这里如实置空；表单本地输入会保留，
+                // 用户可重新填写后保存。离线检索与已索引数据不受影响。
+                it.copy(
+                    llm = null,
+                    llmTestMessage = str(R.string.settings_llm_clear_key_done),
+                )
+            }
+        }
+    }
+
+    fun setSagEnabled(enabled: Boolean) {
+        updateToggle(
+            failureId = R.string.settings_llm_toggle_failed,
+            write = { LlmPreferences.setSagEnabled(app, enabled) },
+        ) { it.copy(sagEnabled = enabled) }
+    }
+
+    fun setAnswerEnabled(enabled: Boolean) {
+        updateToggle(
+            failureId = R.string.settings_llm_toggle_failed,
+            write = { LlmPreferences.setAnswerEnabled(app, enabled) },
+        ) { it.copy(answerEnabled = enabled) }
+    }
+
+    /** `disabled = true` 表示禁止网络（持久化为 networkAllowed=false，默认即禁网）。 */
+    fun setNetworkDisabled(disabled: Boolean) {
+        updateToggle(
+            failureId = R.string.settings_llm_toggle_failed,
+            write = { LlmPreferences.setNetworkAllowed(app, !disabled) },
+        ) { it.copy(networkDisabled = disabled) }
+    }
+
+    private fun updateToggle(
+        failureId: Int,
+        write: () -> Unit,
+        apply: (SettingsUiState) -> SettingsUiState,
+    ) {
+        safeLaunch(
+            onError = { t -> update { it.copy(llmTestMessage = str(failureId, t.readableMessage())) } },
+        ) {
+            withContext(Dispatchers.IO) { write() }
+            update { apply(it) }
+        }
+    }
+
+    /** 错误/提示文案中的明文 key 兜底脱敏（正常情况下 core 不返回含 key 的消息）。 */
+    private fun redactSecret(message: String, secret: String): String =
+        if (secret.isNotBlank()) message.replace(secret, "***") else message
 
     fun reembedNow() {
         safeLaunch(

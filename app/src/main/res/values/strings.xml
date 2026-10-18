@@ -195,7 +195,7 @@
     <string name="settings_kb_summary">%1$d 个文档就绪 · %2$d 个块</string>
 
     <string name="settings_section_privacy">隐私与离线声明</string>
-    <string name="settings_privacy_text">· 检索、嵌入、导入全链路离线运行，无 LLM 参与\n· 应用唯一联网路径是显式用户触发的模型下载（URL + SHA-256 校验）\n· 知识数据（文档/向量/索引）仅存于本机应用沙箱，不上传不备份</string>
+    <string name="settings_privacy_text">· 检索、嵌入、导入默认离线运行；未配置 LLM 或开启禁网时不发起任何 LLM 请求\n· 仅在你显式保存并开启 SAG 增强/问答、且关闭禁网后，才会向指定 HTTPS 端点发送检索片段（发送前显示目标域名）\n· 模型下载是另一条显式联网路径（URL + SHA-256 校验）\n· 知识数据（文档/向量/索引）仅存于本机应用沙箱，不上传不备份</string>
 
     <string name="settings_refresh_failed">刷新设置失败：%1$s</string>
     <string name="settings_leave_title">下载仍在进行</string>
@@ -229,4 +229,47 @@
     <string name="settings_legacy_unknown_model">未知模型</string>
     <string name="settings_legacy_spaces_error">旧模型空间检查失败：%1$s</string>
     <string name="settings_legacy_spaces_hint">→ 本应用不会自动删除任何数据；如需让相关文档重新可检索，请在「来源」页删除旧来源后重新导入。</string>
+
+    <!-- ==== B8：SAG 增强 / LLM 设置（密钥不落 UI 明文；默认禁网） ==== -->
+    <string name="settings_section_llm">SAG 增强 / LLM</string>
+    <string name="settings_llm_disabled_hint">未配置 LLM：离线检索可用，SAG 增强/问答未启用。</string>
+    <string name="settings_llm_base_url">Base URL</string>
+    <string name="settings_llm_base_url_hint">https://api.example.com/v1</string>
+    <string name="settings_llm_model">模型名</string>
+    <string name="settings_llm_model_hint">例如 gpt-4o-mini / deepseek-chat</string>
+    <string name="settings_llm_api_key">API Key</string>
+    <string name="settings_llm_api_key_hint">留空则保留已保存密钥</string>
+    <string name="settings_llm_timeout">超时（秒）</string>
+    <string name="settings_llm_save">保存配置</string>
+    <string name="settings_llm_test">测试连接</string>
+    <string name="settings_llm_testing">测试中…</string>
+    <string name="settings_llm_clear_key">清除密钥</string>
+    <string name="settings_llm_clear_key_title">清除 LLM 密钥</string>
+    <string name="settings_llm_clear_key_message">将删除本机保存的 API Key；SAG 增强/问答将无法调用 LLM，离线检索与已索引数据不受影响。</string>
+    <string name="settings_llm_clear_key_done">已清除 LLM 密钥</string>
+    <string name="settings_llm_clear_key_failed">清除密钥失败：%1$s</string>
+    <string name="settings_llm_masked_key">已保存密钥：%1$s</string>
+    <string name="settings_llm_no_key">未保存密钥</string>
+    <string name="settings_llm_saved">LLM 配置已保存</string>
+    <string name="settings_llm_save_failed">保存 LLM 配置失败：%1$s</string>
+    <string name="settings_llm_load_failed">LLM 配置读取失败：%1$s（可尝试清除后重新配置）</string>
+    <string name="settings_llm_hint_auth">（请检查 API Key 是否有效）</string>
+    <string name="settings_llm_hint_https">（Base URL 必须为 https://）</string>
+    <string name="settings_llm_hint_rate_limited">（请求过于频繁，请稍后重试）</string>
+    <string name="settings_llm_hint_network">（请检查网络连接与超时设置）</string>
+    <string name="settings_llm_invalid_config">请先填写 Base URL 与模型名</string>
+    <string name="settings_llm_api_key_required">请填写 API Key（或保留已保存密钥）</string>
+    <string name="settings_llm_test_network_blocked">禁止网络已开启：未发起任何请求（Provider 已按隐私策略拦截），请先关闭「禁止网络」</string>
+    <string name="settings_llm_invalid_timeout">超时需为 1–120 秒的整数</string>
+    <string name="settings_llm_test_needs_saved">请先保存配置再测试连接</string>
+    <string name="settings_llm_test_ok">连接成功（%1$d ms · 模型 %2$s）</string>
+    <string name="settings_llm_test_ok_no_model">连接成功（%1$d ms）</string>
+    <string name="settings_llm_test_failed">连接失败：%1$s</string>
+    <string name="settings_sag_toggle">SAG 增强（事件/实体抽取）</string>
+    <string name="settings_answer_toggle">问答生成</string>
+    <string name="settings_network_disabled_toggle">禁止网络</string>
+    <string name="settings_network_disabled_hint">开启后拒绝所有 LLM 调用（含 SAG 增强/问答）；默认开启。</string>
+    <string name="settings_llm_privacy_hint">仅在开启对应开关且未禁止网络时，向上述 OpenAI-compatible 地址发送检索片段等必要数据；密钥仅保存在本机（加密存储），不写入日志/备份。</string>
+    <string name="settings_llm_remote_hint">远程请求会携带检索到的文档片段（可能含个人信息），请只配置你信任的服务。</string>
+    <string name="settings_llm_toggle_failed">保存开关失败：%1$s</string>
 </resources>

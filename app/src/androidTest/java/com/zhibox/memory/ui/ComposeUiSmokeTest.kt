@@ -1,12 +1,11 @@
 package com.zhibox.memory.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.zhibox.memory.MainActivity
@@ -161,30 +160,30 @@ class ComposeUiSmokeTest {
 /**
  * P1-8/B5-2 重建冒烟：真实 [MainActivity] 被 `recreate()`（等价旋转/配置变更）后仍渲染首页。
  *
- * 使用 [createEmptyComposeRule] + [ActivityScenario]：Activity 由测试自己启动/重建，
- * 规则只负责 Compose 语义树与 idle 同步。MainActivity 在 `onCreate` 里自行 `setContent`，
- * 因此重建后会自动重新渲染——不依赖任何模型/DB 数据（首页为静态文案）。
+ * 使用 [createAndroidComposeRule] 托管 Activity：规则负责启动/同步语义树，
+ * `activityRule.scenario.recreate()` 触发真实销毁重建。MainActivity 在 `onCreate` 里
+ * 自行 `setContent`，重建后自动重新渲染；首页为静态文案，不依赖模型/DB。
+ *
+ * 历史：B5 用 createEmptyComposeRule + ActivityScenario 在部分 OEM（K40）上出现
+ * WindowManager/BLASTSyncEngine 等待挂起（instrumentation 无法完成），改用官方
+ * createAndroidComposeRule 后稳定。
  */
 @RunWith(AndroidJUnit4::class)
 class ComposeRecreateSmokeTest {
 
     @get:Rule
-    val composeRule = createEmptyComposeRule()
-
-    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
     fun recreate_后首页仍可渲染() {
-        val homeTitle = context.getString(R.string.home_title)
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            composeRule.waitForIdle()
-            composeRule.onNodeWithText(homeTitle).assertIsDisplayed()
+        val homeTitle = composeRule.activity.getString(R.string.home_title)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(homeTitle).assertIsDisplayed()
 
-            // 等价旋转/深色切换/分屏：Activity 销毁重建，onCreate 重新注入内容
-            scenario.recreate()
-            composeRule.waitForIdle()
-            composeRule.onNodeWithText(homeTitle).assertIsDisplayed()
-        }
+        // 等价旋转/深色切换/分屏：Activity 销毁重建，onCreate 重新注入内容
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(homeTitle).assertIsDisplayed()
     }
 }
 

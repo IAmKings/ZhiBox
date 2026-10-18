@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -21,19 +22,25 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -62,6 +69,7 @@ fun SettingsScreen(
     var pendingClearAll by remember { mutableStateOf(false) }
     var importDropGpu by remember { mutableStateOf(true) }
     var showLeaveDialog by remember { mutableStateOf(false) }
+    var pendingClearLlmKey by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip"),
@@ -218,6 +226,25 @@ fun SettingsScreen(
         )
     }
 
+    if (pendingClearLlmKey) {
+        AlertDialog(
+            onDismissRequest = { pendingClearLlmKey = false },
+            title = { Text(stringResource(R.string.settings_llm_clear_key_title)) },
+            text = { Text(stringResource(R.string.settings_llm_clear_key_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingClearLlmKey = false
+                    viewModel.clearLlmKey()
+                }) { Text(stringResource(R.string.settings_llm_clear_key)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingClearLlmKey = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
     val actions = SettingsActions(
         onBack = ::attemptBack,
         setPreference = viewModel::setPreference,
@@ -240,6 +267,14 @@ fun SettingsScreen(
         repairIndex = viewModel::repairIndex,
         reembedNow = viewModel::reembedNow,
         cancelReembed = viewModel::cancelReembed,
+        saveLlmConfig = { baseUrl, model, apiKey, timeoutSeconds ->
+            viewModel.saveLlmConfig(baseUrl, model, apiKey, timeoutSeconds)
+        },
+        testLlmConnection = viewModel::testLlmConnection,
+        clearLlmKey = { pendingClearLlmKey = true },
+        setSagEnabled = viewModel::setSagEnabled,
+        setAnswerEnabled = viewModel::setAnswerEnabled,
+        setNetworkDisabled = viewModel::setNetworkDisabled,
     )
     SettingsContent(state = state, actions = actions)
 }
@@ -261,6 +296,13 @@ class SettingsActions(
     val repairIndex: () -> Unit = {},
     val reembedNow: () -> Unit = {},
     val cancelReembed: () -> Unit = {},
+    // B8：SAG 增强 / LLM
+    val saveLlmConfig: (String, String, String, Int) -> Unit = { _, _, _, _ -> },
+    val testLlmConnection: () -> Unit = {},
+    val clearLlmKey: () -> Unit = {},
+    val setSagEnabled: (Boolean) -> Unit = {},
+    val setAnswerEnabled: (Boolean) -> Unit = {},
+    val setNetworkDisabled: (Boolean) -> Unit = {},
 )
 
 /** 无状态设置内容：供 [SettingsScreen] 与 @Preview / UI 测试直接渲染（B3-7）。 */
@@ -787,6 +829,181 @@ internal fun SettingsContent(
                 }
             }
 
+            // ---- B8：SAG 增强 / LLM（骨架：配置/测试/开关；未配置时离线检索零回归） ----
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        stringResource(R.string.settings_section_llm),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    val llm = state.llm
+                    if (llm == null) {
+                        Text(
+                            stringResource(R.string.settings_llm_disabled_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Text(
+                            llm.maskedKey?.let { stringResource(R.string.settings_llm_masked_key, it) }
+                                ?: stringResource(R.string.settings_llm_no_key),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (llm.maskedKey != null) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+
+                    state.llmError?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+
+                    // 表单本地状态：baseUrl/model/timeout 可跨重建保留；apiKey 不用 rememberSaveable
+                    //（避免明文密钥进入 saved instance state）。
+                    var llmBaseUrl by rememberSaveable { mutableStateOf(llm?.baseUrl.orEmpty()) }
+                    var llmModel by rememberSaveable { mutableStateOf(llm?.model.orEmpty()) }
+                    var llmTimeout by rememberSaveable {
+                        mutableStateOf((llm?.timeoutSeconds ?: 30).toString())
+                    }
+                    var llmApiKey by remember { mutableStateOf("") }
+                    var llmFormMessage by remember { mutableStateOf<String?>(null) }
+                    val invalidConfigMessage = stringResource(R.string.settings_llm_invalid_config)
+                    val invalidTimeoutMessage = stringResource(R.string.settings_llm_invalid_timeout)
+                    LaunchedEffect(llm) {
+                        if (llm != null) {
+                            llmBaseUrl = llm.baseUrl
+                            llmModel = llm.model
+                            llmTimeout = llm.timeoutSeconds.toString()
+                            llmApiKey = ""
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = llmBaseUrl,
+                        onValueChange = { llmBaseUrl = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_llm_base_url)) },
+                        placeholder = { Text(stringResource(R.string.settings_llm_base_url_hint)) },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = llmModel,
+                        onValueChange = { llmModel = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_llm_model)) },
+                        placeholder = { Text(stringResource(R.string.settings_llm_model_hint)) },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = llmApiKey,
+                        onValueChange = { llmApiKey = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_llm_api_key)) },
+                        placeholder = { Text(stringResource(R.string.settings_llm_api_key_hint)) },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    )
+                    OutlinedTextField(
+                        value = llmTimeout,
+                        onValueChange = { input -> llmTimeout = input.filter { it.isDigit() } },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_llm_timeout)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                val timeout = llmTimeout.trim().toIntOrNull()
+                                llmFormMessage = when {
+                                    llmBaseUrl.isBlank() || llmModel.isBlank() -> invalidConfigMessage
+                                    timeout == null || timeout !in 1..120 -> invalidTimeoutMessage
+                                    else -> {
+                                        actions.saveLlmConfig(
+                                            llmBaseUrl.trim(),
+                                            llmModel.trim(),
+                                            llmApiKey,
+                                            timeout,
+                                        )
+                                        null
+                                    }
+                                }
+                            },
+                        ) { Text(stringResource(R.string.settings_llm_save)) }
+                        OutlinedButton(
+                            onClick = actions.testLlmConnection,
+                            enabled = !state.llmTesting,
+                        ) {
+                            Text(
+                                if (state.llmTesting) {
+                                    stringResource(R.string.settings_llm_testing)
+                                } else {
+                                    stringResource(R.string.settings_llm_test)
+                                },
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = actions.clearLlmKey,
+                            // 读取/解密失败（llmError）时也允许清除，作为恢复入口
+                            enabled = state.llm?.maskedKey != null || state.llmError != null,
+                        ) { Text(stringResource(R.string.settings_llm_clear_key)) }
+                    }
+                    llmFormMessage?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    state.llmTestMessage?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+
+                    HorizontalDivider()
+                    SwitchRow(
+                        label = stringResource(R.string.settings_sag_toggle),
+                        checked = state.sagEnabled,
+                        onCheckedChange = actions.setSagEnabled,
+                    )
+                    SwitchRow(
+                        label = stringResource(R.string.settings_answer_toggle),
+                        checked = state.answerEnabled,
+                        onCheckedChange = actions.setAnswerEnabled,
+                    )
+                    SwitchRow(
+                        label = stringResource(R.string.settings_network_disabled_toggle),
+                        checked = state.networkDisabled,
+                        onCheckedChange = actions.setNetworkDisabled,
+                    )
+                    Text(
+                        stringResource(R.string.settings_network_disabled_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        stringResource(R.string.settings_llm_privacy_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        stringResource(R.string.settings_llm_remote_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             // ---- 隐私与离线声明 ----
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -802,6 +1019,22 @@ internal fun SettingsContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -861,6 +1094,16 @@ private fun SettingsDarkPreview() {
                     LegacySpaceUi("legacy-model-a", 123),
                     LegacySpaceUi("", 45),
                 ),
+                // B8：已配置 LLM 样例（只展示掩码 key）
+                llm = LlmConfigUi(
+                    baseUrl = "https://api.example.com/v1",
+                    model = "gpt-4o-mini",
+                    timeoutSeconds = 30,
+                    maskedKey = "sk-***abcd",
+                ),
+                sagEnabled = true,
+                answerEnabled = false,
+                networkDisabled = true,
             ),
             actions = SettingsActions(),
         )

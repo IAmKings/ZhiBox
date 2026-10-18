@@ -160,12 +160,12 @@ class MigrationV1ToV5Test {
             assertTrue("document.sizeBytes 默认值缺失", checked)
         }
 
-        // --- 链式迁移后的库可被 v5 实体打开并正常读写 ---
+        // --- 链式迁移后的库可被 v6 实体打开并正常读写 ---
         val context = ApplicationProvider.getApplicationContext<Context>()
         val roomDb = Room.databaseBuilder(context, AppDatabase::class.java, name)
             .addMigrations(
                 AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4,
-                AppDatabase.MIGRATION_4_5,
+                AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6,
             )
             .build()
         try {

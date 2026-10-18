@@ -22,8 +22,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         IngestJobEntity::class,
         SchemaMigrationEntity::class,
         AppKvEntity::class,
+        // ---- B8（schema v6）：SAG 层 ----
+        SagVectorEntity::class,
+        EventFtsEntity::class,
+        EntityFtsEntity::class,
+        ExtractionJobEntity::class,
+        ChatConversationEntity::class,
+        ChatMessageEntity::class,
+        MessageCitationEntity::class,
+        QueryTraceEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +43,15 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ingestJobDao(): IngestJobDao
     abstract fun schemaMigrationDao(): SchemaMigrationDao
     abstract fun appKvDao(): AppKvDao
+
+    // ---- B8（schema v6）：SAG 抽取/检索/问答 ----
+    abstract fun eventDao(): EventDao
+    abstract fun entityDao(): EntityDao
+    abstract fun eventEntityDao(): EventEntityDao
+    abstract fun sagVectorDao(): SagVectorDao
+    abstract fun extractionJobDao(): ExtractionJobDao
+    abstract fun chatDao(): ChatDao
+    abstract fun queryTraceDao(): QueryTraceDao
 
     companion object {
         /**
@@ -321,6 +339,180 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * schema v5 → v6（B8：SAG 数据层铺路，**纯 additive**）：
+         *
+         * 1) `event` 扩展为完整抽取结果（title/summary/content/language/status/版本戳/active/
+         *    supersededBy/createdAt），并加唯一索引 `(chunkId, extractionVersion)`——相同 chunk
+         *    的同一抽取版本只允许一行，重抽取靠新 UUID 产生新行再由 supersede 事务收口；
+         * 2) `entity` 扩展 name/description/createdAt；`event_entity` 扩展 weight/description；
+         * 3) 新表：sag_vector（event/entity 语义向量）、event_fts/entity_fts（FTS4，可从行重建）、
+         *    extraction_job（每 chunk 一条抽取任务）、chat_conversation/chat_message/
+         *    message_citation（P1 问答）、query_trace（本地检索诊断）；
+         * 4) 迁移**不做网络/重嵌入**：新表初始为空，既有检索/导入行为不变；旧库 event/entity
+         *    预留行保留（新列取默认值，`active=1`/`status='active'` 视为尚未抽取的旧行）；
+         * 5) 唯一索引前先按 `(chunkId, extractionVersion)` 去重（保留 id 最大=最新行）：v5 从未写入
+         *    event 表，此步只对人为/历史异常数据生效，保证迁移不会因唯一约束失败；
+         * 6) 迁移后 `PRAGMA foreign_key_check` 必须为空，并写入 schema_migrations.version=6。
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // ---- 1) event：扩展列（全部 NOT NULL 列带默认值，旧行安全回填） ----
+                db.execSQL("ALTER TABLE event ADD COLUMN title TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE event ADD COLUMN summary TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE event ADD COLUMN content TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE event ADD COLUMN language TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE event ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
+                db.execSQL("ALTER TABLE event ADD COLUMN extractorVersion TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE event ADD COLUMN extractionVersion TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE event ADD COLUMN modelId TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE event ADD COLUMN promptVersion TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE event ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE event ADD COLUMN supersededBy INTEGER")
+                db.execSQL("ALTER TABLE event ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+                // 唯一索引前处理重复行（见方法注释第 5 点；v5 无 event 写入，正常库为空操作）：
+                // 不删除旧行（避免 FK 级联误删 event_entity / 破坏"additive 不丢数据"约定），
+                // 而是给非最新重复行分配确定性的 legacy 版本戳，使唯一索引成立且旧行仍可追溯。
+                db.execSQL(
+                    "UPDATE event SET extractionVersion = 'legacy-v5-' || id " +
+                        "WHERE id NOT IN " +
+                        "(SELECT MAX(id) FROM event GROUP BY chunkId, extractionVersion)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_event_chunkId_extractionVersion` " +
+                        "ON `event` (`chunkId`, `extractionVersion`)"
+                )
+
+                // ---- 2) entity / event_entity 扩展列 ----
+                db.execSQL("ALTER TABLE entity ADD COLUMN name TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE entity ADD COLUMN description TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE entity ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE event_entity ADD COLUMN weight REAL NOT NULL DEFAULT 1.0")
+                db.execSQL("ALTER TABLE event_entity ADD COLUMN description TEXT")
+
+                // ---- 3) sag_vector（owner 多态，无 FK；按 owner/空间+角色建索引） ----
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `sag_vector` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`ownerType` TEXT NOT NULL, `ownerId` INTEGER NOT NULL, " +
+                        "`role` TEXT NOT NULL, `spaceId` TEXT NOT NULL, " +
+                        "`dimensions` INTEGER NOT NULL, `vectorBlob` BLOB NOT NULL, " +
+                        "`vectorNorm` REAL NOT NULL, `createdAt` INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_sag_vector_ownerType_ownerId` " +
+                        "ON `sag_vector` (`ownerType`, `ownerId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_sag_vector_spaceId_role_ownerType` " +
+                        "ON `sag_vector` (`spaceId`, `role`, `ownerType`)"
+                )
+
+                // ---- 4) event_fts / entity_fts（FTS4；与 chunk_fts 同风格，可从行全量重建） ----
+                db.execSQL(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS `event_fts` USING FTS4(" +
+                        "`eventId` INTEGER NOT NULL, `text` TEXT NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS `entity_fts` USING FTS4(" +
+                        "`entityId` INTEGER NOT NULL, `text` TEXT NOT NULL)"
+                )
+
+                // ---- 5) extraction_job（每 chunk 一条；document/chunk 级联清理） ----
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `extraction_job` (" +
+                        "`id` TEXT NOT NULL, `documentId` TEXT NOT NULL, `chunkId` INTEGER NOT NULL, " +
+                        "`status` TEXT NOT NULL, `attempt` INTEGER NOT NULL DEFAULT 0, " +
+                        "`errorCode` TEXT, `errorDetail` TEXT, " +
+                        "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`), " +
+                        "FOREIGN KEY(`documentId`) REFERENCES `document`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE, " +
+                        "FOREIGN KEY(`chunkId`) REFERENCES `chunk`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE )"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_extraction_job_documentId` " +
+                        "ON `extraction_job` (`documentId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_extraction_job_chunkId` " +
+                        "ON `extraction_job` (`chunkId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_extraction_job_status` " +
+                        "ON `extraction_job` (`status`)"
+                )
+
+                // ---- 6) chat_conversation / chat_message / message_citation（P1 问答；不随备份导出） ----
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `chat_conversation` (" +
+                        "`id` TEXT NOT NULL, `title` TEXT NOT NULL, `sourceScope` TEXT, " +
+                        "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`))"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `chat_message` (" +
+                        "`id` TEXT NOT NULL, `conversationId` TEXT NOT NULL, `role` TEXT NOT NULL, " +
+                        "`content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `model` TEXT, " +
+                        "PRIMARY KEY(`id`), " +
+                        "FOREIGN KEY(`conversationId`) REFERENCES `chat_conversation`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE )"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_chat_message_conversationId` " +
+                        "ON `chat_message` (`conversationId`)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `message_citation` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`messageId` TEXT NOT NULL, `chunkId` INTEGER NOT NULL, `rank` INTEGER NOT NULL, " +
+                        "FOREIGN KEY(`messageId`) REFERENCES `chat_message`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE )"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_message_citation_messageId` " +
+                        "ON `message_citation` (`messageId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_message_citation_chunkId` " +
+                        "ON `message_citation` (`chunkId`)"
+                )
+
+                // ---- 7) query_trace（本地诊断；仅保留最近 N 条，不含正文） ----
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `query_trace` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`queryHash` TEXT NOT NULL, `mode` TEXT NOT NULL, `timingJson` TEXT NOT NULL, " +
+                        "`degradedReason` TEXT, `createdAt` INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_query_trace_queryHash` " +
+                        "ON `query_trace` (`queryHash`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_query_trace_createdAt` " +
+                        "ON `query_trace` (`createdAt`)"
+                )
+
+                // ---- 8) 迁移记录 ----
+                db.execSQL(
+                    "INSERT OR IGNORE INTO schema_migrations (`version`, `appliedAt`) " +
+                        "VALUES (6, ${System.currentTimeMillis()})"
+                )
+
+                // ---- 9) 迁移后外键完整性自检：任何违规都让事务回滚 ----
+                val violations = db.query("PRAGMA foreign_key_check")
+                try {
+                    check(!violations.moveToFirst()) {
+                        "schema v5→v6 迁移后存在外键违规，已回滚（请检查孤儿数据/迁移逻辑）"
+                    }
+                } finally {
+                    violations.close()
+                }
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -331,7 +523,9 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "zhibox.sqlite3",
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(
+                        MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                    )
                     .build().also { instance = it }
             }
     }

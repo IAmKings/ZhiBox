@@ -80,3 +80,86 @@ enum class JobStage(val value: String) {
         fun fromValue(raw: String?): JobStage? = raw?.let(byValue::get)
     }
 }
+
+// ───────────────────────── B8（schema v6）：SAG 层状态枚举 ─────────────────────────
+
+/**
+ * event.status（B8/v6）：抽取结果生命周期。
+ * - active：当前有效（每 chunk 至多一条 active，由 supersede 事务保证）；
+ * - superseded：被同 chunk 的新抽取结果替代（[EventEntity.supersededBy] 指向新 event id）；
+ * - discarded：低质量/违规结果主动丢弃（保留行用于审计，不参与检索）。
+ */
+enum class EventStatus(val value: String) {
+    ACTIVE("active"),
+    SUPERSEDED("superseded"),
+    DISCARDED("discarded"),
+    ;
+
+    companion object {
+        private val byValue: Map<String, EventStatus> = values().associateBy { it.value }
+
+        /** 未知值返回 null（读取路径原样展示，不抛异常） */
+        fun fromValue(raw: String?): EventStatus? = raw?.let(byValue::get)
+    }
+}
+
+/**
+ * extraction_job.status（B8/v6，B9 使用）：
+ * - queued / running：队列中/在途（[ACTIVE_VALUES]，worker 互斥/取消守卫使用）；
+ * - done：成功写入 event/entity/sag_vector；
+ * - failed：失败（[attempt] < 上限时可重排队，超过后保留供 UI 手动重试）；
+ * - cancelled：用户取消/删除导入；
+ * - not_indexed：无 LLM/开关关闭/禁网时跳过抽取（文档仍 ready，可离线检索原文）。
+ */
+enum class ExtractionJobStatus(val value: String) {
+    QUEUED("queued"),
+    RUNNING("running"),
+    DONE("done"),
+    FAILED("failed"),
+    CANCELLED("cancelled"),
+    NOT_INDEXED("not_indexed"),
+    ;
+
+    companion object {
+        /** 未终结状态（queued+running）：抽取 worker 互斥/取消守卫/回收中断任务使用 */
+        val ACTIVE_VALUES: List<String> = listOf(QUEUED, RUNNING).map { it.value }
+
+        /** 终态：不再被 worker 领取（done/failed/cancelled/not_indexed） */
+        val TERMINAL: Set<ExtractionJobStatus> = setOf(DONE, FAILED, CANCELLED, NOT_INDEXED)
+
+        private val byValue: Map<String, ExtractionJobStatus> = values().associateBy { it.value }
+
+        /** 未知值返回 null（读取路径原样展示，不抛异常） */
+        fun fromValue(raw: String?): ExtractionJobStatus? = raw?.let(byValue::get)
+    }
+}
+
+/** sag_vector.ownerType（B8/v6）：多态 owner 类型 */
+enum class SagOwnerType(val value: String) {
+    EVENT("EVENT"),
+    ENTITY("ENTITY"),
+    ;
+
+    companion object {
+        val VALUES: List<String> = values().map { it.value }
+
+        private val byValue: Map<String, SagOwnerType> = values().associateBy { it.value }
+
+        /** 未知值返回 null（读取路径原样展示，不抛异常） */
+        fun fromValue(raw: String?): SagOwnerType? = raw?.let(byValue::get)
+    }
+}
+
+/** chat_message.role（B8/v6，P1 问答） */
+enum class ChatRole(val value: String) {
+    USER("user"),
+    ASSISTANT("assistant"),
+    SYSTEM("system"),
+    ;
+
+    companion object {
+        private val byValue: Map<String, ChatRole> = values().associateBy { it.value }
+
+        fun fromValue(raw: String?): ChatRole? = raw?.let(byValue::get)
+    }
+}

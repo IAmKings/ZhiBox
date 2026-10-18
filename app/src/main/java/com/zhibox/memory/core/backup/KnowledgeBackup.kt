@@ -18,7 +18,15 @@ import com.zhibox.memory.data.db.ChunkFtsEntity
 import com.zhibox.memory.data.db.DocumentEntity
 import com.zhibox.memory.data.db.DocStatus
 import com.zhibox.memory.data.db.EmbeddingMetaEntity
+import com.zhibox.memory.data.db.EntityEntity
+import com.zhibox.memory.data.db.EventEntity
+import com.zhibox.memory.data.db.EventEntityRel
+import com.zhibox.memory.data.db.EventStatus
+import com.zhibox.memory.data.db.ExtractionJobEntity
+import com.zhibox.memory.data.db.ExtractionJobStatus
 import com.zhibox.memory.data.db.JobStage
+import com.zhibox.memory.data.db.SagOwnerType
+import com.zhibox.memory.data.db.SagVectorEntity
 import com.zhibox.memory.data.db.SourceEntity
 import com.zhibox.memory.data.db.SourceStatus
 import kotlinx.coroutines.CancellationException
@@ -36,13 +44,17 @@ import java.util.zip.ZipOutputStream
 /**
  * W4+-2 知识库导出/导入（跨设备迁移）：单 zip 包。
  *
- * 包结构（FORMAT_VERSION=2）：
- * - meta.json                — format_version / 导出时间 / 空间注册表（embedding_meta 全字段）
+ * 包结构（FORMAT_VERSION=3；v1/v2 保持可读）：
+ * - meta.json                — format_version / 导出时间 / 空间注册表（embedding_meta 全字段）/ counts
  * - model_requirements.json  — 每空间所需模型（fileName/sha256/size/accelerator）——导入端据此校验
  * - sources/documents/chunks.jsonl — 行级 JSON（FTS 可从 chunk 重生成，不随包）
  * - app_kv.jsonl             — 通用键值状态（v2 新增；v1 包缺失时按空处理）
- * - vectors.bin              — 向量二进制（LE；头 count:i32；v2 行：
+ * - vectors.bin              — chunk 向量二进制（LE；头 count:i32；v2 起行：
  *   spaceIdx:i16 / chunkId:i64 / len:i32 / roleLen:i16 / role / norm:f64 / createdAt:i64 / blob）
+ * - v3（B8）SAG 层新增（v1/v2 包没有这些 entry → 导入按空处理）：
+ *   events.jsonl / entities.jsonl / event_entities.jsonl /
+ *   sag_vectors.jsonl（多态 owner 的向量，blob 用 base64 承载） / extraction_jobs.jsonl
+ *   （event_fts/entity_fts 是派生数据不导出；chat/query_trace 属本地隐私数据，P0 不导出）
  *
  * 与 v1 的差异（P0-1b / P1-7 / data-layer P1-7）：
  * - 空间表补全 accelerator/quantization/modelRevision/normalization/active/createdAt；
@@ -72,7 +84,11 @@ import java.util.zip.ZipOutputStream
  */
 object KnowledgeBackup {
 
-    /** v2：补全 embedding_meta / app_kv / source.uri / document.sizeBytes / vector 元数据（P0-1b） */
+    /**
+     * v3（B8）：在 v2 基础上新增 SAG 层 entry（events/entities/event_entities/sag_vectors/
+     * extraction_jobs）+ meta.counts；`vectors.bin` 行布局不变。读取端兼容 v1/v2（缺失字段/entry
+     * 用默认值/空处理）。
+     */
     const val FORMAT_VERSION = BackupValidator.FORMAT_VERSION
 
     private const val PAGE_SIZE = 200
@@ -90,6 +106,12 @@ object KnowledgeBackup {
     private const val ENTRY_CHUNKS = BackupValidator.ENTRY_CHUNKS
     private const val ENTRY_APP_KV = BackupValidator.ENTRY_APP_KV
     private const val ENTRY_VECTORS = BackupValidator.ENTRY_VECTORS
+    // B8/v3：SAG 层 entry（v1/v2 包无 → 导入端视为空）
+    private const val ENTRY_EVENTS = BackupValidator.ENTRY_EVENTS
+    private const val ENTRY_ENTITIES = BackupValidator.ENTRY_ENTITIES
+    private const val ENTRY_EVENT_ENTITIES = BackupValidator.ENTRY_EVENT_ENTITIES
+    private const val ENTRY_SAG_VECTORS = BackupValidator.ENTRY_SAG_VECTORS
+    private const val ENTRY_EXTRACTION_JOBS = BackupValidator.ENTRY_EXTRACTION_JOBS
 
     /**
      * runCatching 的取消安全版本（审查修复 P1-2）：CancellationException 必须向上传播，
@@ -217,7 +239,6 @@ object KnowledgeBackup {
         // B7：只导出受支持 EGemma2 空间（旧路线 Path C/granite/LFM 的 meta/向量跳过）；
         // 仅旧模型向量的 ready 文档在包内降级为 failed（documents/chunks 保留，见第 3 步），
         // 保证恢复后不会出现静默零向量的 ready 文档。
-        // 这样新 App 导出的包一定能被新 App 再导入（导入端会拒绝含已下线空间的包）。
         val metas = db.embeddingDao().allMeta()
             .filter { IngestRepository.isSupportedSpace(it.providerId, it.modelId) }
         val registered = metas.mapTo(HashSet()) { it.id }
@@ -227,6 +248,32 @@ object KnowledgeBackup {
             zip.putNextEntry(ZipEntry(name))
             zip.write(content.toByteArray())
             zip.closeEntry()
+        }
+
+        /** 分页写 JSONL：每页 ~[PAGE_SIZE] 行，父闭包判定与计数阶段共用同一谓词 */
+        suspend fun <T> writePagedJsonl(
+            name: String,
+            page: suspend (offset: Int) -> List<T>,
+            include: (T) -> Boolean,
+            toJson: (T) -> JSONObject,
+        ): Int {
+            zip.putNextEntry(ZipEntry(name))
+            var pageOffset = 0
+            var writtenLocal = 0
+            while (true) {
+                val rows = page(pageOffset)
+                if (rows.isEmpty()) break
+                val sb = StringBuilder()
+                for (row in rows) {
+                    if (!include(row)) continue
+                    sb.append(toJson(row).toString()).append('\n')
+                    writtenLocal++
+                }
+                if (sb.isNotEmpty()) zip.write(sb.toString().toByteArray())
+                pageOffset += rows.size
+            }
+            zip.closeEntry()
+            return writtenLocal
         }
 
         // 1) 文档闭包：先只喂闭包（内容稍后写——需要先知道哪些文档有受支持向量，才能
@@ -293,6 +340,7 @@ object KnowledgeBackup {
         //    且同 checksum 重新导入不会被去重拦截（importFile 只对 pending/processing/ready 判重）。
         zip.putNextEntry(ZipEntry(ENTRY_DOCUMENTS))
         offset = 0
+        var documentCount = 0
         var downgradedDocuments = 0
         while (true) {
             val page = db.documentDao().page(PAGE_SIZE, offset)
@@ -305,6 +353,7 @@ object KnowledgeBackup {
                 if (readyWithoutVectors) downgradedDocuments++
                 val out = if (readyWithoutVectors) d.copy(status = DocStatus.FAILED.value) else d
                 sb.append(documentJson(out).toString()).append('\n')
+                documentCount++
             }
             if (sb.isNotEmpty()) zip.write(sb.toString().toByteArray())
             offset += page.size
@@ -312,10 +361,9 @@ object KnowledgeBackup {
         zip.closeEntry()
 
         // app_kv 体积小（几十行），一次性读写即可（DAO 无分页接口）
+        val appKvRows = db.appKvDao().all()
         zip.putNextEntry(ZipEntry(ENTRY_APP_KV))
-        zip.write(
-            db.appKvDao().all().joinToString("") { appKvJson(it).toString() + "\n" }.toByteArray()
-        )
+        zip.write(appKvRows.joinToString("") { appKvJson(it).toString() + "\n" }.toByteArray())
         zip.closeEntry()
 
         // 4) 向量段头要写"过滤后的精确 count"，所以先扫一遍：只统计 chunk 在包内的向量，
@@ -338,9 +386,87 @@ object KnowledgeBackup {
             offset += page.size
         }
 
-        // 5) meta/requirements：只保留被闭包向量引用的空间（保持 allMeta 的 createdAt 顺序）
-        val exportedMetas = metas.filter { it.id in usedSpaceIds }
-        writeEntry(ENTRY_META, buildMetaJson(exportedMetas))
+        // ---- B8/v3：SAG 层闭包（分页计数 + 收集闭包 id，BLOB 不常驻内存） ----
+        // event：仅闭包 chunk 的 event（含 superseded 历史行，保留重抽取审计链）；
+        // event_entity：event 在包内才导出，同时得到 entity 闭包（只带被引用实体，不做全库）；
+        // extraction_job：仅导出 chunk 在包内的任务（v6 FK document/chunk）。
+        var eventCount = 0
+        offset = 0
+        while (true) {
+            val page = db.eventDao().page(PAGE_SIZE, offset)
+            if (page.isEmpty()) break
+            for (e in page) if (closure.acceptEvent(e.id, e.chunkId)) eventCount++
+            offset += page.size
+        }
+        var eventEntityCount = 0
+        offset = 0
+        while (true) {
+            val page = db.eventEntityDao().page(PAGE_SIZE, offset)
+            if (page.isEmpty()) break
+            for (link in page) if (closure.acceptEventEntity(link.eventId, link.entityId)) eventEntityCount++
+            offset += page.size
+        }
+        var entityCount = 0
+        offset = 0
+        while (true) {
+            val page = db.entityDao().page(PAGE_SIZE, offset)
+            if (page.isEmpty()) break
+            for (e in page) if (closure.includesEntity(e.id)) entityCount++
+            offset += page.size
+        }
+        val chunkIds = closure.chunkIds()
+        var extractionJobCount = 0
+        offset = 0
+        while (true) {
+            val page = db.extractionJobDao().page(PAGE_SIZE, offset)
+            if (page.isEmpty()) break
+            for (job in page) if (job.chunkId in chunkIds) extractionJobCount++
+            offset += page.size
+        }
+        // sag_vector：多态 owner 在包内才导出；空间必须"受支持 + 已注册 embedding_meta"，
+        // 且向量维度与空间维度一致（SAG 向量与 chunk 向量共用空间注册表，导入端据此校验模型/维度）。
+        // 不受支持/未注册的空间按 B7 规则跳过（与 chunk 向量一致）。
+        val metasById = metas.associateBy { it.id }
+        val sagUsedSpaceIds = LinkedHashSet<String>()
+        var sagVectorCount = 0
+        offset = 0
+        while (true) {
+            val page = db.sagVectorDao().page(PAGE_SIZE, offset)
+            if (page.isEmpty()) break
+            for (v in page) {
+                if (!closure.includesSagOwner(v.ownerType, v.ownerId)) continue
+                // B7 规则沿用：只导出受支持空间（meta 已过滤）的向量；旧路线/未注册孤儿空间跳过
+                // ——与 chunk 向量一致（旧向量不可被新模型复用，迁移方式是重新导入原文/重抽取）。
+                val meta = metasById[v.spaceId] ?: continue
+                check(v.dimensions == meta.dimensions) {
+                    "SAG 向量维度与空间不一致：${v.spaceId}（向量 ${v.dimensions} / 空间 ${meta.dimensions}）"
+                }
+                sagUsedSpaceIds += v.spaceId
+                sagVectorCount++
+            }
+            offset += page.size
+        }
+
+        // 5) meta/requirements：chunk 向量空间 ∪ SAG 向量空间，按引用裁剪（保持 allMeta 顺序）
+        val allUsedSpaces = LinkedHashSet<String>().apply {
+            addAll(usedSpaceIds)
+            addAll(sagUsedSpaceIds)
+        }
+        val exportedMetas = metas.filter { it.id in allUsedSpaces }
+        val counts = BackupCounts(
+            sources = sourceRows.size,
+            documents = documentCount,
+            downgradedDocuments = downgradedDocuments,
+            chunks = closure.chunkCount(),
+            chunkVectors = vectorCount,
+            events = eventCount,
+            entities = entityCount,
+            eventEntities = eventEntityCount,
+            sagVectors = sagVectorCount,
+            extractionJobs = extractionJobCount,
+            appKv = appKvRows.size,
+        )
+        writeEntry(ENTRY_META, buildMetaJson(exportedMetas, counts))
         writeEntry(ENTRY_REQUIREMENTS, buildRequirementsJson(exportedMetas))
         val spaceIdx = exportedMetas.withIndex().associate { (i, m) -> m.id to i }
 
@@ -371,10 +497,89 @@ object KnowledgeBackup {
             "导出期间向量数量发生变化（$written/$vectorCount）——请稍后重试"
         }
         zip.closeEntry()
+
+        // 7) v3 新 entry：分页 JSONL（与计数阶段同一谓词，保证 meta counts 与实际一致）。
+        //    FTS 是派生数据不导出（导入端清空后由 B9 重建）；chat/query_trace 属本地隐私数据，P0 不导出。
+        val eventsWritten = writePagedJsonl(
+            ENTRY_EVENTS, { db.eventDao().page(PAGE_SIZE, it) },
+            { closure.includesEvent(it.id) }, ::eventJson,
+        )
+        check(eventsWritten == eventCount) { "导出期间 event 数量发生变化（$eventsWritten/$eventCount）——请稍后重试" }
+        val entitiesWritten = writePagedJsonl(
+            ENTRY_ENTITIES, { db.entityDao().page(PAGE_SIZE, it) },
+            { closure.includesEntity(it.id) }, ::entityJson,
+        )
+        check(entitiesWritten == entityCount) { "导出期间 entity 数量发生变化（$entitiesWritten/$entityCount）——请稍后重试" }
+        val linksWritten = writePagedJsonl(
+            ENTRY_EVENT_ENTITIES, { db.eventEntityDao().page(PAGE_SIZE, it) },
+            { closure.includesEvent(it.eventId) }, ::eventEntityJson,
+        )
+        check(linksWritten == eventEntityCount) {
+            "导出期间 event_entity 数量发生变化（$linksWritten/$eventEntityCount）——请稍后重试"
+        }
+        val jobsWritten = writePagedJsonl(
+            ENTRY_EXTRACTION_JOBS, { db.extractionJobDao().page(PAGE_SIZE, it) },
+            { it.chunkId in chunkIds }, ::extractionJobJson,
+        )
+        check(jobsWritten == extractionJobCount) {
+            "导出期间 extraction_job 数量发生变化（$jobsWritten/$extractionJobCount）——请稍后重试"
+        }
+        // sag_vectors 单独写：BLOB→base64 膨胀 4/3，避免整表行常驻内存
+        zip.putNextEntry(ZipEntry(ENTRY_SAG_VECTORS))
+        offset = 0
+        var sagWritten = 0
+        while (true) {
+            val page = db.sagVectorDao().page(PAGE_SIZE, offset)
+            if (page.isEmpty()) break
+            for (v in page) {
+                if (!closure.includesSagOwner(v.ownerType, v.ownerId)) continue
+                if (v.spaceId !in sagUsedSpaceIds) continue // 与计数阶段同谓词
+                zip.write(sagVectorJson(v).toString().toByteArray())
+                zip.write('\n'.code)
+                sagWritten++
+            }
+            offset += page.size
+        }
+        zip.closeEntry()
+        check(sagWritten == sagVectorCount) {
+            "导出期间 SAG 向量数量发生变化（$sagWritten/$sagVectorCount）——请稍后重试"
+        }
         return vectorCount
     }
 
-    private fun buildMetaJson(metas: List<EmbeddingMetaEntity>): String {
+    /**
+     * meta.counts（v3）：包内实际条目数。
+     * 用途：诊断/回环测试断言（"恢复后再导出计数不降"），也便于排查"过滤闭包后少了什么"；
+     * 导入端**不强制**校验 counts（否则历史包/手工包会被误拒），只作为参考信息。
+     */
+    private data class BackupCounts(
+        val sources: Int,
+        val documents: Int,
+        val downgradedDocuments: Int,
+        val chunks: Int,
+        val chunkVectors: Int,
+        val events: Int,
+        val entities: Int,
+        val eventEntities: Int,
+        val sagVectors: Int,
+        val extractionJobs: Int,
+        val appKv: Int,
+    ) {
+        fun toJson(): JSONObject = JSONObject()
+            .put("sources", sources)
+            .put("documents", documents)
+            .put("downgradedDocuments", downgradedDocuments)
+            .put("chunks", chunks)
+            .put("chunkVectors", chunkVectors)
+            .put("events", events)
+            .put("entities", entities)
+            .put("eventEntities", eventEntities)
+            .put("sagVectors", sagVectors)
+            .put("extractionJobs", extractionJobs)
+            .put("appKv", appKv)
+    }
+
+    private fun buildMetaJson(metas: List<EmbeddingMetaEntity>, counts: BackupCounts): String {
         val spaces = JSONArray()
         for (m in metas) {
             spaces.put(
@@ -392,6 +597,7 @@ object KnowledgeBackup {
             .put("exported_at", System.currentTimeMillis())
             .put("app", "zhibox-memory")
             .put("spaces", spaces)
+            .put("counts", counts.toJson())
             .toString(1)
     }
 
@@ -431,6 +637,47 @@ object KnowledgeBackup {
     private fun appKvJson(kv: AppKvEntity): JSONObject = JSONObject()
         .put("key", kv.key).put("value", kv.value).put("updatedAt", kv.updatedAt)
 
+    // ---- v3（B8）：SAG 层 JSON 映射（导出端；导入端在 parse* 函数） ----
+
+    private fun eventJson(e: EventEntity): JSONObject = JSONObject()
+        .put("id", e.id).put("chunkId", e.chunkId)
+        .put("canonicalText", e.canonicalText).put("confidence", e.confidence)
+        .put("title", e.title).put("summary", e.summary).put("content", e.content)
+        .put("language", e.language).put("status", e.status)
+        .put("extractorVersion", e.extractorVersion)
+        .put("extractionVersion", e.extractionVersion)
+        .put("modelId", e.modelId).put("promptVersion", e.promptVersion)
+        .put("active", e.active)
+        .put("supersededBy", e.supersededBy ?: JSONObject.NULL)
+        .put("createdAt", e.createdAt)
+
+    private fun entityJson(e: EntityEntity): JSONObject = JSONObject()
+        .put("id", e.id).put("normalizedName", e.normalizedName)
+        .put("entityType", e.entityType ?: JSONObject.NULL)
+        .put("name", e.name).put("description", e.description)
+        .put("createdAt", e.createdAt)
+
+    private fun eventEntityJson(rel: EventEntityRel): JSONObject = JSONObject()
+        .put("id", rel.id).put("eventId", rel.eventId).put("entityId", rel.entityId)
+        .put("role", rel.role ?: JSONObject.NULL)
+        .put("weight", rel.weight)
+        .put("description", rel.description ?: JSONObject.NULL)
+
+    private fun sagVectorJson(v: SagVectorEntity): JSONObject = JSONObject()
+        .put("ownerType", v.ownerType).put("ownerId", v.ownerId)
+        .put("role", v.role).put("spaceId", v.spaceId)
+        .put("dimensions", v.dimensions)
+        // base64（kotlin.io.encoding.Base64，API24 可用）；解码/长度校验在 BackupValidator
+        .put("blobBase64", BackupValidator.encodeBlobBase64(v.vectorBlob))
+        .put("vectorNorm", v.vectorNorm).put("createdAt", v.createdAt)
+
+    private fun extractionJobJson(job: ExtractionJobEntity): JSONObject = JSONObject()
+        .put("id", job.id).put("documentId", job.documentId).put("chunkId", job.chunkId)
+        .put("status", job.status).put("attempt", job.attempt)
+        .put("errorCode", job.errorCode ?: JSONObject.NULL)
+        .put("errorDetail", job.errorDetail ?: JSONObject.NULL)
+        .put("createdAt", job.createdAt).put("updatedAt", job.updatedAt)
+
     // ---- 包解析与校验（写库之前完成，失败不触碰数据库） ----
 
     /** model_requirements.json 的一条需求 */
@@ -453,6 +700,12 @@ object KnowledgeBackup {
         val chunks: List<ChunkEntity>,
         val appKv: List<AppKvEntity>,
         val vectorPayload: BackupValidator.VectorPayload,
+        // v3（B8）：SAG 层（v1/v2 包为空列表）
+        val events: List<EventEntity> = emptyList(),
+        val entities: List<EntityEntity> = emptyList(),
+        val eventEntities: List<EventEntityRel> = emptyList(),
+        val sagVectors: List<SagVectorEntity> = emptyList(),
+        val extractionJobs: List<ExtractionJobEntity> = emptyList(),
     )
 
     private fun readPreview(context: Context, zip: ZipInputStream): ImportPreview {
@@ -486,22 +739,50 @@ object KnowledgeBackup {
         val documents = parseDocuments(entries[ENTRY_DOCUMENTS])
         val chunks = parseChunks(entries[ENTRY_CHUNKS])
         val appKv = parseAppKv(entries[ENTRY_APP_KV])
-
-        // B1-9：引用闭包校验（纯 JVM 实现在 BackupClosure，可单测）——父行缺失即报可读错误，
-        // 不进入单事务（否则 v5 FK 会让导入在事务内失败、错误信息变成底层 SQL 报错）。
-        // 向量段的两条引用（chunkId ∈ chunks、空间索引合法）由 decodeVectors 同步校验。
-        BackupClosure.validateImportClosure(
-            sourceIds = sources.map { it.id },
-            documents = documents.map { BackupClosure.DocumentRef(it.id, it.sourceId) },
-            chunks = chunks.map { BackupClosure.ChunkRef(it.id, it.documentId) },
-        )
-
         val chunkIds = chunks.mapTo(HashSet()) { it.id }
         val dropped = if (dropIncompatibleGpuVectors) {
             requirements.filter { it.accelerator != "cpu" }.mapTo(HashSet()) { it.spaceId }
         } else {
             emptySet()
         }
+
+        // v3（B8）：SAG 层 entry 仅在 format_version>=3 时解析；v1/v2 包缺这些 entry → 空列表
+        // （旧备份导入后 SAG 结构为空、chunk 检索照常，符合 PRD"旧备份不崩、可在线补抽取"）。
+        val v3 = formatVersion >= 3
+        val events = if (v3) parseEvents(entries[ENTRY_EVENTS]) else emptyList()
+        val entities = if (v3) parseEntities(entries[ENTRY_ENTITIES]) else emptyList()
+        val eventEntities = if (v3) parseEventEntities(entries[ENTRY_EVENT_ENTITIES]) else emptyList()
+        val extractionJobs = if (v3) {
+            parseExtractionJobs(entries[ENTRY_EXTRACTION_JOBS], chunkIds, documents.mapTo(HashSet()) { it.id })
+        } else {
+            emptyList()
+        }
+        val sagVectors = if (v3) {
+            // 与 chunk 向量一致：GPU/NPU 空间跨设备不逐位一致，用户勾选"丢弃不兼容 GPU 向量"时
+            // 同步丢弃这些空间的 SAG 向量（空间 meta 仍保留，导入后由重抽取/重嵌入重建）。
+            parseSagVectors(entries[ENTRY_SAG_VECTORS], spaces.associateBy { it.id })
+                .filterNot { it.spaceId in dropped }
+        } else {
+            emptyList()
+        }
+
+        // B1-9：引用闭包校验（纯 JVM 实现在 BackupClosure，可单测）——父行缺失即报可读错误，
+        // 不进入单事务（否则 v5/v6 FK 会让导入在事务内失败、错误信息变成底层 SQL 报错）。
+        // v3：event/entity/event_entity/sag 向量 owner/extraction_job 的 FK 闭包一并校验（B8）。
+        // 向量段的两条引用（chunkId ∈ chunks、空间索引合法）由 decodeVectors 同步校验。
+        BackupClosure.validateImportClosure(
+            sourceIds = sources.map { it.id },
+            documents = documents.map { BackupClosure.DocumentRef(it.id, it.sourceId) },
+            chunks = chunks.map { BackupClosure.ChunkRef(it.id, it.documentId) },
+            events = events.map { BackupClosure.EventRef(it.id, it.chunkId, it.extractionVersion) },
+            entities = entities.map { BackupClosure.EntityRef(it.id, it.normalizedName) },
+            eventEntities = eventEntities.map { BackupClosure.EventEntityRef(it.eventId, it.entityId) },
+            sagVectors = sagVectors.map { BackupClosure.SagVectorRef(it.ownerType, it.ownerId) },
+            extractionJobs = extractionJobs.map {
+                BackupClosure.ExtractionJobRef(it.id, it.documentId, it.chunkId)
+            },
+        )
+
         val vectorPayload = BackupValidator.decodeVectors(
             payload = entries[ENTRY_VECTORS] ?: error("备份包缺少 vectors.bin"),
             formatVersion = formatVersion,
@@ -519,6 +800,11 @@ object KnowledgeBackup {
             chunks = chunks,
             appKv = appKv,
             vectorPayload = vectorPayload,
+            events = events,
+            entities = entities,
+            eventEntities = eventEntities,
+            sagVectors = sagVectors,
+            extractionJobs = extractionJobs,
         )
     }
 
@@ -702,6 +988,204 @@ object KnowledgeBackup {
         }
     }
 
+    // ---- v3（B8）：SAG 层解析（写库前完成，坏包直接抛可读错误） ----
+
+    /** 恢复路径状态校验（B8）：未知 event.status 直接拒绝，避免绕过枚举单源。 */
+    private fun requireEventStatus(raw: String, id: Long): EventStatus =
+        EventStatus.fromValue(raw) ?: error("events.jsonl 存在未知 status：$raw（event=$id）")
+
+    /** 恢复路径状态校验（B8）：未知 extraction_job.status 直接拒绝。 */
+    private fun requireExtractionJobStatus(raw: String, id: String): ExtractionJobStatus =
+        ExtractionJobStatus.fromValue(raw) ?: error("extraction_jobs.jsonl 存在未知 status：$raw（job=$id）")
+
+    /** 恢复路径 ownerType 校验（B8）：多态 owner 只允许 EVENT/ENTITY。 */
+    private fun requireSagOwnerType(raw: String): SagOwnerType =
+        SagOwnerType.fromValue(raw) ?: error(
+            "sag_vectors.jsonl ownerType 未知：$raw（合法值：${SagOwnerType.VALUES.joinToString()}）"
+        )
+
+    private fun parseEvents(bytes: ByteArray?): List<EventEntity> {
+        val seen = HashSet<Long>()
+        val parsed = parseJsonLines(ENTRY_EVENTS, bytes) { o ->
+            val id = o.optLong("id", 0L)
+            check(id > 0) { "events.jsonl 记录 id 非法：$id" }
+            check(seen.add(id)) { "events.jsonl id 重复：$id" }
+            val chunkId = o.optLong("chunkId", -1L)
+            check(chunkId > 0) { "events.jsonl event $id 的 chunkId 非法：$chunkId" }
+            EventEntity(
+                id = id,
+                chunkId = chunkId,
+                canonicalText = o.optString("canonicalText", ""),
+                confidence = o.optDouble("confidence", 0.0),
+                title = o.optString("title", ""),
+                summary = o.optString("summary", ""),
+                content = o.optString("content", ""),
+                language = o.optString("language", ""),
+                status = requireEventStatus(o.optString("status", EventStatus.ACTIVE.value), id).value,
+                extractorVersion = o.optString("extractorVersion", ""),
+                extractionVersion = o.optString("extractionVersion", ""),
+                modelId = o.optString("modelId", ""),
+                promptVersion = o.optString("promptVersion", ""),
+                active = o.optBoolean("active", true),
+                supersededBy = if (!o.has("supersededBy") || o.isNull("supersededBy")) {
+                    null
+                } else {
+                    o.optLong("supersededBy", 0L).takeIf { it > 0 }
+                },
+                createdAt = o.optLong("createdAt", 0L),
+            )
+        }
+        check(parsed.size <= BackupValidator.MAX_EVENTS) {
+            "events.jsonl 行数超过上限（${BackupValidator.MAX_EVENTS}）"
+        }
+        // supersededBy 是可选的"新版本指针"：若指向本次未导出的 event（如旧包/部分包），
+        // 归一为 null（悬空指针不影响数据完整性；不因此拒绝整包）。
+        val ids = parsed.mapTo(HashSet()) { it.id }
+        return parsed.map { e ->
+            if (e.supersededBy != null && e.supersededBy !in ids) e.copy(supersededBy = null) else e
+        }
+    }
+
+    private fun parseEntities(bytes: ByteArray?): List<EntityEntity> {
+        val seen = HashSet<Long>()
+        val parsed = parseJsonLines(ENTRY_ENTITIES, bytes) { o ->
+            val id = o.optLong("id", 0L)
+            check(id > 0) { "entities.jsonl 记录 id 非法：$id" }
+            check(seen.add(id)) { "entities.jsonl id 重复：$id" }
+            val normalizedName = o.optString("normalizedName", "")
+            check(normalizedName.isNotEmpty()) { "entities.jsonl entity $id 缺少 normalizedName" }
+            EntityEntity(
+                id = id,
+                normalizedName = normalizedName,
+                entityType = o.optStringOrNull("entityType")?.also { raw ->
+                    require(com.zhibox.memory.core.extract.EntityType.fromWire(raw) != null) {
+                        "entities.jsonl 存在未知 entityType：$raw（允许值见 EntityType 11 类）"
+                    }
+                },
+                name = o.optString("name", ""),
+                description = o.optString("description", ""),
+                createdAt = o.optLong("createdAt", 0L),
+            )
+        }
+        check(parsed.size <= BackupValidator.MAX_ENTITIES) {
+            "entities.jsonl 行数超过上限（${BackupValidator.MAX_ENTITIES}）"
+        }
+        return parsed
+    }
+
+    private fun parseEventEntities(bytes: ByteArray?): List<EventEntityRel> {
+        val seen = HashSet<Long>()
+        val parsed = parseJsonLines(ENTRY_EVENT_ENTITIES, bytes) { o ->
+            val id = o.optLong("id", 0L)
+            check(id > 0) { "event_entities.jsonl 记录 id 非法：$id" }
+            check(seen.add(id)) { "event_entities.jsonl id 重复：$id" }
+            val eventId = o.optLong("eventId", 0L)
+            val entityId = o.optLong("entityId", 0L)
+            check(eventId > 0) { "event_entities.jsonl $id 的 eventId 非法：$eventId" }
+            check(entityId > 0) { "event_entities.jsonl $id 的 entityId 非法：$entityId" }
+            EventEntityRel(
+                id = id,
+                eventId = eventId,
+                entityId = entityId,
+                role = o.optStringOrNull("role"),
+                weight = o.optDouble("weight", 1.0),
+                description = o.optStringOrNull("description"),
+            )
+        }
+        check(parsed.size <= BackupValidator.MAX_EVENT_ENTITIES) {
+            "event_entities.jsonl 行数超过上限（${BackupValidator.MAX_EVENT_ENTITIES}）"
+        }
+        return parsed
+    }
+
+    private fun parseExtractionJobs(
+        bytes: ByteArray?,
+        chunkIds: Set<Long>,
+        documentIds: Set<String>,
+    ): List<ExtractionJobEntity> {
+        val seen = HashSet<String>()
+        val parsed = parseJsonLines(ENTRY_EXTRACTION_JOBS, bytes) { o ->
+            val id = o.optString("id", "")
+            check(id.isNotEmpty()) { "extraction_jobs.jsonl 记录缺少 id" }
+            check(seen.add(id)) { "extraction_jobs.jsonl id 重复：$id" }
+            val documentId = o.optString("documentId", "")
+            val chunkId = o.optLong("chunkId", -1L)
+            check(chunkId > 0) { "extraction_jobs.jsonl job $id 的 chunkId 非法：$chunkId" }
+            // 这里只做"可读的早失败"；闭包完整性由 BackupClosure 统一校验（重复一次无妨，
+            // 但错误信息更贴近本文件字段）
+            check(chunkId in chunkIds) {
+                "extraction_jobs.jsonl job $id 引用了不存在的 chunk：$chunkId"
+            }
+            check(documentId in documentIds) {
+                "extraction_jobs.jsonl job $id 引用了不存在的 document：$documentId"
+            }
+            ExtractionJobEntity(
+                id = id,
+                documentId = documentId,
+                chunkId = chunkId,
+                status = requireExtractionJobStatus(
+                    o.optString("status", ExtractionJobStatus.NOT_INDEXED.value), id,
+                ).value,
+                attempt = o.optInt("attempt", 0).coerceAtLeast(0),
+                errorCode = o.optStringOrNull("errorCode"),
+                errorDetail = o.optStringOrNull("errorDetail"),
+                createdAt = o.optLong("createdAt", 0L),
+                updatedAt = o.optLong("updatedAt", 0L),
+            )
+        }
+        check(parsed.size <= BackupValidator.MAX_EXTRACTION_JOBS) {
+            "extraction_jobs.jsonl 行数超过上限（${BackupValidator.MAX_EXTRACTION_JOBS}）"
+        }
+        return parsed
+    }
+
+    private fun parseSagVectors(
+        bytes: ByteArray?,
+        spacesById: Map<String, EmbeddingMetaEntity>,
+    ): List<SagVectorEntity> {
+        val parsed = parseJsonLines(ENTRY_SAG_VECTORS, bytes) { o ->
+            val ownerType = requireSagOwnerType(o.optString("ownerType", ""))
+            val ownerId = o.optLong("ownerId", 0L)
+            check(ownerId > 0) { "sag_vectors.jsonl 记录 ownerId 非法：$ownerId" }
+            val spaceId = o.optString("spaceId", "")
+            check(spaceId.isNotEmpty()) { "sag_vectors.jsonl 记录缺少 spaceId（owner=${ownerType.value}:$ownerId）" }
+            // 空间必须在 meta.json 注册（模型/维度/量化口径都来自空间）；缺失则写库前拒绝
+            val meta = spacesById[spaceId] ?: error(
+                "sag_vectors.jsonl 引用了 meta.json 中不存在的空间：$spaceId（owner=${ownerType.value}:$ownerId）"
+            )
+            val dimensions = o.optInt("dimensions", meta.dimensions)
+            check(dimensions == meta.dimensions) {
+                "sag_vectors.jsonl dimensions($dimensions) 与空间 $spaceId 维度(${meta.dimensions})不一致"
+            }
+            val role = o.optString("role", "")
+            require(com.zhibox.memory.core.sag.SagVectorRole.fromWire(role) != null) {
+                "sag_vectors.jsonl role 未知：$role（合法值：event_content / entity_description）"
+            }
+            check(role.isNotEmpty()) { "sag_vectors.jsonl 记录缺少 role（space=$spaceId）" }
+            val vectorNorm = o.optDouble("vectorNorm", 1.0)
+            check(vectorNorm.isFinite()) { "sag_vectors.jsonl 记录 vectorNorm 非法：$vectorNorm" }
+            val blob = BackupValidator.decodeBlobBase64(
+                text = o.optString("blobBase64", ""),
+                expectedBytes = meta.dimensions * 4,
+                context = "sag_vectors.jsonl（space=$spaceId, role=$role）",
+            )
+            SagVectorEntity(
+                ownerType = ownerType.value,
+                ownerId = ownerId,
+                role = role,
+                spaceId = spaceId,
+                dimensions = dimensions,
+                vectorBlob = blob,
+                vectorNorm = vectorNorm,
+                createdAt = o.optLong("createdAt", 0L),
+            )
+        }
+        check(parsed.size <= BackupValidator.MAX_SAG_VECTORS) {
+            "sag_vectors.jsonl 行数超过上限（${BackupValidator.MAX_SAG_VECTORS}）"
+        }
+        return parsed
+    }
+
     private fun <T> parseJsonLines(
         entryName: String,
         bytes: ByteArray?,
@@ -744,6 +1228,12 @@ object KnowledgeBackup {
         val vectorCount: Int,
         val missingModels: List<SpaceRequirement>,
         val incompatibleGpu: List<SpaceRequirement>,
+        // v3（B8）：SAG 层计数（v1/v2 包为 0；UI 不展示也不影响，后续备份 UI 可显示）
+        val eventCount: Int = 0,
+        val entityCount: Int = 0,
+        val eventEntityCount: Int = 0,
+        val sagVectorCount: Int = 0,
+        val extractionJobCount: Int = 0,
     ) {
         val blocked: Boolean get() = missingModels.isNotEmpty()
     }
@@ -763,6 +1253,11 @@ object KnowledgeBackup {
             vectorCount = parsed.vectorPayload.declaredCount,
             missingModels = spaces.filter { !it.present },
             incompatibleGpu = spaces.filter { it.accelerator != "cpu" },
+            eventCount = parsed.events.size,
+            entityCount = parsed.entities.size,
+            eventEntityCount = parsed.eventEntities.size,
+            sagVectorCount = parsed.sagVectors.size,
+            extractionJobCount = parsed.extractionJobs.size,
         )
     }
 
@@ -902,6 +1397,17 @@ object KnowledgeBackup {
         db.withTransaction {
             // 显式 DELETE 而非 clearAllTables()：后者不能在 Room 事务内调用，且会清掉
             // schema_migrations 等与知识数据无关的表（迁移历史必须保留）。
+            //
+            // v6 SAG 层清空顺序（B8）：
+            // - sag_vector 无 FK（owner 是多态引用），必须显式清空；
+            // - entity 无父表，显式清空（其子表 event_entity/chunk_entity 由 FK CASCADE 清理）；
+            // - event/event_entity 通过 chunk 删除级联清空（event.chunkId FK CASCADE；
+            //   Room 生成代码在 onOpen 执行 PRAGMA foreign_keys = ON，已核验）；
+            // - extraction_job 既有 FK 级联也有 deleteAll，显式清空更直观；
+            // - event_fts/entity_fts 无 FK，必须 clearFts（派生数据，B9 重新写入）。
+            db.extractionJobDao().deleteAll()
+            db.sagVectorDao().deleteAll()
+            db.entityDao().deleteAll()
             db.embeddingDao().deleteAll()
             db.chunkDao().deleteAllFts()
             db.chunkDao().deleteAll()
@@ -910,6 +1416,8 @@ object KnowledgeBackup {
             db.sourceDao().deleteAll()
             db.embeddingDao().deleteAllMeta()
             db.appKvDao().deleteAll()
+            db.eventDao().clearFts()
+            db.entityDao().clearFts()
 
             // P0-1b：恢复 embedding_meta（此前导入不写 meta → 恢复后再导出向量全丢）
             // P2-B1-4：旧备份可能带多行 active；恢复时归一为"最多一个 active"，
@@ -923,6 +1431,13 @@ object KnowledgeBackup {
                 db.chunkDao().insertAll(parsed.chunks)
                 db.chunkDao().insertFts(ftsRows)
             }
+            // v3 SAG 层：父行（chunk）已写入后再写 event/entity/event_entity/sag_vector/extraction_job，
+            // 保证 FK 约束满足；v1/v2 包这些列表为空 → 恢复后 SAG 结构为空（PRD 预期，可在线补抽取）。
+            if (parsed.events.isNotEmpty()) db.eventDao().upsertAll(parsed.events)
+            if (parsed.entities.isNotEmpty()) db.entityDao().upsertAll(parsed.entities)
+            if (parsed.eventEntities.isNotEmpty()) db.eventEntityDao().upsertAll(parsed.eventEntities)
+            if (parsed.sagVectors.isNotEmpty()) db.sagVectorDao().insertAll(parsed.sagVectors)
+            if (parsed.extractionJobs.isNotEmpty()) db.extractionJobDao().upsertAll(parsed.extractionJobs)
             if (embeddings.isNotEmpty()) db.embeddingDao().insertAll(embeddings)
             if (parsed.appKv.isNotEmpty()) db.appKvDao().putAll(parsed.appKv)
         }

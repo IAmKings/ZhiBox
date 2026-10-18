@@ -113,13 +113,17 @@ class BackupValidatorTest {
     }
 
     @Test
-    fun `格式版本门 v1 v2 通过 更高版本与 0 拒绝`() {
+    fun `格式版本门 v1 v2 v3 通过 更高版本与 0 拒绝`() {
         BackupValidator.checkFormatVersion(1)
         BackupValidator.checkFormatVersion(2)
-        assertTrue(expectThrows<IllegalStateException> { BackupValidator.checkFormatVersion(3) }
-            .message!!.contains("不受支持"))
-        assertTrue(expectThrows<IllegalStateException> { BackupValidator.checkFormatVersion(0) }
-            .message!!.contains("不受支持"))
+        BackupValidator.checkFormatVersion(3) // B8/v3 当前导出格式
+        listOf(4, 5, 0, -1).forEach { version ->
+            assertTrue(
+                "版本 $version 应被拒绝",
+                expectThrows<IllegalStateException> { BackupValidator.checkFormatVersion(version) }
+                    .message!!.contains("不受支持"),
+            )
+        }
     }
 
     // ---- 损坏包 / 截断 / 引用校验 ----

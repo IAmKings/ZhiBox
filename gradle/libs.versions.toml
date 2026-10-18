@@ -95,6 +95,10 @@ androidx-room-testing = { group = "androidx.room", name = "room-testing", versio
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 # B4-1b：room-testing 2.8.5 GeneratedSerializer 需 1.8.1（见 app/build.gradle.kts 注释）
 kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
+# B8：LLM Provider 的 JSON 解析（OpenAI-compatible 响应）。
+# 与 serialization-core 同版本 1.8.1；只使用 Json DOM API（buildJsonObject/parseToJsonElement），
+# 因此不引入 kotlinx-serialization 编译器插件（避免额外 Kotlin plugin 依赖与 @Serializable 生成）。
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 # B5：Robolectric（仅 testImplementation classpath，不进 APK；版本依据见 [versions] robolectric 注释）
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 # B5：Compose UI 测试（版本由 Compose BOM 2026.06.01 管理 = 1.11.4，故不写 version.ref）

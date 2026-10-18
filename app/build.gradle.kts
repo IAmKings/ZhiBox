@@ -259,6 +259,9 @@ dependencies {
     // resolution 会把 app runtime 的 1.7.3 严格版本约束复制到 androidTest，导致无法升到 1.8.1。
     // 代价：serialization-core 1.8.1 会进入 APK（约 1MB；lifecycle 原本已依赖 1.7.3，非新增体积大头）。
     implementation(libs.kotlinx.serialization.core)
+    // B8：LLM Provider（OpenAI-compatible）JSON 解析。与 core 同版本 1.8.1；
+    // 仅使用 Json DOM API（无 @Serializable/编译器插件），不新增构建插件与 KSP 负担。
+    implementation(libs.kotlinx.serialization.json)
     androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)

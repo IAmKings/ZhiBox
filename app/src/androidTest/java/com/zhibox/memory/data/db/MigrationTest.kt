@@ -92,11 +92,11 @@ class MigrationTest {
             assertEquals(0L, c.getLong(3)) // 存量 sizeBytes 置 0
         }
 
-        // 4. 迁移后的库可被当前 Room 实体正常打开（entity=v5，需注册全链迁移）
+        // 4. 迁移后的库可被当前 Room 实体正常打开（entity=v6，需注册全链迁移）
         val roomDb = Room.databaseBuilder(context, AppDatabase::class.java, testDb)
             .addMigrations(
                 AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4,
-                AppDatabase.MIGRATION_4_5,
+                AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6,
             )
             .build()
         try {
@@ -159,7 +159,7 @@ class MigrationV2ToV3Test {
         val roomDb = Room.databaseBuilder(context, AppDatabase::class.java, testDb)
             .addMigrations(
                 AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4,
-                AppDatabase.MIGRATION_4_5,
+                AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6,
             )
             .build()
         try {
@@ -252,12 +252,12 @@ class MigrationV3ToV4Test {
         }
         assertTrue("chunk_embedding 空间索引缺失", indexFound)
 
-        // 迁移后的库可被 v4 实体打开（Room 全链迁移）
+        // 迁移后的库可被 v5→v6 实体打开（Room 全链迁移）
         val context = ApplicationProvider.getApplicationContext<Context>()
         val roomDb = Room.databaseBuilder(context, AppDatabase::class.java, testDb)
             .addMigrations(
                 AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4,
-                AppDatabase.MIGRATION_4_5,
+                AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6,
             )
             .build()
         try {

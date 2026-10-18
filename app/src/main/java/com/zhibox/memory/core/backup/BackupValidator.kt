@@ -6,28 +6,31 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+import kotlin.io.encoding.Base64
 
 /**
- * 备份包结构校验与 `vectors.bin` 段编解码（P0-1 / P1-7）。
+ * 备份包结构校验与 `vectors.bin` 段编解码（P0-1 / P1-7 / B8-v3）。
  *
- * 设计约束：**纯 JVM**（只用 java.util.zip / java.nio，不碰 Android / Room / org.json），
- * 这样 `testDebugUnitTest` 能直接覆盖"坏包/截断/超限/端序/v1 兼容"等安全关键路径——
+ * 设计约束：**纯 JVM**（只用 java.util.zip / java.nio / kotlin.io.encoding，不碰 Android / Room / org.json），
+ * 这样 `testDebugUnitTest` 能直接覆盖"坏包/截断/超限/端序/v1-v2-v3 兼容"等安全关键路径——
  * 备份是 P0 数据安全项，校验器本身不能再依赖真机才能验证。
  *
  * 职责边界：
- * - 本对象只做"字节层面的结构校验"（entry 尺寸上限、format_version 门、向量头/行/引用/重复校验）；
- * - 语义映射（JSON → Entity）在 KnowledgeBackup 内完成，本对象不认识业务字段。
+ * - 本对象只做"字节/传输层面的结构校验"（entry 尺寸上限、format_version 门、向量头/行/引用/重复校验、
+ *   v3 base64 向量解码）；语义映射（JSON → Entity）在 KnowledgeBackup 内完成。
  *
  * 格式版本：
  * - v1（历史包）：`meta.json` 空间表只有 5 个字段，向量行 = `spaceIdx:i16 | chunkId:i64 | len:i32 | blob`；
- * - v2（当前导出）：空间表补全 embedding_meta 全字段、sources/documents/chunks 补字段、新增 app_kv，
- *   向量行 = `spaceIdx:i16 | chunkId:i64 | len:i32 | roleLen:i16 | role | vectorNorm:f64 | createdAt:i64 | blob`。
- *   读取端按包内 format_version 选择行布局，以便仍能恢复 v1 包（缺失字段用默认值）。
+ * - v2：空间表补全 embedding_meta 全字段、sources/documents/chunks 补字段、新增 app_kv，
+ *   向量行 = `spaceIdx:i16 | chunkId:i64 | len:i32 | roleLen:i16 | role | vectorNorm:f64 | createdAt:i64 | blob`；
+ * - v3（B8）：在 v2 基础上新增 SAG 层 entry（events/entities/event_entities/sag_vectors/extraction_jobs），
+ *   向量段布局不变（v3 的 sag 向量走 JSONL + base64，避免为多态 owner 再造第二套二进制段）。
+ *   读取端按包内 format_version 选择行布局并决定新 entry 的解析，以便仍能恢复 v1/v2 包。
  */
 internal object BackupValidator {
 
-    /** 当前导出版本；与 [KnowledgeBackup.FORMAT_VERSION] 保持一致 */
-    const val FORMAT_VERSION = 2
+    /** 当前导出版本；与 [KnowledgeBackup.FORMAT_VERSION] 保持一致（v3 = B8 SAG 备份骨架） */
+    const val FORMAT_VERSION = 3
 
     /** 可读取的最低版本（v1 兼容） */
     const val MIN_SUPPORTED_FORMAT = 1
@@ -45,6 +48,12 @@ internal object BackupValidator {
     const val MAX_SPACES = 256
     /** 单空间维度上限（现有模型 768/1024，留足演进余量） */
     const val MAX_DIMENSIONS = 16_384
+    /** v3 SAG 层行数上限（损坏包/恶意包的解析内存防线；正常库远低于此） */
+    const val MAX_EVENTS = 500_000
+    const val MAX_ENTITIES = 500_000
+    const val MAX_EVENT_ENTITIES = 1_000_000
+    const val MAX_SAG_VECTORS = 2_000_000
+    const val MAX_EXTRACTION_JOBS = 500_000
     private const val MAX_ROLE_BYTES = 64
     private const val READ_BUFFER = 64 * 1024
 
@@ -56,11 +65,18 @@ internal object BackupValidator {
     const val ENTRY_CHUNKS = "chunks.jsonl"
     const val ENTRY_APP_KV = "app_kv.jsonl"
     const val ENTRY_VECTORS = "vectors.bin"
+    // B8/v3：SAG 层新增 entry（v1/v2 包没有这些 entry → 导入端按空处理）
+    const val ENTRY_EVENTS = "events.jsonl"
+    const val ENTRY_ENTITIES = "entities.jsonl"
+    const val ENTRY_EVENT_ENTITIES = "event_entities.jsonl"
+    const val ENTRY_SAG_VECTORS = "sag_vectors.jsonl"
+    const val ENTRY_EXTRACTION_JOBS = "extraction_jobs.jsonl"
 
     /** 已知 entry 名（不在名单内的 entry 一律跳过——但不跳过尺寸统计，防未知 entry 绕过 zip bomb 防护） */
     val KNOWN_ENTRIES = setOf(
         ENTRY_META, ENTRY_REQUIREMENTS, ENTRY_SOURCES, ENTRY_DOCUMENTS,
         ENTRY_CHUNKS, ENTRY_APP_KV, ENTRY_VECTORS,
+        ENTRY_EVENTS, ENTRY_ENTITIES, ENTRY_EVENT_ENTITIES, ENTRY_SAG_VECTORS, ENTRY_EXTRACTION_JOBS,
     )
 
     /** 可注入的限额（单测用小限额覆盖"超限"分支，避免真的分配 512MB） */
@@ -180,6 +196,33 @@ internal object BackupValidator {
         IllegalStateException(
             "备份包 entry $name 解压尺寸 ${actual / 1024 / 1024}MB 超过上限 ${limit / 1024 / 1024}MB（zip bomb 防护）"
         )
+
+    // ---- v3：SAG 向量 base64 编解码（纯 JVM，API 24 可用） ----
+
+    /**
+     * `sag_vector.vectorBlob` 的 JSON 传输编码（base64）。
+     * 用 `kotlin.io.encoding.Base64`（stdlib，minSdk 24 可用；`java.util.Base64` 需 API 26/desugaring）。
+     */
+    fun encodeBlobBase64(blob: ByteArray): String = Base64.encode(blob)
+
+    /**
+     * base64 解码 + 长度校验（v3 `sag_vectors.jsonl`）。
+     *
+     * 解析阶段就按 space 维度校验 blob 长度，坏包在写库前拒绝；
+     * [context] 用于错误定位（如 "sag_vectors.jsonl 第 3 行"）。
+     */
+    fun decodeBlobBase64(text: String, expectedBytes: Int, context: String): ByteArray {
+        check(text.isNotEmpty()) { "$context 的 vectorBlob 为空" }
+        val blob = try {
+            Base64.decode(text)
+        } catch (e: IllegalArgumentException) {
+            throw IllegalStateException("$context 的 vectorBlob 不是合法 base64：${e.message}", e)
+        }
+        check(blob.size == expectedBytes) {
+            "$context 向量长度 ${blob.size}B 与空间维度不一致（期望 ${expectedBytes}B）——备份包已损坏或空间元数据不一致"
+        }
+        return blob
+    }
 
     // ---- vectors.bin 编解码 ----
 

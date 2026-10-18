@@ -516,3 +516,402 @@ interface SchemaMigrationDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun record(migration: SchemaMigrationEntity)
 }
+
+// ═══════════════════ B8（schema v6）：SAG 抽取/检索/问答 DAO ═══════════════════
+//
+// 约定同文件头：状态过滤一律参数化（调用方传 StatusEnums.kt 的枚举值），SQL 不出现状态字面量。
+// 这些 DAO 只提供数据访问原语；事务边界（如"旧 event 置 superseded + 新 event 写入"）由
+// core 层用 db.withTransaction 组合，避免 DAO 之间互相调用导致 Room 生成代码膨胀。
+
+/** B8：event 读写 + event_fts（FTS4，bigram 化文本；可从 event 行全量重建） */
+@Dao
+interface EventDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(event: EventEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(events: List<EventEntity>)
+
+    @Query("SELECT * FROM event WHERE id = :id")
+    suspend fun byId(id: Long): EventEntity?
+
+    /** 同 chunk 全部 event（含被替代的历史行；排序新→旧） */
+    @Query("SELECT * FROM event WHERE chunkId = :chunkId ORDER BY id DESC")
+    suspend fun byChunk(chunkId: Long): List<EventEntity>
+
+    @Query("SELECT * FROM event WHERE chunkId IN (:chunkIds) ORDER BY chunkId, id")
+    suspend fun byChunkIds(chunkIds: List<Long>): List<EventEntity>
+
+    /** 当前有效 event（每 chunk 至多一条的不变式由 active/supersede 维护） */
+    @Query("SELECT * FROM event WHERE chunkId = :chunkId AND active = 1 ORDER BY id DESC LIMIT 1")
+    suspend fun activeByChunk(chunkId: Long): EventEntity?
+
+    @Query(
+        "SELECT * FROM event WHERE active = 1 AND chunkId IN (:chunkIds) " +
+            "ORDER BY chunkId, id"
+    )
+    suspend fun activeByChunkIds(chunkIds: List<Long>): List<EventEntity>
+
+    /** 幂等写入键：同 chunk + 同 extractionVersion 只允许一行（唯一索引保护） */
+    @Query(
+        "SELECT * FROM event WHERE chunkId = :chunkId AND extractionVersion = :extractionVersion LIMIT 1"
+    )
+    suspend fun byChunkAndExtractionVersion(chunkId: Long, extractionVersion: String): EventEntity?
+
+    /**
+     * 替代同 chunk 的旧 active event：notId 之外全部置 active=0、status=superseded、
+     * supersededBy=newEventId。调用方应在同一事务内先写新行再调用（B9）。
+     */
+    @Query(
+        "UPDATE event SET active = 0, status = :supersededStatus, supersededBy = :newEventId " +
+            "WHERE chunkId = :chunkId AND id != :newEventId AND active = 1"
+    )
+    suspend fun supersedeOthers(
+        chunkId: Long,
+        newEventId: Long,
+        supersededStatus: String,
+    ): Int
+
+    /** 丢弃/清除某 chunk 的当前 event（B9 重抽取失败回滚用） */
+    @Query("UPDATE event SET active = 0, status = :discardedStatus WHERE chunkId = :chunkId AND active = 1")
+    suspend fun discardActive(chunkId: Long, discardedStatus: String): Int
+
+    @Query("DELETE FROM event WHERE chunkId = :chunkId")
+    suspend fun deleteByChunk(chunkId: Long)
+
+    @Query("DELETE FROM event WHERE chunkId IN (:chunkIds)")
+    suspend fun deleteByChunkIds(chunkIds: List<Long>)
+
+    @Query("SELECT * FROM event ORDER BY id")
+    suspend fun all(): List<EventEntity>
+
+    /** 备份 v3 分页导出（避免一次性加载全量 event） */
+    @Query("SELECT * FROM event ORDER BY id LIMIT :limit OFFSET :offset")
+    suspend fun page(limit: Int, offset: Int): List<EventEntity>
+
+    @Query("SELECT COUNT(*) FROM event")
+    suspend fun count(): Int
+
+    @Query("SELECT COUNT(*) FROM event WHERE active = 1")
+    suspend fun countActive(): Int
+
+    // ---- event_fts：写入/重建/检索（bigram 文本由 core/search 生成） ----
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFts(row: EventFtsEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFtsAll(rows: List<EventFtsEntity>): List<Long>
+
+    @Query("DELETE FROM event_fts")
+    suspend fun clearFts()
+
+    @Query("SELECT COUNT(*) FROM event_fts")
+    suspend fun countFts(): Int
+
+    /** 关键词召回：match 为 FTS4 MATCH 表达式（bigram OR）；返回 eventId 按 rowid 顺序 */
+    @Query("SELECT eventId FROM event_fts WHERE event_fts MATCH :match ORDER BY rowid LIMIT :limit")
+    suspend fun searchFts(match: String, limit: Int): List<Long>
+}
+
+/** B8：entity 读写 + entity_fts（按 normalizedName 跨文档去重复用） */
+@Dao
+interface EntityDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: EntityEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entities: List<EntityEntity>)
+
+    @Query("SELECT * FROM entity WHERE id = :id")
+    suspend fun byId(id: Long): EntityEntity?
+
+    @Query("SELECT * FROM entity WHERE normalizedName = :normalizedName LIMIT 1")
+    suspend fun byNormalizedName(normalizedName: String): EntityEntity?
+
+    @Query("SELECT * FROM entity WHERE normalizedName IN (:normalizedNames)")
+    suspend fun byNormalizedNames(normalizedNames: List<String>): List<EntityEntity>
+
+    @Query("SELECT * FROM entity WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<EntityEntity>
+
+    @Query("SELECT * FROM entity WHERE entityType = :entityType ORDER BY id LIMIT :limit")
+    suspend fun byType(entityType: String, limit: Int): List<EntityEntity>
+
+    @Query("SELECT * FROM entity ORDER BY id")
+    suspend fun all(): List<EntityEntity>
+
+    /** 备份 v3 分页导出 */
+    @Query("SELECT * FROM entity ORDER BY id LIMIT :limit OFFSET :offset")
+    suspend fun page(limit: Int, offset: Int): List<EntityEntity>
+
+    @Query("DELETE FROM entity WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    /**
+     * 全库替换导入前清空（B8/备份 v3）：entity 没有父表可级联，必须显式清理；
+     * 由导入事务在写入前调用（backup-fixer 契约）。
+     */
+    @Query("DELETE FROM entity")
+    suspend fun deleteAll()
+
+    @Query("SELECT COUNT(*) FROM entity")
+    suspend fun count(): Int
+
+    // ---- entity_fts ----
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFts(row: EntityFtsEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFtsAll(rows: List<EntityFtsEntity>): List<Long>
+
+    @Query("DELETE FROM entity_fts")
+    suspend fun clearFts()
+
+    @Query("SELECT COUNT(*) FROM entity_fts")
+    suspend fun countFts(): Int
+
+    @Query("SELECT entityId FROM entity_fts WHERE entity_fts MATCH :match ORDER BY rowid LIMIT :limit")
+    suspend fun searchFts(match: String, limit: Int): List<Long>
+}
+
+/** B8：event-entity 关联（weight=关联强度，description=关系描述） */
+@Dao
+interface EventEntityDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(rel: EventEntityRel): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(rels: List<EventEntityRel>)
+
+    @Query("SELECT * FROM event_entity WHERE eventId = :eventId ORDER BY weight DESC, id")
+    suspend fun byEvent(eventId: Long): List<EventEntityRel>
+
+    @Query("SELECT * FROM event_entity WHERE eventId IN (:eventIds) ORDER BY eventId, weight DESC, id")
+    suspend fun byEvents(eventIds: List<Long>): List<EventEntityRel>
+
+    @Query("SELECT * FROM event_entity WHERE entityId = :entityId ORDER BY id")
+    suspend fun byEntity(entityId: Long): List<EventEntityRel>
+
+    @Query("SELECT * FROM event_entity ORDER BY id")
+    suspend fun all(): List<EventEntityRel>
+
+    /** 备份 v3 分页导出 */
+    @Query("SELECT * FROM event_entity ORDER BY id LIMIT :limit OFFSET :offset")
+    suspend fun page(limit: Int, offset: Int): List<EventEntityRel>
+
+    @Query("DELETE FROM event_entity WHERE eventId = :eventId")
+    suspend fun deleteByEvent(eventId: Long)
+
+    @Query("DELETE FROM event_entity WHERE eventId IN (:eventIds)")
+    suspend fun deleteByEvents(eventIds: List<Long>)
+
+    @Query("SELECT COUNT(*) FROM event_entity")
+    suspend fun count(): Int
+}
+
+/** B8：SAG 语义向量（event/entity 多态 owner；与 chunk_embedding 分离） */
+@Dao
+interface SagVectorDao {
+    @Insert
+    suspend fun insert(vector: SagVectorEntity): Long
+
+    @Insert
+    suspend fun insertAll(vectors: List<SagVectorEntity>)
+
+    @Query("SELECT * FROM sag_vector WHERE ownerType = :ownerType AND ownerId = :ownerId ORDER BY role")
+    suspend fun byOwner(ownerType: String, ownerId: Long): List<SagVectorEntity>
+
+    @Query(
+        "SELECT * FROM sag_vector WHERE ownerType = :ownerType AND ownerId IN (:ownerIds) " +
+            "ORDER BY ownerId, role"
+    )
+    suspend fun byOwners(ownerType: String, ownerIds: List<Long>): List<SagVectorEntity>
+
+    @Query(
+        "SELECT * FROM sag_vector WHERE spaceId = :spaceId AND role = :role " +
+            "AND ownerType = :ownerType ORDER BY id LIMIT :limit"
+    )
+    suspend fun bySpace(spaceId: String, role: String, ownerType: String, limit: Int): List<SagVectorEntity>
+
+    /** 备份导出分页（避免一次加载全部向量 BLOB） */
+    @Query("SELECT * FROM sag_vector ORDER BY id LIMIT :limit OFFSET :offset")
+    suspend fun page(limit: Int, offset: Int): List<SagVectorEntity>
+
+    @Query("SELECT COUNT(*) FROM sag_vector")
+    suspend fun count(): Int
+
+    @Query("SELECT COUNT(*) FROM sag_vector WHERE spaceId = :spaceId")
+    suspend fun countBySpace(spaceId: String): Int
+
+    @Query("DELETE FROM sag_vector WHERE ownerType = :ownerType AND ownerId = :ownerId")
+    suspend fun deleteByOwner(ownerType: String, ownerId: Long)
+
+    @Query("DELETE FROM sag_vector WHERE ownerType = :ownerType AND ownerId IN (:ownerIds)")
+    suspend fun deleteByOwners(ownerType: String, ownerIds: List<Long>)
+
+    @Query("DELETE FROM sag_vector WHERE spaceId = :spaceId")
+    suspend fun deleteBySpace(spaceId: String)
+
+    /**
+     * 全库替换导入前清空（B8/备份 v3）：sag_vector 的 owner 是多态引用（无 FK），
+     * 不显式清空会残留旧向量 → SAG 检索命中无 event 的实体/旧向量（backup-fixer 契约）。
+     */
+    @Query("DELETE FROM sag_vector")
+    suspend fun deleteAll()
+}
+
+/** B8：抽取任务队列（每 chunk 一条；状态机见 [ExtractionJobStatus]） */
+@Dao
+interface ExtractionJobDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(job: ExtractionJobEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(jobs: List<ExtractionJobEntity>)
+
+    @Query("SELECT * FROM extraction_job WHERE id = :id")
+    suspend fun get(id: String): ExtractionJobEntity?
+
+    @Query("SELECT * FROM extraction_job WHERE documentId = :documentId ORDER BY chunkId")
+    suspend fun byDocument(documentId: String): List<ExtractionJobEntity>
+
+    @Query("SELECT * FROM extraction_job WHERE chunkId = :chunkId ORDER BY id")
+    suspend fun byChunk(chunkId: Long): List<ExtractionJobEntity>
+
+    /** 领取下一批排队任务（按创建时间 FIFO）；limit 建议 = 批大小 */
+    @Query("SELECT * FROM extraction_job WHERE status = :queuedStatus ORDER BY createdAt, id LIMIT :limit")
+    suspend fun nextQueued(queuedStatus: String, limit: Int): List<ExtractionJobEntity>
+
+    /**
+     * 原子认领：仅当仍为 fromStatus 时置 toStatus（QUEUED→RUNNING），返回 0 表示被其它执行者领走。
+     */
+    @Query(
+        "UPDATE extraction_job SET status = :toStatus, attempt = attempt + 1, updatedAt = :now " +
+            "WHERE id = :id AND status = :fromStatus"
+    )
+    suspend fun claim(id: String, fromStatus: String, toStatus: String, now: Long): Int
+
+    /** 置成功（doneStatus=done），清空错误信息 */
+    @Query(
+        "UPDATE extraction_job SET status = :doneStatus, errorCode = NULL, errorDetail = NULL, " +
+            "updatedAt = :now WHERE id = :id"
+    )
+    suspend fun markDone(id: String, doneStatus: String, now: Long): Int
+
+    /** 置失败（failedStatus=failed）：保留 attempt 计数供重试上限判定 */
+    @Query(
+        "UPDATE extraction_job SET status = :failedStatus, errorCode = :errorCode, " +
+            "errorDetail = :errorDetail, updatedAt = :now WHERE id = :id"
+    )
+    suspend fun markFailed(
+        id: String,
+        failedStatus: String,
+        errorCode: String,
+        errorDetail: String,
+        now: Long,
+    ): Int
+
+    /** 失败重排队（toStatus=queued）：attempt 已由 [claim] 累加，超过上限由业务层拒绝调用 */
+    @Query(
+        "UPDATE extraction_job SET status = :toStatus, errorCode = NULL, errorDetail = NULL, " +
+            "updatedAt = :now WHERE id = :id"
+    )
+    suspend fun requeue(id: String, toStatus: String, now: Long): Int
+
+    @Query("UPDATE extraction_job SET status = :cancelledStatus, updatedAt = :now WHERE documentId = :documentId")
+    suspend fun cancelByDocument(documentId: String, cancelledStatus: String, now: Long): Int
+
+    /** 进程被杀回收：把中断态（running）重新置为 queued，避免任务永久卡住 */
+    @Query(
+        "UPDATE extraction_job SET status = :toStatus, updatedAt = :now " +
+            "WHERE status IN (:fromStatuses)"
+    )
+    suspend fun requeueInterrupted(fromStatuses: List<String>, toStatus: String, now: Long): Int
+
+    @Query("SELECT COUNT(*) FROM extraction_job WHERE status IN (:statuses)")
+    suspend fun activeCount(statuses: List<String>): Int
+
+    @Query("SELECT COUNT(*) FROM extraction_job WHERE status = :status")
+    suspend fun countByStatus(status: String): Int
+
+    @Query("SELECT * FROM extraction_job ORDER BY createdAt, id")
+    suspend fun all(): List<ExtractionJobEntity>
+
+    /** 备份 v3 分页导出 */
+    @Query("SELECT * FROM extraction_job ORDER BY createdAt, id LIMIT :limit OFFSET :offset")
+    suspend fun page(limit: Int, offset: Int): List<ExtractionJobEntity>
+
+    @Query("DELETE FROM extraction_job WHERE documentId = :documentId")
+    suspend fun deleteByDocument(documentId: String)
+
+    @Query("DELETE FROM extraction_job WHERE chunkId = :chunkId")
+    suspend fun deleteByChunk(chunkId: Long)
+
+    @Query("DELETE FROM extraction_job")
+    suspend fun deleteAll()
+}
+
+/** B8：问答会话/消息/引用（P1；备份 P0 默认不导出） */
+@Dao
+interface ChatDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertConversation(conversation: ChatConversationEntity)
+
+    @Query("SELECT * FROM chat_conversation WHERE id = :id")
+    suspend fun conversation(id: String): ChatConversationEntity?
+
+    @Query("SELECT * FROM chat_conversation ORDER BY updatedAt DESC LIMIT :limit")
+    suspend fun recentConversations(limit: Int): List<ChatConversationEntity>
+
+    @Query("UPDATE chat_conversation SET title = :title, updatedAt = :now WHERE id = :id")
+    suspend fun renameConversation(id: String, title: String, now: Long)
+
+    @Query("DELETE FROM chat_conversation WHERE id = :id")
+    suspend fun deleteConversation(id: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMessage(message: ChatMessageEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMessages(messages: List<ChatMessageEntity>)
+
+    @Query("SELECT * FROM chat_message WHERE conversationId = :conversationId ORDER BY createdAt, id")
+    suspend fun messages(conversationId: String): List<ChatMessageEntity>
+
+    @Query("DELETE FROM chat_message WHERE id = :id")
+    suspend fun deleteMessage(id: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCitations(citations: List<MessageCitationEntity>)
+
+    @Query("SELECT * FROM message_citation WHERE messageId = :messageId ORDER BY rank")
+    suspend fun citations(messageId: String): List<MessageCitationEntity>
+
+    @Query("DELETE FROM message_citation WHERE messageId = :messageId")
+    suspend fun deleteCitations(messageId: String)
+}
+
+/** B8：本地检索/问答诊断轨迹（仅保留最近 N 条；不含正文） */
+@Dao
+interface QueryTraceDao {
+    @Insert
+    suspend fun insert(trace: QueryTraceEntity): Long
+
+    @Query("SELECT * FROM query_trace ORDER BY createdAt DESC, id DESC LIMIT :limit")
+    suspend fun recent(limit: Int): List<QueryTraceEntity>
+
+    @Query(
+        "DELETE FROM query_trace WHERE id NOT IN " +
+            "(SELECT id FROM query_trace ORDER BY createdAt DESC, id DESC LIMIT :keep)"
+    )
+    suspend fun keepRecent(keep: Int): Int
+
+    @Query("DELETE FROM query_trace WHERE createdAt < :before")
+    suspend fun deleteOlderThan(before: Long): Int
+
+    @Query("SELECT COUNT(*) FROM query_trace")
+    suspend fun count(): Int
+
+    @Query("DELETE FROM query_trace")
+    suspend fun deleteAll()
+}

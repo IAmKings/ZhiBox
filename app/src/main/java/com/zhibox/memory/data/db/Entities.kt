@@ -8,12 +8,21 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Room schema（Android PRD §4.2 十表 + W1 修订；v5 引入外键与列默认值）。
+ * Room schema（Android PRD §4.2 十表 + W1 修订；v5 引入外键与列默认值；v6 引入 SAG 层）。
  *
  * W1 修订（依据 Phase 0 结论）：
  * - chunk_embedding 增加 role 列（对齐六向量角色协议；MVP 仅写 "content"，schema 预留）
  * - embedding_meta 增加 task_template 策略字段（G1 锁定 app-prefix）
  * - chunk_fts 为 FTS4 表，内容为 bigram 预分词文本（G3 结论），入库与查询两侧统一 bigram 化
+ *
+ * **B8（schema v6，additive）**：SAG（Structured Augmented Generation）数据层铺路，不改 v5
+ * 既有表语义与既有列（只新增列/表）：
+ * - `event` 扩展为完整抽取结果（title/summary/content/language/status/版本戳/active/supersededBy）；
+ *   `entity` 扩展 name/description；`event_entity` 扩展 weight/description；
+ * - 新增 `sag_vector`（event/entity 语义向量，与 chunk_embedding 分离）、`event_fts`/`entity_fts`
+ *   （FTS4，与 chunk_fts 同风格可重建）、`extraction_job`（每 chunk 一条抽取任务）、
+ *   `chat_conversation`/`chat_message`/`message_citation`（P1 问答）、`query_trace`（本地检索诊断）。
+ * 迁移实现见 [AppDatabase.MIGRATION_5_6]；旧库升级不触发网络/重嵌入（新表初始为空）。
  */
 
 @Entity(tableName = "source")
@@ -136,9 +145,23 @@ data class ChunkEmbeddingEntity(
 
 // ── Phase 2 关系层占位（Android PRD §4.2；MVP 建表不写入） ────────────────
 
+/**
+ * B8（v6）：SAG 抽取的 event 行——**1 chunk 1 event**（唯一索引 `(chunkId, extractionVersion)`）。
+ *
+ * - `canonicalText`/`confidence` 为 v5 预留列（保留兼容；B9 起 canonicalText 写 title+summary
+ *   归一化文本，confidence 写抽取器/模型的置信度）；
+ * - `extractorVersion`：抽取器实现版本（如 `egemma-extract-v1`，与 prompt 规则绑定）；
+ * - `extractionVersion`：**一次抽取的版本 UUID**（重抽取产生新 UUID，旧行由 `active=false` +
+ *   `supersededBy` 指向新行；相同 chunk + 同一 UUID 只允许一条，防重复抽取写重）；
+ * - `status` 取值见 [ExtractionJobStatus]/`EventStatus`（active/superseded/discarded）；
+ * - `modelId`/`promptVersion`：生成该结果的 LLM 模型与提示词版本，用于质量追溯/重抽取决策。
+ */
 @Entity(
     tableName = "event",
-    indices = [Index("chunkId")],
+    indices = [
+        Index("chunkId"),
+        Index(value = ["chunkId", "extractionVersion"], unique = true),
+    ],
     foreignKeys = [
         ForeignKey(
             entity = ChunkEntity::class,
@@ -153,13 +176,33 @@ data class EventEntity(
     val chunkId: Long,
     val canonicalText: String,
     val confidence: Double,
+    // ---- B8/schema v6 新增列（均可缺省：旧库 ALTER 回填默认值，语义=尚未抽取/旧版） ----
+    @ColumnInfo(defaultValue = "") val title: String = "",
+    @ColumnInfo(defaultValue = "") val summary: String = "",
+    @ColumnInfo(defaultValue = "") val content: String = "",
+    @ColumnInfo(defaultValue = "") val language: String = "",
+    @ColumnInfo(defaultValue = "active") val status: String = "active",
+    @ColumnInfo(defaultValue = "") val extractorVersion: String = "",
+    @ColumnInfo(defaultValue = "") val extractionVersion: String = "",
+    @ColumnInfo(defaultValue = "") val modelId: String = "",
+    @ColumnInfo(defaultValue = "") val promptVersion: String = "",
+    @ColumnInfo(defaultValue = "1") val active: Boolean = true,
+    val supersededBy: Long? = null,
+    @ColumnInfo(defaultValue = "0") val createdAt: Long = 0,
 )
 
+/**
+ * B8（v6）：SAG 抽取的 entity 行——按 `normalizedName`（小写/归一化）唯一，跨文档复用。
+ * `entityType` 为 [com.zhibox.memory.core.extract.EntityType] 的 wire 名（可空兼容 v5 预留行）。
+ */
 @Entity(tableName = "entity", indices = [Index(value = ["normalizedName"], unique = true)])
 data class EntityEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val normalizedName: String,
     val entityType: String?,
+    @ColumnInfo(defaultValue = "") val name: String = "",
+    @ColumnInfo(defaultValue = "") val description: String = "",
+    @ColumnInfo(defaultValue = "0") val createdAt: Long = 0,
 )
 
 @Entity(
@@ -185,6 +228,9 @@ data class EventEntityRel(
     val eventId: Long,
     val entityId: Long,
     val role: String?,
+    // B8（v6）：事件-实体关联强度（1.0=核心/必然，0.5=提及）与关系描述（LLM 可选输出）
+    @ColumnInfo(defaultValue = "1.0") val weight: Double = 1.0,
+    val description: String? = null,
 )
 
 @Entity(
@@ -239,4 +285,153 @@ data class AppKvEntity(
     @PrimaryKey val key: String,
     val value: String,
     val updatedAt: Long,
+)
+
+// ───────────────────────── B8（schema v6）：SAG 层新增表 ─────────────────────────
+
+/**
+ * B8（v6）：event/entity 的语义向量（SAG 检索用），与 chunk_embedding 分离。
+ *
+ * ownerType ∈ [SagOwnerType]（EVENT/ENTITY）；owner 为多态引用（event.id / entity.id），
+ * 父行删除时由业务侧按 owner 显式清理（SQLite 不支持多态 FK）。`(spaceId, role, ownerType)`
+ * 服务"按空间+角色批量取向量"；`(ownerType, ownerId)` 服务"按 owner 取向量/删向量"。
+ */
+@Entity(
+    tableName = "sag_vector",
+    indices = [
+        Index(value = ["ownerType", "ownerId"]),
+        Index(value = ["spaceId", "role", "ownerType"]),
+    ],
+)
+data class SagVectorEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val ownerType: String,   // EVENT / ENTITY（SagOwnerType.value）
+    val ownerId: Long,
+    val role: String,        // 语义角色：event_title / event_summary / entity_description ...
+    val spaceId: String,
+    val dimensions: Int,
+    val vectorBlob: ByteArray, // float32 LE（与 chunk_embedding 同编码）
+    val vectorNorm: Double,
+    val createdAt: Long,
+)
+
+/** B8（v6）：event 文本的 FTS4 索引（bigram 化后在 B9 写入；可从 event 行全量重建） */
+@Fts4
+@Entity(tableName = "event_fts")
+data class EventFtsEntity(
+    @PrimaryKey(autoGenerate = true) val rowid: Long = 0,
+    val eventId: Long,
+    val text: String,
+)
+
+/** B8（v6）：entity 文本的 FTS4 索引（name+description bigram 化；可从 entity 行全量重建） */
+@Fts4
+@Entity(tableName = "entity_fts")
+data class EntityFtsEntity(
+    @PrimaryKey(autoGenerate = true) val rowid: Long = 0,
+    val entityId: Long,
+    val text: String,
+)
+
+/**
+ * B8（v6）：每 chunk 一条的抽取任务（B9 由导入联动创建；不阻塞文档 ready）。
+ * 状态见 [ExtractionJobStatus]；`errorCode/errorDetail` 可读失败信息（不含 API key/正文）。
+ */
+@Entity(
+    tableName = "extraction_job",
+    indices = [Index("documentId"), Index("chunkId"), Index("status")],
+    foreignKeys = [
+        ForeignKey(
+            entity = DocumentEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["documentId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = ChunkEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["chunkId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+data class ExtractionJobEntity(
+    @PrimaryKey val id: String, // UUID（= 该 chunk 的 extractionVersion）
+    val documentId: String,
+    val chunkId: Long,
+    val status: String, // queued / running / done / failed / cancelled / not_indexed
+    @ColumnInfo(defaultValue = "0") val attempt: Int = 0,
+    val errorCode: String?,
+    val errorDetail: String?,
+    val createdAt: Long,
+    val updatedAt: Long,
+)
+
+/** B8（v6）：问答会话（P1；备份 P0 默认不导出，删除会话不影响知识库） */
+@Entity(tableName = "chat_conversation")
+data class ChatConversationEntity(
+    @PrimaryKey val id: String, // UUID
+    val title: String,
+    val sourceScope: String?, // null=全部来源；否则来源 id / 过滤表达式（B12 语义）
+    val createdAt: Long,
+    val updatedAt: Long,
+)
+
+/** B8（v6）：问答消息；role ∈ [ChatRole]（user/assistant/system） */
+@Entity(
+    tableName = "chat_message",
+    indices = [Index("conversationId")],
+    foreignKeys = [
+        ForeignKey(
+            entity = ChatConversationEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["conversationId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+data class ChatMessageEntity(
+    @PrimaryKey val id: String, // UUID
+    val conversationId: String,
+    val role: String,
+    val content: String,
+    val createdAt: Long,
+    val model: String?, // 生成该消息的模型；user/system 消息为 null
+)
+
+/** B8（v6）：消息引用（可点击回原文）；rank 为模型引用顺序（0 起） */
+@Entity(
+    tableName = "message_citation",
+    indices = [Index("messageId"), Index("chunkId")],
+    foreignKeys = [
+        ForeignKey(
+            entity = ChatMessageEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["messageId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+data class MessageCitationEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val messageId: String,
+    val chunkId: Long,
+    val rank: Int,
+)
+
+/**
+ * B8（v6）：本地检索/问答诊断轨迹（P0 必需；不含正文，仅 queryHash/耗时/降级原因）。
+ * 仅保留最近 N 条（DAO 负责裁剪），可清空/脱敏导出；不进入备份。
+ */
+@Entity(
+    tableName = "query_trace",
+    indices = [Index("queryHash"), Index("createdAt")],
+)
+data class QueryTraceEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val queryHash: String, // 查询文本的 SHA-256（不落正文）
+    val mode: String,      // keyword / vector / hybrid（B11 语义）
+    val timingJson: String, // 各阶段耗时 JSON（{kwMs:.., vecMs:.., rrfMs:..}）
+    val degradedReason: String?,
+    val createdAt: Long,
 )
