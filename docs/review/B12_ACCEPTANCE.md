@@ -2,7 +2,7 @@
 
 - **日期**：2026-10-19
 - **范围**：ROADMAP §7 B12 / PRD §11 P0 门禁
-- **结论**：**验收不通过（进行中）**；代码/自动门禁、entity 连接、10k 查询基线、trace errorCode 与签名 RC 已完成；但三档设备矩阵仍缺失（仅 PJZ110），抽取并发控制/备份 UI 视觉/持久盘 p95 未闭合，不能宣称发布验收通过。
+- **结论**：**验收不通过（进行中）**；代码/自动门禁（JVM 520/501、PJZ110 instrumentation 35/35）、entity 连接、10k 查询基线、trace errorCode、抽取并发与签名 RC 已完成；但三档设备安装矩阵仍缺失（仅 PJZ110）、备份 UI 视觉/持久盘 p95 未闭合，不能宣称发布验收通过。
 
 ## 1. 设备矩阵
 
@@ -25,6 +25,7 @@
 | 图谱：source 过滤/分页≤200/详情/chunk 原文/空态/entity 连接 | DAO 4/4；GraphUI 6/6；新增相关事件（共享实体）；PJZ110 串行 32/32 | `B12-instrumentation-pjz110.txt`、`B12-graphui-pjz110.txt` |
 | 图谱 query p95 ≤1.5s（10k） | 通过（in-memory 下限）：count p95 8ms、page p95 2–3ms、source filter 3ms | `B12-graph10k-pjz110.txt` |
 | 预算档位 | 9/9 JVM；Settings UI 三档 + 数值展示；Search/Chat 下一次请求读取 | `SagBudgetTierTest` |
+| 抽取并发 | `SagExtractionPreferences` 1..4 + Worker 并发 claim + Settings UI；JVM 7/7、设备 3/3 | `SagExtractionPreferencesTest`、`SagExtractionClaimConcurrencyTest` |
 | backup v3 UI/依赖提示/旧包补抽取提示/隐私说明 | UI 审计补缺完成；编译通过；未做专项设备视觉 | Settings task-61 |
 | trace 诊断导出（最近 50/脱敏/无正文/errorCode） | Settings 新增计数+导出；QA timingJson 增 errorCode/errorStage | task-61 + 本轮 |
 | JVM/lint/assemble | debug 513/0、release 494/0、lint 0/37、assembleDebug/Release 成功 | `/tmp/b12-gate1.log` |

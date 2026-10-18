@@ -7,11 +7,16 @@ import com.zhibox.memory.core.llm.KeystoreLlmConfigStore
 import com.zhibox.memory.core.llm.OpenAiCompatibleLlmProvider
 import com.zhibox.memory.core.llm.RemoteLlmEventEntityExtractor
 import com.zhibox.memory.data.db.AppDatabase
+import com.zhibox.memory.data.db.ExtractionJobStatus
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
 /**
@@ -48,10 +53,31 @@ class SagExtractionWorker(
         )
 
         pipeline.recoverInterrupted()
+        val parallelism = SagExtractionPreferences.parallelism(context)
         try {
-            while (pipeline.processNext()) {
-                // 协作取消点：WorkManager 停止 Worker 时尽快退出（processJob 内部还有嵌入/DB 取消点）
-                currentCoroutineContext().ensureActive()
+            if (parallelism <= 1) {
+                while (pipeline.processNext()) {
+                    // 协作取消点：WorkManager 停止 Worker 时尽快退出（processJob 内部还有嵌入/DB 取消点）
+                    currentCoroutineContext().ensureActive()
+                }
+            } else {
+                // B12：并发消费 QUEUED；claim 原子保证一个 job 只被一个协程处理。
+                // 竞争失败时若队列仍有任务，短暂让出后重试，避免其它协程已在途导致提前退出。
+                coroutineScope {
+                    repeat(parallelism) {
+                        launch(Dispatchers.Default) {
+                            while (isActive) {
+                                val processed = pipeline.processNext()
+                                if (!processed) {
+                                    val queued = db.extractionJobDao()
+                                        .queuedCount(ExtractionJobStatus.QUEUED.value)
+                                    if (queued <= 0) return@launch
+                                    delay(20)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         } catch (c: CancellationException) {
             withContext(NonCancellable) { pipeline.recoverInterrupted() }

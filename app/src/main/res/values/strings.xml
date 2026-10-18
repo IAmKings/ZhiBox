@@ -418,4 +418,10 @@
     <string name="graph_detail_related_events">相关事件（共享实体，%1$d）</string>
     <string name="graph_detail_shared_entity">共享实体：%1$s</string>
     <string name="graph_detail_no_related">暂无共享实体的相关事件</string>
+
+    <!-- ==== B12：SAG 抽取并发度 ==== -->
+    <string name="settings_extraction_parallelism_section">抽取并发度</string>
+    <string name="settings_extraction_parallelism_hint">并发 = 同时在途的远程 LLM 抽取数；越高越快，但更耗流量/电量且可能触发远端限流。默认 1（串行），上限 4。</string>
+    <string name="settings_extraction_parallelism_value">%1$d</string>
+    <string name="settings_extraction_parallelism_save_failed">保存抽取并发度失败：%1$s</string>
 </resources>

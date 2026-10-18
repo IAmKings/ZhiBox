@@ -10,7 +10,7 @@
 - Graph 事件详情新增 **entity 共享连接「相关事件」**：activeEventIdsByEntityIds + 批量 byIds，排除自身、去重、上限 20，可点击跳转详情（embedded/独立两种模式）。
 - Graph 10k 基线（in-memory Room + 真实 DAO）：count all p95 **8ms**、page offset0 p95 2ms、offset5000 p95 3ms、offset9950 p95 3ms、source filter p95 3ms；全部远低于 1.5s 目标（下限参考，非持久盘）；seed active=10000/inactive=500。
 - QA trace `timingJson` 增 `errorCode/errorStage`（失败可归因；无正文）。
-- 门禁：JVM 513/0、release 494/0；lint 0/38；PJZ110 串行 instrumentation **32/32**（新增 Graph10k 1 例）；BackupV3 7/7、Migration 11/11。
+- 门禁：JVM **520/0**、release **501/0**；lint 0/40；PJZ110 串行 instrumentation **35/35**（Graph10k 1 + extraction concurrency 3 + 原 31）；BackupV3 7/7、Migration 11/11。
 - 独立审查修复：Graph 切源/loadMore 竞态、Settings 预算写入竞态、详情嵌套 Scaffold、错误+空态叠加、隐私文案；签名 RC 已完成（apksigner PASS）。**仍未闭合**：三档设备安装矩阵、抽取并发控制、entity 连接性能/持久盘、备份 UI 视觉。
 
 ### 1.0.1 第一批判定（2026-10-19）

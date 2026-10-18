@@ -17,6 +17,7 @@ import com.zhibox.memory.core.llm.LlmErrorCode
 import com.zhibox.memory.core.llm.LlmStoreException
 import com.zhibox.memory.core.llm.LlmPreferences
 import com.zhibox.memory.core.extraction.SagAvailability
+import com.zhibox.memory.core.extraction.SagExtractionPreferences
 import com.zhibox.memory.core.extraction.SagExtractionScheduler
 import com.zhibox.memory.core.llm.LlmTestResult
 import com.zhibox.memory.core.llm.OpenAiCompatibleLlmProvider
@@ -126,6 +127,9 @@ data class SettingsUiState(
     val answerNetworkConsent: Boolean = false,
     /** B12：检索预算档位（PRD §7.2，默认 HIGH；下一轮检索/问答生效） */
     val budgetTier: SagBudgetTier = SagBudgetTier.HIGH,
+    // ---- B12：SAG 抽取并发度（1..4，默认 1=串行；Worker 读取） ----
+    val extractionParallelism: Int = SagExtractionPreferences.DEFAULT_PARALLELISM,
+    val extractionParallelismSaving: Boolean = false,
     /** B12：档位持久化进行中（UI 禁用，避免连点/乱序写） */
     val budgetSaving: Boolean = false,
     // ---- B9：SAG 两阶段抽取状态 ----
@@ -200,6 +204,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val networkDisabled: Boolean,
         val answerNetworkConsent: Boolean,
         val budgetTier: SagBudgetTier,
+        val extractionParallelism: Int,
         // B9
         val sagAvailable: Boolean,
         val extractionCounts: ExtractionCountsUi,
@@ -248,6 +253,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         networkDisabled = s.networkDisabled,
                         answerNetworkConsent = s.answerNetworkConsent,
                         budgetTier = s.budgetTier,
+                        extractionParallelism = s.extractionParallelism,
                         sagAvailable = s.sagAvailable,
                         extractionCounts = s.extractionCounts,
                         traceTotalCount = s.traceTotalCount,
@@ -314,6 +320,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val networkDisabled = !LlmPreferences.networkAllowed(app)
         val answerNetworkConsent = LlmPreferences.answerNetworkConsent(app)
         val budgetTier = SagBudgetPreferences.tier(app)
+        val extractionParallelism = SagExtractionPreferences.parallelism(app)
         // B9：SAG 抽取可用性与任务计数（IO 上下文；可用性失败按不可用处理，不阻塞刷新）
         val sagAvailable = runCatching { SagAvailability.isAvailable(app) }.getOrDefault(false)
         val extractionCounts = readExtractionCounts()
@@ -352,6 +359,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             networkDisabled = networkDisabled,
             answerNetworkConsent = answerNetworkConsent,
             budgetTier = budgetTier,
+            extractionParallelism = extractionParallelism,
             sagAvailable = sagAvailable,
             extractionCounts = extractionCounts,
             traceTotalCount = traceTotalCount,
@@ -874,6 +882,45 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         ) {
             withContext(Dispatchers.IO) { SagBudgetPreferences.setTier(app, tier) }
             update { it.copy(budgetTier = tier, budgetSaving = false) }
+        }
+    }
+
+    /** B12：保存 SAG 抽取并发度（1..4；IO 持久化，Worker 下一次领取任务时读取）。 */
+    fun setExtractionParallelism(value: Int) {
+        val clamped = value.coerceIn(
+            SagExtractionPreferences.MIN_PARALLELISM,
+            SagExtractionPreferences.MAX_PARALLELISM,
+        )
+        if (_state.value.extractionParallelism == clamped || _state.value.extractionParallelismSaving) return
+        update { it.copy(extractionParallelismSaving = true, error = null, extractionMessage = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        extractionParallelismSaving = false,
+                        extractionMessage = str(
+                            R.string.settings_extraction_parallelism_save_failed,
+                            t.readableMessage(),
+                        ),
+                    )
+                }
+            },
+        ) {
+            try {
+                val saved = withContext(Dispatchers.IO) {
+                    SagExtractionPreferences.setParallelism(app, clamped)
+                }
+                update {
+                    it.copy(
+                        extractionParallelism = saved,
+                        extractionParallelismSaving = false,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } finally {
+                update { it.copy(extractionParallelismSaving = false) }
+            }
         }
     }
 

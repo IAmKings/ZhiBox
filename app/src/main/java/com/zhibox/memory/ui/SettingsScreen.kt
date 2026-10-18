@@ -339,6 +339,7 @@ fun SettingsScreen(
         setNetworkDisabled = viewModel::setNetworkDisabled,
         backfillExtraction = viewModel::backfillExtraction,
         retryFailedExtraction = viewModel::retryFailedExtraction,
+        setExtractionParallelism = viewModel::setExtractionParallelism,
         exportTrace = viewModel::exportTraceJson,
     )
     SettingsContent(state = state, actions = actions)
@@ -372,6 +373,8 @@ class SettingsActions(
     // B9：SAG 两阶段抽取
     val backfillExtraction: () -> Unit = {},
     val retryFailedExtraction: () -> Unit = {},
+    // B12：抽取并发度
+    val setExtractionParallelism: (Int) -> Unit = {},
     // B12：trace 诊断导出
     val exportTrace: () -> Unit = {},
     // B12：检索预算档位
@@ -1235,6 +1238,34 @@ internal fun SettingsContent(
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
+                    // B12：抽取并发度（1..4；Worker 下一批领取任务时生效）
+                    Text(
+                        stringResource(R.string.settings_extraction_parallelism_section),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (value in 1..4) {
+                            FilterChip(
+                                selected = state.extractionParallelism == value,
+                                onClick = { actions.setExtractionParallelism(value) },
+                                enabled = !state.extractionParallelismSaving,
+                                label = {
+                                    Text(
+                                        stringResource(
+                                            R.string.settings_extraction_parallelism_value,
+                                            value,
+                                        ),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                    Text(
+                        stringResource(R.string.settings_extraction_parallelism_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(
                             onClick = actions.backfillExtraction,
@@ -1388,6 +1419,7 @@ private fun SettingsDarkPreview() {
                 traceTotalCount = 12,
                 traceRecentModes = mapOf("qa" to 3, "multi_es_fast" to 7, "vector" to 2),
                 budgetTier = SagBudgetTier.MID,
+                extractionParallelism = 2,
             ),
             actions = SettingsActions(),
         )
