@@ -92,7 +92,7 @@ OK (5 tests)
 
 - 通过：SearchContent 两命中渲染/点击、拒绝态文案/动作、Evidence 返回、Sources 空态、MainActivity recreate；
 - K40 重测结论：MIUI 日志 `Abort background activity starts from 10400`，测试宿主 `ComponentActivity` 无法显示，属设备策略限制；不是 B10 UI 回归。
-- 证据：`docs/review/evidence/B10-compose-pjz110.log`。
+- 证据：`docs/review/evidence/B10-compose-pjz110.txt`。
 
 ---
 
