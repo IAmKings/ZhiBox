@@ -1,0 +1,270 @@
+{
+  "version": 1,
+  "generatedBy": "scripts/eval/gen_b11_qa_manifest.py (inline)",
+  "source": {
+    "kb": "app/src/androidTest/assets/b10/kb.json",
+    "queries": "app/src/androidTest/assets/b10/queries.json",
+    "chunks": 80,
+    "documents": 20
+  },
+  "selection": {
+    "withEvidence": {
+      "count": 16,
+      "hopsBreakdown": {
+        "2": 6,
+        "3": 5,
+        "4": 5
+      }
+    },
+    "noEvidence": {
+      "count": 4,
+      "expectedRefusalCode": "NO_EVIDENCE"
+    },
+    "total": 20
+  },
+  "queries": [
+    {
+      "qid": "q001",
+      "question": "张三所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        1,
+        2
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q007",
+      "question": "李四所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        5,
+        6
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q013",
+      "question": "王五所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        9,
+        10
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q019",
+      "question": "赵敏所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        13,
+        14
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q025",
+      "question": "刘洋所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        17,
+        18
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q031",
+      "question": "陈明所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        21,
+        22
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q003",
+      "question": "张三所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        1,
+        2,
+        3
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q009",
+      "question": "李四所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        5,
+        6,
+        7
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q015",
+      "question": "王五所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        9,
+        10,
+        11
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q021",
+      "question": "赵敏所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        13,
+        14,
+        15
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q027",
+      "question": "刘洋所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        17,
+        18,
+        19
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q005",
+      "question": "张三所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q011",
+      "question": "李四所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q017",
+      "question": "王五所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q023",
+      "question": "赵敏所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        13,
+        14,
+        15,
+        16
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q029",
+      "question": "刘洋所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "evidenceChunkIndices": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "noev-01",
+      "question": "爱因斯坦的相对论首次实验验证是在哪一年？",
+      "hops": 0,
+      "isNoEvidence": true,
+      "evidenceChunkIndices": [],
+      "expectedRefusal": true,
+      "supportManual": null
+    },
+    {
+      "qid": "noev-02",
+      "question": "珠穆朗玛峰的海拔是多少米？",
+      "hops": 0,
+      "isNoEvidence": true,
+      "evidenceChunkIndices": [],
+      "expectedRefusal": true,
+      "supportManual": null
+    },
+    {
+      "qid": "noev-03",
+      "question": "《三体》的作者是谁？",
+      "hops": 0,
+      "isNoEvidence": true,
+      "evidenceChunkIndices": [],
+      "expectedRefusal": true,
+      "supportManual": null
+    },
+    {
+      "qid": "noev-04",
+      "question": "Python 语言最初由谁设计？",
+      "hops": 0,
+      "isNoEvidence": true,
+      "evidenceChunkIndices": [],
+      "expectedRefusal": true,
+      "supportManual": null
+    }
+  ]
+}

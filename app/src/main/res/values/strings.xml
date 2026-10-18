@@ -317,4 +317,48 @@
     <string name="search_trace_export_empty">暂无可导出的 trace（先执行一次检索）</string>
     <string name="search_trace_export_failed">导出 trace 失败：%1$s</string>
     <string name="search_hit_event_tag">事件 #%1$d</string>
+
+    <!-- ==== B11：带引用问答（Chat） ==== -->
+    <string name="home_open_chat">问答</string>
+    <string name="chat_title">带引用问答</string>
+    <string name="chat_mode_section">检索模式</string>
+    <string name="chat_mode_auto">自动</string>
+    <string name="chat_source_section">来源范围（空=全库）</string>
+    <string name="chat_source_all">全部来源</string>
+    <string name="chat_new_conversation">新对话</string>
+    <string name="chat_conversations">最近会话</string>
+    <string name="chat_no_conversations">暂无会话</string>
+    <string name="chat_input_hint">输入问题（单轮；只基于本轮检索证据回答）</string>
+    <string name="chat_send">发送</string>
+    <string name="chat_stop">停止</string>
+    <string name="chat_retry">重试</string>
+    <string name="chat_empty_title">开始一次带引用问答</string>
+    <string name="chat_empty_message">先导入资料并配置 LLM；回答只基于本轮检索到的证据，并标注引用。</string>
+    <string name="chat_llm_not_ready">问答生成不可用：请在「设置 → SAG 增强 / LLM」配置 LLM、开启「问答生成」并关闭「禁止网络」。</string>
+    <string name="chat_answer_disabled">问答生成未开启：请在设置中开启「问答生成」。</string>
+    <string name="chat_network_blocked">已开启禁止网络：问答生成需要联网，请先在设置中允许网络。</string>
+    <string name="chat_llm_not_configured">未配置 LLM：请先在设置中填写 API 配置。</string>
+    <string name="chat_retrieving">检索证据中…</string>
+    <string name="chat_generating">生成中…</string>
+    <string name="chat_stopped_partial">已停止生成；未完成的回答不会保存。</string>
+    <string name="chat_no_evidence">资料不足，无法回答：本轮没有检索到可引用证据。</string>
+    <string name="chat_failed">问答失败：%1$s</string>
+    <string name="chat_unverified_warning">该回答未通过证据校验（未引用任何证据），请谨慎参考。</string>
+    <string name="chat_invalid_citation_warning">回答包含无效引用 %1$s，已替换为「未通过证据校验」标记。</string>
+    <string name="chat_no_citation_hint">未通过证据校验（回答未引用证据）</string>
+    <string name="chat_citation_chip">引用 %1$s</string>
+    <string name="chat_evidence_stale">引用的原文已不存在（可能已删除或未就绪）。</string>
+    <string name="chat_degraded_info">检索降级：%1$s</string>
+    <string name="chat_consent_title">首次联网问答确认</string>
+    <string name="chat_consent_message_host">「带引用问答」会把本轮问题与检索到的文档片段发送到 %1$s 用于生成回答。回答只基于这些证据并标注引用；可随时在设置中关闭问答或禁止网络。是否继续？</string>
+    <string name="chat_consent_message">「带引用问答」会把本轮问题与检索到的文档片段发送到你配置的 OpenAI-compatible LLM 服务用于生成回答。回答只基于这些证据并标注引用；可随时在设置中关闭问答或禁止网络。是否继续？</string>
+    <string name="chat_consent_accept">同意并继续</string>
+    <string name="chat_consent_cancel">暂不</string>
+
+    <!-- ==== B11：设置页问答开关与首次联网同意 ==== -->
+    <string name="settings_answer_consent_section">问答首次联网隐私说明</string>
+    <string name="settings_answer_consent_notice">开启「问答生成」并允许网络后，你的问题与本轮检索到的文档片段会发送到你配置的 LLM 服务；API Key 仅在本机加密保存，不进入日志/备份。</string>
+    <string name="settings_answer_consent_required">开启问答前需先阅读并同意首次联网隐私说明。</string>
+    <string name="settings_answer_consent_agreed">已同意首次联网隐私说明</string>
+    <string name="settings_answer_consent_agree">我已了解并同意</string>
 </resources>

@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.zhibox.memory.ui.BenchmarkScreen
+import com.zhibox.memory.ui.ChatScreen
 import com.zhibox.memory.ui.ImportScreen
 import com.zhibox.memory.ui.SearchScreen
 import com.zhibox.memory.ui.SettingsScreen
@@ -104,6 +105,7 @@ class MainActivity : ComponentActivity() {
                         onOpenSettings = { screen = "settings" },
                     )
                     "search" -> SearchScreen(onBack = goHome)
+                    "chat" -> ChatScreen(onBack = goHome)
                     "sources" -> SourcesScreen(
                         onBack = goHome,
                         onOpenImport = { screen = "import" },
@@ -117,6 +119,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onOpenImport = { screen = "import" },
                         onOpenSearch = { screen = "search" },
+                        onOpenChat = { screen = "chat" },
                         onOpenSources = { screen = "sources" },
                         onOpenSettings = { screen = "settings" },
                     )
@@ -230,6 +233,7 @@ fun AppSkeleton(
     onOpenBenchmark: (() -> Unit)? = null,
     onOpenImport: () -> Unit = {},
     onOpenSearch: () -> Unit = {},
+    onOpenChat: () -> Unit = {},
     onOpenSources: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
 ) {
@@ -268,6 +272,9 @@ fun AppSkeleton(
                         }
                         Button(onClick = onOpenImport) {
                             Text(stringResource(R.string.home_open_import))
+                        }
+                        Button(onClick = onOpenChat) {
+                            Text(stringResource(R.string.home_open_chat))
                         }
                         Button(onClick = onOpenSources) {
                             Text(stringResource(R.string.home_open_sources))

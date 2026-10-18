@@ -1,0 +1,45 @@
+{
+  "answersFile": "docs/review/evidence/B11-qa-gateclosed-answers.json",
+  "generatedAt": 1792330097530,
+  "gate": {
+    "providerConfigured": false,
+    "answerEnabled": false,
+    "networkAllowed": false,
+    "answerNetworkConsent": false,
+    "gateOpen": false,
+    "model": null
+  },
+  "runGated": true,
+  "counts": {
+    "total": 20,
+    "withEvidence": 16,
+    "noEvidence": 4,
+    "answered": 0,
+    "refused": 20
+  },
+  "qa": {
+    "successRate": 0.0,
+    "citationValidRate": null,
+    "citationInvalidCases": 0,
+    "citationInvalidQids": [],
+    "unverifiedCases": 0,
+    "unverifiedQids": [],
+    "noCitationCases": 0,
+    "noCitationQids": [],
+    "avgCitationsPerAnswer": null,
+    "noEvidenceRefusalAccuracy": 1.0,
+    "noEvidenceWrongQids": [],
+    "latencyP50Ms": null,
+    "latencyP95Ms": null
+  },
+  "refusedByCode": {
+    "NO_EVIDENCE": 4,
+    "KEY_MISSING": 16
+  },
+  "support": {
+    "available": false,
+    "rate": null,
+    "counts": {},
+    "note": "未提供 --support-manual（人工/LLM judge 支持率未评）"
+  }
+}

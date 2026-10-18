@@ -3,8 +3,19 @@ package com.zhibox.memory.core.llm
 import android.content.Context
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -14,14 +25,18 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URI
 import java.net.URL
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /** OpenAI-compatible `/chat/completions` 路径（连通性测试与 completion 共用）。 */
 internal const val CHAT_COMPLETIONS_PATH: String = "/chat/completions"
@@ -77,7 +92,7 @@ class OpenAiCompatibleLlmProvider internal constructor(
     private val connectionOpener: LlmHttpConnectionOpener,
     /** OpenCode Go 的稳定会话 ID；默认随机 UUID（生产通过 [from] 读持久化值）。 */
     private val openCodeSessionIdProvider: () -> String = { UUID.randomUUID().toString() },
-) : LlmProvider, LlmCompletionProvider {
+) : LlmProvider, LlmCompletionProvider, LlmStreamingProvider {
 
     /** 生产/一般用法：禁网策略由调用方提供，时钟默认系统毫秒。 */
     constructor(
@@ -151,6 +166,216 @@ class OpenAiCompatibleLlmProvider internal constructor(
         }
     }
 
+    // ---- B11：SSE 流式生成（LlmStreamingProvider） ----
+
+    /**
+     * 流式 `/chat/completions`（`stream=true`，SSE）。
+     *
+     * 实现要点（与 [LlmStreamingProvider] 契约一致）：
+     * - **禁网零请求/仅 HTTPS/配置校验**在打开连接前完成（同 completion 的 [preflight]）；
+     * - SSE 行解析：`data: {json}` 取 `choices[0].delta.content`，`data: [DONE]` 结束；
+     *   `event:`/`id:`/空行/注释行忽略；服务端错误对象/坏 JSON/非字符串 content →
+     *   [LlmStreamEvent.Failed]（稳定码 + 可读文案）；
+     * - 正常结束恰好发一次 [LlmStreamEvent.Completed]（EOF 但未收到 [DONE] 且已有内容时也视为正常，
+     *   兼容部分 OpenAI-compatible 服务端；完全无内容 → [LlmErrorCode.PARSE]）；
+     * - **取消即关闭连接**：通过 `Job.invokeOnCompletion` 在协程取消时 `disconnect()`，
+     *   阻塞中的读会立即失败；取消路径不发送 [LlmStreamEvent.Failed]（CancellationException 重抛）；
+     * - 阻塞 IO 整体走 [Dispatchers.IO]；不写任何日志，错误只含状态/截断 detail，不含 key/正文。
+     */
+    override fun stream(
+        config: LlmConfig,
+        systemPrompt: String,
+        userPrompt: String,
+        maxTokens: Int,
+    ): Flow<LlmStreamEvent> = channelFlow {
+        preflight(config)?.let { failure ->
+            send(LlmStreamEvent.Failed(failure.code, failure.message))
+            return@channelFlow
+        }
+        if (systemPrompt.isBlank() || userPrompt.isBlank()) {
+            send(
+                LlmStreamEvent.Failed(
+                    LlmErrorCode.INVALID_CONFIG,
+                    "systemPrompt / userPrompt 不能为空",
+                ),
+            )
+            return@channelFlow
+        }
+        if (maxTokens !in LlmConfig.MIN_MAX_TOKENS..LlmConfig.MAX_MAX_TOKENS) {
+            send(
+                LlmStreamEvent.Failed(
+                    LlmErrorCode.INVALID_CONFIG,
+                    "maxTokens 需在 ${LlmConfig.MIN_MAX_TOKENS}–${LlmConfig.MAX_MAX_TOKENS} 之间",
+                ),
+            )
+            return@channelFlow
+        }
+        val endpoint = endpointOf(config.baseUrl)
+        if (endpoint == null) {
+            send(
+                LlmStreamEvent.Failed(
+                    LlmErrorCode.INSECURE_URL,
+                    "仅支持 HTTPS 的 LLM 服务地址（baseUrl 必须以 https:// 开头且不含用户名/密码）",
+                ),
+            )
+            return@channelFlow
+        }
+
+        val startedAt = clockMillis()
+        val connectionRef = AtomicReference<HttpURLConnection?>(null)
+        val disconnected = AtomicBoolean(false)
+        fun closeConnection() {
+            if (disconnected.compareAndSet(false, true)) {
+                connectionRef.getAndSet(null)?.disconnect()
+            }
+        }
+
+        // 阻塞读/写放在独立 IO 协程；取消时由 awaitClose 立即 closeConnection()，
+        // 使阻塞中的 InputStream.read() 立刻失败（这是"取消即关闭连接"的关键——不能等
+        // 生产者协程自己走到 finally，否则阻塞读会与取消互相等待）。
+        val producer = launch(Dispatchers.IO) {
+            try {
+                // 取消可能发生在 open 之前/期间；awaitClose 已置 disconnected 时不得再发请求。
+                if (disconnected.get()) return@launch
+                val connection = openChatConnection(config, endpoint, accept = "text/event-stream")
+                if (disconnected.get()) {
+                    connection.disconnect()
+                    return@launch
+                }
+                connectionRef.set(connection)
+                if (disconnected.get()) {
+                    connectionRef.compareAndSet(connection, null)
+                    connection.disconnect()
+                    return@launch
+                }
+                try {
+                    connection.outputStream.use { out ->
+                        out.write(
+                            buildStreamingRequestJson(config, systemPrompt, userPrompt, maxTokens)
+                                .toString().toByteArray(Charsets.UTF_8),
+                        )
+                    }
+                    val status = connection.responseCode
+                    if (status !in HTTP_SUCCESS_MIN..HTTP_SUCCESS_MAX) {
+                        val detail = readErrorDetail(connection)
+                        val failure = httpFailure(status, detail)
+                        send(LlmStreamEvent.Failed(failure.code, failure.message))
+                        return@launch
+                    }
+                    emitSseStream(connection, config, startedAt) { event -> send(event) }
+                } finally {
+                    closeConnection()
+                }
+            } catch (e: CancellationException) {
+                // 协程取消原样重抛（不冒 Failed）；连接已由 awaitClose/finally 关闭
+                throw e
+            } catch (e: SocketTimeoutException) {
+                if (currentCoroutineContext().isActive) {
+                    send(
+                        LlmStreamEvent.Failed(
+                            LlmErrorCode.TIMEOUT,
+                            "LLM 流式响应超时（${config.timeoutSeconds}s）：请检查网络/代理，或调大超时时间",
+                        ),
+                    )
+                }
+            } catch (e: IOException) {
+                // 取消导致的读中断不产生 Failed（取消语义由调用方处理）
+                if (currentCoroutineContext().isActive) {
+                    send(
+                        LlmStreamEvent.Failed(
+                            LlmErrorCode.NETWORK,
+                            "LLM 流式连接中断（${e.javaClass.simpleName}）：请检查网络与 baseUrl",
+                        ),
+                    )
+                }
+            } catch (e: IllegalArgumentException) {
+                if (currentCoroutineContext().isActive) {
+                    send(
+                        LlmStreamEvent.Failed(
+                            LlmErrorCode.INVALID_CONFIG,
+                            "LLM 配置不合法：请检查 baseUrl / model / 超时设置",
+                        ),
+                    )
+                }
+            } finally {
+                closeConnection()
+                // 生产者自然结束（成功/失败）时关闭 channel，让 awaitClose 返回；
+                // 若已被下游取消，close 是幂等 no-op（可能抛 ClosedSendChannelException，
+                // 它属于 CancellationException 语义，不应上报为业务失败）。
+                runCatching { close() }
+            }
+        }
+
+        awaitClose {
+            producer.cancel()
+            closeConnection()
+        }
+    }
+
+    /** 逐行解析 SSE 并发出事件；返回即表示流已终止（不抛业务异常）。 */
+    private suspend fun emitSseStream(
+        connection: HttpURLConnection,
+        config: LlmConfig,
+        startedAt: Long,
+        emitEvent: suspend (LlmStreamEvent) -> Unit,
+    ) {
+        val reader = BufferedReader(InputStreamReader(connection.inputStream, Charsets.UTF_8))
+        var model = ""
+        var sawContent = false
+        var sawDone = false
+        var totalChars = 0
+        try {
+            while (true) {
+                val line = reader.readLine() ?: break
+                currentCoroutineContext().ensureActive()
+                totalChars += line.length + 1
+                if (totalChars > MAX_STREAM_CHARS) {
+                    emitEvent(
+                        LlmStreamEvent.Failed(
+                            LlmErrorCode.PARSE,
+                            "LLM 流式响应过大（超过 ${MAX_STREAM_CHARS / 1024}KB），已终止",
+                        ),
+                    )
+                    return
+                }
+                when (val parsed = parseSseLine(line, config.model)) {
+                    is SseLine.Delta -> {
+                        if (parsed.model.isNotBlank()) model = parsed.model
+                        if (parsed.text.isNotEmpty()) {
+                            sawContent = true
+                            emitEvent(LlmStreamEvent.Delta(parsed.text))
+                        }
+                    }
+                    is SseLine.Done -> {
+                        if (parsed.model.isNotBlank()) model = parsed.model
+                        sawDone = true
+                        break
+                    }
+                    is SseLine.Invalid -> {
+                        emitEvent(LlmStreamEvent.Failed(parsed.code, parsed.message))
+                        return
+                    }
+                    SseLine.Ignore -> Unit
+                }
+            }
+        } finally {
+            // 关闭读流（底层连接由调用方 disconnect）；不因关闭失败掩盖真实结果
+            runCatching { reader.close() }
+        }
+        currentCoroutineContext().ensureActive()
+        val latencyMs = (clockMillis() - startedAt).coerceAtLeast(0L)
+        if (sawDone || sawContent) {
+            emitEvent(LlmStreamEvent.Completed(model.ifBlank { config.model }, latencyMs))
+        } else {
+            emitEvent(
+                LlmStreamEvent.Failed(
+                    LlmErrorCode.PARSE,
+                    "LLM 流式响应为空（未收到任何内容或 [DONE]）",
+                ),
+            )
+        }
+    }
+
     companion object {
         /** 生产便捷构造：禁网策略实时读取设置（默认禁网）。 */
         fun from(context: Context): OpenAiCompatibleLlmProvider =
@@ -198,6 +423,39 @@ class OpenAiCompatibleLlmProvider internal constructor(
     private data class ChatFailure(val code: String, val message: String)
 
     /**
+     * 建立 `/chat/completions` 连接并设置公共请求头（completion 与 streaming 共用）。
+     *
+     * 安全约定：仅 HTTPS（[endpointOf] 已校验）、不跟随重定向、不记录 key/正文；
+     * 仅在 OpenCode 官方网关注入 `x-opencode-session`。
+     * 注意：不要 `setFixedLengthStreamingMode`（见类 KDoc：JDK 在 401 时会丢响应体）。
+     */
+    private fun openChatConnection(
+        config: LlmConfig,
+        endpoint: URL,
+        accept: String,
+    ): HttpURLConnection = connectionOpener.open(endpoint).apply {
+        requestMethod = "POST"
+        connectTimeout = config.timeoutSeconds * 1000
+        readTimeout = config.timeoutSeconds * 1000
+        doOutput = true
+        useCaches = false
+        // 不跟随重定向：防止服务端把 https 重定向到明文 http / 其他不可信主机
+        instanceFollowRedirects = false
+        setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        setRequestProperty("Accept", accept)
+        setRequestProperty("Authorization", "Bearer ${config.apiKey}")
+        setRequestProperty("User-Agent", "ZhiBox/$UA_VERSION (Android)")
+        // OpenCode Go 网关要求稳定会话头（路由/prompt-cache 亲和）；只对官方域名注入，
+        // 避免把会话标识泄露给任意 OpenAI-compatible 服务端。
+        if (isOpenCodeEndpoint(endpoint)) {
+            setRequestProperty(
+                "x-opencode-session",
+                normalizeOpenCodeSession(openCodeSessionIdProvider()),
+            )
+        }
+    }
+
+    /**
      * 阻塞执行一次 `/chat/completions` POST（调用方负责切 IO 线程）。
      * 返回原始响应体 + 端到端耗时；非 2xx/超时/IO/配置异常统一映射为可读 [ChatFailure]。
      */
@@ -212,28 +470,7 @@ class OpenAiCompatibleLlmProvider internal constructor(
         val startedAt = clockMillis()
         var connection: HttpURLConnection? = null
         return try {
-            connection = connectionOpener.open(endpoint).apply {
-                requestMethod = "POST"
-                connectTimeout = config.timeoutSeconds * 1000
-                readTimeout = config.timeoutSeconds * 1000
-                doOutput = true
-                useCaches = false
-                // 不跟随重定向：防止服务端把 https 重定向到明文 http / 其他不可信主机
-                instanceFollowRedirects = false
-                setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                setRequestProperty("Accept", "application/json")
-                setRequestProperty("Authorization", "Bearer ${config.apiKey}")
-                setRequestProperty("User-Agent", "ZhiBox/${UA_VERSION} (Android)")
-                // OpenCode Go 网关要求稳定会话头（路由/prompt-cache 亲和）；只对官方域名注入，
-                // 避免把会话标识泄露给任意 OpenAI-compatible 服务端。
-                if (isOpenCodeEndpoint(endpoint)) {
-                    setRequestProperty(
-                        "x-opencode-session",
-                        normalizeOpenCodeSession(openCodeSessionIdProvider()),
-                    )
-                }
-                // 不要 setFixedLengthStreamingMode：见类 KDoc（401 error body 会被 JDK 丢弃）
-            }
+            connection = openChatConnection(config, endpoint, accept = "application/json")
             connection.outputStream.use { it.write(requestBody.toString().toByteArray(Charsets.UTF_8)) }
 
             val status = connection.responseCode
@@ -511,3 +748,123 @@ internal fun httpFailure(status: Int, detail: String?): LlmTestResult.Failure {
 private const val HTTP_SUCCESS_MIN = 200
 private const val HTTP_SUCCESS_MAX = 299
 private const val UA_VERSION = "0.1"
+
+// ---------------------------------------------------------------------------
+// B11：SSE 流式辅助（internal 纯逻辑，便于 JVM 单测；不记录正文/key）
+// ---------------------------------------------------------------------------
+
+/** 流式响应累计字符上限（防止异常/恶意服务端无限输出撑爆内存）。 */
+internal const val MAX_STREAM_CHARS: Int = 256 * 1024
+
+/** 单条 SSE 行上限（防止单行超大 JSON）。 */
+internal const val MAX_SSE_LINE_CHARS: Int = 64 * 1024
+
+/**
+ * 构造流式 completion 请求（`stream=true`）：messages 为 system+user，字段与
+ * [buildCompletionRequestJson] 一致，仅 `stream` 标志不同。纯逻辑，便于单测断言。
+ */
+internal fun buildStreamingRequestJson(
+    config: LlmConfig,
+    systemPrompt: String,
+    userPrompt: String,
+    maxTokens: Int,
+): JsonObject = buildJsonObject {
+    put("model", config.model)
+    put(
+        "messages",
+        buildJsonArray {
+            add(
+                buildJsonObject {
+                    put("role", "system")
+                    put("content", systemPrompt)
+                },
+            )
+            add(
+                buildJsonObject {
+                    put("role", "user")
+                    put("content", userPrompt)
+                },
+            )
+        },
+    )
+    put("max_tokens", maxTokens)
+    put("stream", true)
+}
+
+/** 单条 SSE 行的解析结果（纯值语义，便于测试）。 */
+internal sealed interface SseLine {
+    /** 文本增量（content 为空表示 role/usage 等无内容块，调用方应忽略）。 */
+    data class Delta(val text: String, val model: String) : SseLine
+
+    /** `data: [DONE]`。 */
+    data class Done(val model: String) : SseLine
+
+    /** 服务端错误对象/坏 JSON/字段类型错误 → 流式失败。 */
+    data class Invalid(val code: String, val message: String) : SseLine
+
+    /** 空行、注释、`event:`/`id:`/`retry:` 等非 data 字段。 */
+    data object Ignore : SseLine
+}
+
+/**
+ * 解析一行 SSE（纯函数，不抛异常）。
+ *
+ * 支持：`data: {json}`（`choices[0].delta.content`，兼容 `message.content`）、`data: [DONE]`；
+ * 忽略空行/注释/非 data 字段；错误对象 → [SseLine.Invalid]（[LlmErrorCode.HTTP]）；
+ * 坏 JSON/缺 choices/content 非字符串 → [SseLine.Invalid]（[LlmErrorCode.PARSE]）。
+ *
+ * @param fallbackModel 服务端未返回 model 时的回退值（通常为配置 model）
+ */
+internal fun parseSseLine(rawLine: String, fallbackModel: String): SseLine {
+    val line = rawLine.trimEnd('\r')
+    if (line.isEmpty() || line.startsWith(":")) return SseLine.Ignore
+    if (!line.startsWith("data:")) return SseLine.Ignore
+    val payload = line.removePrefix("data:").trimStart()
+    if (payload.isEmpty()) return SseLine.Ignore
+    if (payload == "[DONE]") return SseLine.Done(fallbackModel)
+    if (payload.length > MAX_SSE_LINE_CHARS) {
+        return SseLine.Invalid(
+            LlmErrorCode.PARSE,
+            "LLM 流式响应单行过大（超过 ${MAX_SSE_LINE_CHARS / 1024}KB），已终止",
+        )
+    }
+    val root = try {
+        LLM_JSON.parseToJsonElement(payload)
+    } catch (e: Exception) {
+        return SseLine.Invalid(
+            LlmErrorCode.PARSE,
+            "LLM 流式响应包含非法 JSON：请重试或检查服务端兼容性",
+        )
+    }
+    val obj = root as? JsonObject
+        ?: return SseLine.Invalid(LlmErrorCode.PARSE, "LLM 流式响应不是 JSON 对象")
+    if (obj["error"] != null) {
+        val detail = parseErrorDetail(payload)
+        return SseLine.Invalid(
+            LlmErrorCode.HTTP,
+            if (detail.isNullOrBlank()) "LLM 流式响应返回错误" else "LLM 流式响应返回错误：$detail",
+        )
+    }
+    val model = obj["model"]?.jsonPrimitive?.contentOrNull.orEmpty()
+    val resolvedModel = model.ifBlank { fallbackModel }
+    val choices = obj["choices"] as? JsonArray ?: return SseLine.Invalid(
+        LlmErrorCode.PARSE,
+        "LLM 流式响应缺少 choices 字段",
+    )
+    val first = choices.firstOrNull() as? JsonObject
+        ?: return SseLine.Delta("", resolvedModel) // 空 choices（如仅 usage 块）忽略
+    val delta = first["delta"] as? JsonObject
+    val container = delta
+        ?: (first["message"] as? JsonObject)
+        ?: return SseLine.Delta("", resolvedModel)
+    val contentElement = container["content"]
+    if (contentElement == null || contentElement is JsonNull) {
+        return SseLine.Delta("", resolvedModel)
+    }
+    val primitive = contentElement as? JsonPrimitive
+        ?: return SseLine.Invalid(LlmErrorCode.PARSE, "LLM 流式响应 content 必须是字符串")
+    if (!primitive.isString) {
+        return SseLine.Invalid(LlmErrorCode.PARSE, "LLM 流式响应 content 必须是字符串")
+    }
+    return SseLine.Delta(primitive.content, resolvedModel)
+}

@@ -20,6 +20,7 @@ object LlmPreferences {
     private const val KEY_ANSWER_ENABLED = "answer_enabled"
     private const val KEY_NETWORK_ALLOWED = "network_allowed"
     private const val KEY_OPENCODE_SESSION_ID = "opencode_session_id"
+    private const val KEY_ANSWER_NETWORK_CONSENT = "answer_network_consent"
 
     /** SAG 增强开关默认值：关闭（未配置 LLM 时不得影响离线检索）。 */
     const val DEFAULT_SAG_ENABLED: Boolean = false
@@ -29,6 +30,9 @@ object LlmPreferences {
 
     /** 允许联网开关默认值：false = 默认禁网（PRD 隐私默认，零请求）。 */
     const val DEFAULT_NETWORK_ALLOWED: Boolean = false
+
+    /** 问答首次联网隐私说明同意默认值：false（未同意前不发起任何问答生成请求）。 */
+    const val DEFAULT_ANSWER_NETWORK_CONSENT: Boolean = false
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -57,6 +61,17 @@ object LlmPreferences {
 
     fun setNetworkAllowed(context: Context, allowed: Boolean) {
         prefs(context).edit().putBoolean(KEY_NETWORK_ALLOWED, allowed).apply()
+    }
+
+    /**
+     * B11：用户是否已阅读并同意「问答生成首次联网」隐私说明。
+     * false 时 Chat/Settings 必须在发起任何 LLM 问答请求前展示说明并取得显式同意。
+     */
+    fun answerNetworkConsent(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_ANSWER_NETWORK_CONSENT, DEFAULT_ANSWER_NETWORK_CONSENT)
+
+    fun setAnswerNetworkConsent(context: Context, granted: Boolean) {
+        prefs(context).edit().putBoolean(KEY_ANSWER_NETWORK_CONSENT, granted).apply()
     }
 
     /**

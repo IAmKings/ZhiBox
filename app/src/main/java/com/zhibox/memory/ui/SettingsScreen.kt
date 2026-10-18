@@ -70,6 +70,7 @@ fun SettingsScreen(
     var importDropGpu by remember { mutableStateOf(true) }
     var showLeaveDialog by remember { mutableStateOf(false) }
     var pendingClearLlmKey by remember { mutableStateOf(false) }
+    var showAnswerConsentDialog by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip"),
@@ -245,6 +246,27 @@ fun SettingsScreen(
         )
     }
 
+    // B11：首次开启「问答生成」前必须阅读并同意联网隐私说明
+    if (showAnswerConsentDialog) {
+        AlertDialog(
+            onDismissRequest = { showAnswerConsentDialog = false },
+            title = { Text(stringResource(R.string.chat_consent_title)) },
+            text = { Text(stringResource(R.string.chat_consent_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAnswerConsentDialog = false
+                    viewModel.setAnswerNetworkConsent(true)
+                    viewModel.setAnswerEnabled(true)
+                }) { Text(stringResource(R.string.chat_consent_accept)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAnswerConsentDialog = false }) {
+                    Text(stringResource(R.string.chat_consent_cancel))
+                }
+            },
+        )
+    }
+
     val actions = SettingsActions(
         onBack = ::attemptBack,
         setPreference = viewModel::setPreference,
@@ -273,7 +295,14 @@ fun SettingsScreen(
         testLlmConnection = viewModel::testLlmConnection,
         clearLlmKey = { pendingClearLlmKey = true },
         setSagEnabled = viewModel::setSagEnabled,
-        setAnswerEnabled = viewModel::setAnswerEnabled,
+        setAnswerEnabled = { enabled ->
+            if (enabled && !state.answerNetworkConsent) {
+                showAnswerConsentDialog = true
+            } else {
+                viewModel.setAnswerEnabled(enabled)
+            }
+        },
+        setAnswerNetworkConsent = viewModel::setAnswerNetworkConsent,
         setNetworkDisabled = viewModel::setNetworkDisabled,
         backfillExtraction = viewModel::backfillExtraction,
         retryFailedExtraction = viewModel::retryFailedExtraction,
@@ -304,6 +333,7 @@ class SettingsActions(
     val clearLlmKey: () -> Unit = {},
     val setSagEnabled: (Boolean) -> Unit = {},
     val setAnswerEnabled: (Boolean) -> Unit = {},
+    val setAnswerNetworkConsent: (Boolean) -> Unit = {},
     val setNetworkDisabled: (Boolean) -> Unit = {},
     // B9：SAG 两阶段抽取
     val backfillExtraction: () -> Unit = {},
@@ -992,6 +1022,32 @@ internal fun SettingsContent(
                         checked = state.answerEnabled,
                         onCheckedChange = actions.setAnswerEnabled,
                     )
+                    Text(
+                        stringResource(R.string.settings_answer_consent_section),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        stringResource(R.string.settings_answer_consent_notice),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (state.answerNetworkConsent) {
+                        Text(
+                            stringResource(R.string.settings_answer_consent_agreed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    } else {
+                        Text(
+                            stringResource(R.string.settings_answer_consent_required),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        TextButton(onClick = { actions.setAnswerNetworkConsent(true) }) {
+                            Text(stringResource(R.string.settings_answer_consent_agree))
+                        }
+                    }
                     SwitchRow(
                         label = stringResource(R.string.settings_network_disabled_toggle),
                         checked = state.networkDisabled,

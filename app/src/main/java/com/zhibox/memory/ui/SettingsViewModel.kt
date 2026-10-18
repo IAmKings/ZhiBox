@@ -118,6 +118,8 @@ data class SettingsUiState(
     val answerEnabled: Boolean = false,
     /** 禁止网络总开关（true = 拒绝所有 LLM 调用；默认 true） */
     val networkDisabled: Boolean = true,
+    /** B11：问答首次联网隐私说明是否已同意（未同意前 Chat 不发起生成请求） */
+    val answerNetworkConsent: Boolean = false,
     // ---- B9：SAG 两阶段抽取状态 ----
     /** SAG 抽取可用性（LLM 配置 + SAG 开关 + 未禁网）；false 时补抽取/重试按钮禁用 */
     val sagAvailable: Boolean = false,
@@ -180,6 +182,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val sagEnabled: Boolean,
         val answerEnabled: Boolean,
         val networkDisabled: Boolean,
+        val answerNetworkConsent: Boolean,
         // B9
         val sagAvailable: Boolean,
         val extractionCounts: ExtractionCountsUi,
@@ -223,6 +226,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         sagEnabled = s.sagEnabled,
                         answerEnabled = s.answerEnabled,
                         networkDisabled = s.networkDisabled,
+                        answerNetworkConsent = s.answerNetworkConsent,
                         sagAvailable = s.sagAvailable,
                         extractionCounts = s.extractionCounts,
                     )
@@ -285,6 +289,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val sagEnabled = LlmPreferences.sagEnabled(app)
         val answerEnabled = LlmPreferences.answerEnabled(app)
         val networkDisabled = !LlmPreferences.networkAllowed(app)
+        val answerNetworkConsent = LlmPreferences.answerNetworkConsent(app)
         // B9：SAG 抽取可用性与任务计数（IO 上下文；可用性失败按不可用处理，不阻塞刷新）
         val sagAvailable = runCatching { SagAvailability.isAvailable(app) }.getOrDefault(false)
         val extractionCounts = readExtractionCounts()
@@ -315,6 +320,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             sagEnabled = sagEnabled,
             answerEnabled = answerEnabled,
             networkDisabled = networkDisabled,
+            answerNetworkConsent = answerNetworkConsent,
             sagAvailable = sagAvailable,
             extractionCounts = extractionCounts,
         )
@@ -808,6 +814,20 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             failureId = R.string.settings_llm_toggle_failed,
             write = { LlmPreferences.setAnswerEnabled(app, enabled) },
         ) { it.copy(answerEnabled = enabled) }
+    }
+
+    /** B11：记录/撤销「问答首次联网隐私说明」同意（首次开启问答前必须取得）。 */
+    fun setAnswerNetworkConsent(granted: Boolean) {
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(llmTestMessage = str(R.string.settings_llm_toggle_failed, t.readableMessage()))
+                }
+            },
+        ) {
+            withContext(Dispatchers.IO) { LlmPreferences.setAnswerNetworkConsent(app, granted) }
+            update { it.copy(answerNetworkConsent = granted) }
+        }
     }
 
     /** `disabled = true` 表示禁止网络（持久化为 networkAllowed=false，默认即禁网）。 */
