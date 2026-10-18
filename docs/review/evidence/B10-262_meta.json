@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-18",
+  "device": "K40 6D8H6TXSDYXC85PZ",
+  "model": "embeddinggemma-2-text-vision-440m.litertlm",
+  "apk_commit": "d38d5ac (B10.1) + B10.2 uncommitted retrieval fixes",
+  "corpus": "scripts/eval/corpus (50 txt)",
+  "evalset": "scripts/eval/evalset.json",
+  "evalset_sha256": "cc9e8fa30dd1015addeeac847ee3dd178e9bc1713bb4c73d4451e83644d4e2d5",
+  "n_queries": 262,
+  "refused": 0,
+  "raw_result": "B10-262_evalrun.json",
+  "score": "B10-262_score.json",
+  "baseline_compare": "docs/phase1/eval-results/K40-440M-v2b_score.json",
+  "gate": "vector/fused R@5/R@10 no regression; keyword +0.0045 R@5; latency differs by run"
+}

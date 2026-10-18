@@ -173,7 +173,13 @@ class B10MultiHopEvalTest {
             llmSelector = MockSagContextSelector(),
         )
         val out = JSONArray()
-        for (mode in listOf(RetrievalMode.VECTOR, RetrievalMode.MULTI_ES_FAST, RetrievalMode.MULTI)) {
+        val requestedMode = InstrumentationRegistry.getArguments().getString("b10Mode")
+        val modes = if (requestedMode.isNullOrBlank()) {
+            listOf(RetrievalMode.VECTOR, RetrievalMode.MULTI_ES_FAST, RetrievalMode.MULTI)
+        } else {
+            listOfNotNull(RetrievalMode.fromWire(requestedMode))
+        }
+        for (mode in modes) {
             val r = if (mode == RetrievalMode.MULTI) multiRetriever else retriever
             for (qi in 0 until qs.length()) {
                 val q = qs.getJSONObject(qi)

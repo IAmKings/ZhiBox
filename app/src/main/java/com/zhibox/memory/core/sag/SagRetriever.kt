@@ -350,17 +350,28 @@ class SagRetriever(
             )
         }
 
-        // 2) 查询实体 seed → DB id 绑定（id<=0 用 normalizedName 回查；绑不到则丢弃）
-        val queryEntityIds = resolveEntityIds(entitySeeds)
+        // 2) 查询实体 seed → DB id 绑定（id<=0 用 normalizedName 回查；绑不到则丢弃）。
+        //    无强 exact 命中时才用 FTS 泛召回；否则 FTS 噪声会把桥接锚点带到无关事件。
+        val allQueryEntityIds = resolveEntityIds(entitySeeds)
+        val exactSeedEntityIds = resolveEntityIds(entitySeeds.filter { it.source == "exact" })
+        val queryEntityIds = exactSeedEntityIds.ifEmpty { allQueryEntityIds }
 
         // 2b) **多跳桥接**：查询实体 exact 命中的锚点事件（C1）→ 其关联实体 → 与查询实体合并。
         //     用 event 向量 top seed 当锚点会被无关高余弦事件带偏；query exact 命中更稳定。
-        val queryAnchorEventIds = if (queryEntityIds.isEmpty()) {
+        val primaryAnchorEventIds = if (queryEntityIds.isEmpty()) {
             emptyList()
         } else {
             safeSuspend {
                 db.eventEntityDao().activeEventIdsByEntityIds(queryEntityIds, budget.kSeed)
             }.orEmpty()
+        }
+        // exact 命中若没有活跃事件（被删/非 ready），回退全部词法 seed，避免丢召回。
+        val queryAnchorEventIds = if (primaryAnchorEventIds.isEmpty() && allQueryEntityIds != queryEntityIds) {
+            safeSuspend {
+                db.eventEntityDao().activeEventIdsByEntityIds(allQueryEntityIds, budget.kSeed)
+            }.orEmpty()
+        } else {
+            primaryAnchorEventIds
         }
         val bridgeAnchorEventIds = queryAnchorEventIds.ifEmpty { vectorSeeds.map { it.first } }
         val seedEventEntityIds = bridgeAnchorEventIds
@@ -410,7 +421,6 @@ class SagRetriever(
                 compareByDescending<Pair<MutableCandidate, Double>> { it.second }
                     .thenBy { it.first.eventId },
             )
-            .take(budget.kCand)
         if (scored.isEmpty()) {
             stages += stage(STAGE_CANDIDATES, 0, candidateStart)
             return EventLayer.Unavailable("事件层无数据：候选事件为空")
@@ -501,7 +511,8 @@ class SagRetriever(
             )
         }
         return EventLayer.Available(
-            candidates = ordered,
+            // kCand 在 ready/source 过滤之后截断，避免全库截断后再过滤导致 scope 内结果丢失。
+            candidates = ordered.take(budget.kCand),
             seedEvents = vectorSeeds.size,
             seedEntities = entitySeeds.size,
             expandedEvents = expandedAll.size,
