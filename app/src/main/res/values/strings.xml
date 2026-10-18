@@ -195,7 +195,7 @@
     <string name="settings_kb_summary">%1$d 个文档就绪 · %2$d 个块</string>
 
     <string name="settings_section_privacy">隐私与离线声明</string>
-    <string name="settings_privacy_text">· 检索、嵌入、导入默认离线运行；未配置 LLM 或开启禁网时不发起任何 LLM 请求\n· SAG 增强/问答默认关闭；仅在你显式开启两者、关闭禁网并同意首次联网说明后，才会向指定 HTTPS 端点发送检索片段（发送前显示目标域名）\n· 模型下载是另一条显式联网路径（URL + SHA-256 校验）\n· 知识数据（文档/向量/索引/SAG 事件层）仅存于本机应用沙箱，不上传不备份\n· 知识库备份不包含聊天/问答记录、query trace 与 API Key</string>
+    <string name="settings_privacy_text">· 检索、嵌入、导入默认离线运行；未配置 LLM 或开启禁网时不发起任何 LLM 请求\n· SAG 增强/问答默认关闭；仅在你显式开启两者、关闭禁网并同意首次联网说明后，才会向指定 HTTPS 端点发送检索片段（发送前显示目标域名）\n· 模型下载是另一条显式联网路径（URL + SHA-256 校验）\n· 知识数据（文档/向量/索引/SAG 事件层）仅存于本机应用沙箱、不自动上传；仅在你手动导出知识库备份时写入备份包（不含聊天/trace/API Key）\n· 知识库备份不包含聊天/问答记录、query trace 与 API Key</string>
 
     <string name="settings_refresh_failed">刷新设置失败：%1$s</string>
     <string name="settings_leave_title">下载仍在进行</string>

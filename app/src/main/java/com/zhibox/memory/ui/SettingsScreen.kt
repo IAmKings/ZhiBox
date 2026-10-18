@@ -1175,6 +1175,7 @@ internal fun SettingsContent(
                             FilterChip(
                                 selected = state.budgetTier == tier,
                                 onClick = { actions.setBudgetTier(tier) },
+                                enabled = !state.budgetSaving,
                                 label = { Text(budgetTierLabel(tier)) },
                             )
                         }

@@ -21,6 +21,6 @@ object SagBudgetPreferences {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_TIER, tier.wire)
-            .apply()
+            .commit()
     }
 }

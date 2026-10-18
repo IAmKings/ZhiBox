@@ -126,6 +126,8 @@ data class SettingsUiState(
     val answerNetworkConsent: Boolean = false,
     /** B12：检索预算档位（PRD §7.2，默认 HIGH；下一轮检索/问答生效） */
     val budgetTier: SagBudgetTier = SagBudgetTier.HIGH,
+    /** B12：档位持久化进行中（UI 禁用，避免连点/乱序写） */
+    val budgetSaving: Boolean = false,
     // ---- B9：SAG 两阶段抽取状态 ----
     /** SAG 抽取可用性（LLM 配置 + SAG 开关 + 未禁网）；false 时补抽取/重试按钮禁用 */
     val sagAvailable: Boolean = false,
@@ -857,16 +859,21 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     /** B12：保存检索预算档位（IO 持久化；下一次检索/问答读取生效）。 */
     fun setBudgetTier(tier: SagBudgetTier) {
-        if (_state.value.budgetTier == tier) return
+        val current = _state.value
+        if (current.budgetSaving || current.budgetTier == tier) return
+        update { it.copy(budgetSaving = true) }
         safeLaunch(
             onError = { t ->
                 update {
-                    it.copy(error = str(R.string.settings_budget_save_failed, t.readableMessage()))
+                    it.copy(
+                        budgetSaving = false,
+                        error = str(R.string.settings_budget_save_failed, t.readableMessage()),
+                    )
                 }
             },
         ) {
             withContext(Dispatchers.IO) { SagBudgetPreferences.setTier(app, tier) }
-            update { it.copy(budgetTier = tier) }
+            update { it.copy(budgetTier = tier, budgetSaving = false) }
         }
     }
 

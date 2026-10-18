@@ -12,7 +12,10 @@
 - Settings/备份/诊断：备份 v3 UI 审计补缺（格式计数/旧包补抽取/隐私说明）；检索/问答 trace 计数+脱敏导出。
 - 预算档位：`SagBudgetTier`/`SagBudgetPreferences` + Search/Chat 接线；Settings 三档 chips；SagBudgetTierTest 9/9。
 - 门禁：JVM debug 513/0、release 494/0；lint 0/37；assembleDebug/Release 成功；PJZ110 串行 instrumentation 31/31。
-- release candidate：unsigned APK 已生成（无 release keystore）；签名/验签与三档矩阵待完成。详见 `B12_ACCEPTANCE.md`。
+- 构建产物：**unsigned internal build**（未配 `ZHIBOX_*` 签名材料，不可分发，**不称 release candidate**；SHA-256/size 见 `evidence/B12-RELEASE_CANDIDATE.json`）；签名/验签与三档矩阵待完成。
+- 设备回归：BackupV3RoundTrip **7/7**、MigrationTest/MigrationV1→V7 **11/11**（PJZ110，串行）。
+- 独立 Standards/Spec 审查发现：Graph 切源/loadMore 竞态、Settings 预算写入竞态、详情嵌套 Scaffold、错误+空态叠加、隐私文案矛盾、RC 实质为旧 unsigned 包；**本轮已修前 5 项**（请求代际/Job 取消、budgetSaving 禁用、embedded 详情、错误时不显示空态、备份文案）；RC 改为“unsigned internal build”并待签名；三档矩阵/抽取并发/trace errorCode/entity 连接聚合仍缺。
+- 详见 `B12_ACCEPTANCE.md`。
 
 
 ### 1.1 预算档位领域

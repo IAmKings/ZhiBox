@@ -8,6 +8,7 @@ import com.zhibox.memory.data.db.EventEntity
 import com.zhibox.memory.data.db.SourceStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -80,6 +81,11 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     private val _state = MutableStateFlow(GraphUiState())
     val state: StateFlow<GraphUiState> = _state.asStateFlow()
 
+    /** B12：请求代际/Job，防止切源/切 tab/loadMore 旧结果回写造成混入。 */
+    private var requestSeq: Int = 0
+    private var loadJob: Job? = null
+    private var loadMoreJob: Job? = null
+
     private fun str(id: Int, vararg args: Any): String = app.getString(id, *args)
 
     private fun update(block: (GraphUiState) -> GraphUiState) {
@@ -88,12 +94,17 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
 
     /** 页面进入：加载来源筛选 + 第一页事件（内部防重入）。 */
     fun onScreenStarted() {
-        if (_state.value.loading) return
+        val seq = ++requestSeq
+        loadJob?.cancel()
+        loadMoreJob?.cancel()
         update { it.copy(loading = true, error = null) }
-        safeLaunch(
+        val selectedAtStart = _state.value.selectedSourceId
+        loadJob = safeLaunch(
             onError = { t ->
-                update {
-                    it.copy(loading = false, error = str(R.string.graph_load_failed, t.readableMessage()))
+                if (seq == requestSeq) {
+                    update {
+                        it.copy(loading = false, error = str(R.string.graph_load_failed, t.readableMessage()))
+                    }
                 }
             },
         ) {
@@ -103,9 +114,11 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
                         .filter { it.status == SourceStatus.ACTIVE.value }
                         .map { GraphSourceFilter(id = it.id, title = it.title) }
                 }
+                if (seq != requestSeq || _state.value.selectedSourceId != selectedAtStart) return@safeLaunch
                 val snapshot = withContext(Dispatchers.IO) {
-                    loadPageSnapshot(_state.value.selectedSourceId, offset = 0)
+                    loadPageSnapshot(selectedAtStart, offset = 0)
                 }
+                if (seq != requestSeq || _state.value.selectedSourceId != selectedAtStart) return@safeLaunch
                 update {
                     it.copy(
                         loading = false,
@@ -121,11 +134,10 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                update {
-                    it.copy(
-                        loading = false,
-                        error = str(R.string.graph_load_failed, t.readableMessage()),
-                    )
+                if (seq == requestSeq) {
+                    update {
+                        it.copy(loading = false, error = str(R.string.graph_load_failed, t.readableMessage()))
+                    }
                 }
             }
         }
@@ -146,24 +158,25 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             update { it.copy(hasMore = false) }
             return
         }
+        val seq = requestSeq
+        val sourceAtStart = current.selectedSourceId
         update { it.copy(loadingMore = true, error = null) }
-        safeLaunch(
+        loadMoreJob?.cancel()
+        loadMoreJob = safeLaunch(
             onError = { t ->
-                update {
-                    it.copy(
-                        loadingMore = false,
-                        error = str(R.string.graph_load_failed, t.readableMessage()),
-                    )
+                if (seq == requestSeq) {
+                    update {
+                        it.copy(loadingMore = false, error = str(R.string.graph_load_failed, t.readableMessage()))
+                    }
                 }
             },
         ) {
             try {
                 val snapshot = withContext(Dispatchers.IO) {
-                    loadPageSnapshot(
-                        sourceId = current.selectedSourceId,
-                        offset = current.events.size,
-                    )
+                    loadPageSnapshot(sourceAtStart, offset = current.events.size)
                 }
+                // 旧请求/旧来源不得回写（切源竞态修复）
+                if (seq != requestSeq || _state.value.selectedSourceId != sourceAtStart) return@safeLaunch
                 val merged = (current.events + snapshot.events)
                     .distinctBy { it.id }
                     .take(MAX_RENDERED_EVENTS)
@@ -178,11 +191,10 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                update {
-                    it.copy(
-                        loadingMore = false,
-                        error = str(R.string.graph_load_failed, t.readableMessage()),
-                    )
+                if (seq == requestSeq) {
+                    update {
+                        it.copy(loadingMore = false, error = str(R.string.graph_load_failed, t.readableMessage()))
+                    }
                 }
             }
         }

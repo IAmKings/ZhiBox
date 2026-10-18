@@ -59,6 +59,7 @@ fun GraphScreen(
         GraphDetailScreen(
             detail = detail,
             onBack = viewModel::closeEvent,
+            embedded = true,
         )
         return
     }
@@ -110,7 +111,7 @@ internal fun GraphContent(
                     FilterChip(
                         selected = state.selectedSourceId == filter.id,
                         onClick = { onSelectSource(filter.id) },
-                        enabled = !state.loading,
+                        enabled = !state.loading && !state.loadingMore,
                         label = { Text(filter.title) },
                     )
                 }
@@ -125,7 +126,7 @@ internal fun GraphContent(
 
         if (state.loading) {
             LoadingState()
-        } else if (state.events.isEmpty()) {
+        } else if (state.events.isEmpty() && state.error == null) {
             EmptyState(
                 title = stringResource(R.string.graph_empty_title),
                 message = stringResource(R.string.graph_empty_message),
@@ -220,15 +221,40 @@ private fun GraphEventCard(event: GraphEventUi, onClick: () -> Unit) {
 fun GraphDetailScreen(
     detail: GraphEventDetailUi,
     onBack: () -> Unit,
+    embedded: Boolean = false,
 ) {
+    if (embedded) {
+        // B12：SourcesScreen 已有 Scaffold；详情作为内容层渲染，避免双层 TopBar。
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                OutlinedButton(onClick = onBack) {
+                    Text(stringResource(R.string.action_back))
+                }
+            }
+            GraphDetailBody(detail = detail, modifier = Modifier.weight(1f))
+        }
+        return
+    }
     ZhiBoxScreen(
         title = stringResource(R.string.graph_event_detail_title),
         onBack = onBack,
     ) { padding ->
-        Column(
+        GraphDetailBody(
+            detail = detail,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
+        )
+    }
+}
+
+@Composable
+private fun GraphDetailBody(detail: GraphEventDetailUi, modifier: Modifier = Modifier) {
+        Column(
+            modifier = modifier
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -326,7 +352,6 @@ fun GraphDetailScreen(
                 }
             }
         }
-    }
 }
 
 // ───────────────────────── B12 @Preview ─────────────────────────
