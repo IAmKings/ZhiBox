@@ -15,9 +15,16 @@ data class CitationValidation(
     val invalidCitationTokens: List<String>,
     val hasAnyCitationToken: Boolean,
     val unverified: Boolean,
+    /** 规则检测到的“无引用断言句”数量（按中文句号/换行切分；仅警示，不自动删除正文）。 */
+    val unreferencedSentenceCount: Int = 0,
 ) {
+    /** ID 级引用合法性（兼容旧语义；不含逐句 coverage）。 */
     val valid: Boolean
         get() = citations.isNotEmpty() && invalidCitationTokens.isEmpty() && !unverified
+
+    /** 更严格的“逐句有引用”状态（B11 发布/评测门禁用）。 */
+    val fullyCited: Boolean
+        get() = valid && unreferencedSentenceCount == 0
 }
 
 object CitationValidator {
@@ -36,6 +43,7 @@ object CitationValidator {
                 invalidCitationTokens = emptyList(),
                 hasAnyCitationToken = false,
                 unverified = answer.isNotBlank(),
+                unreferencedSentenceCount = 0,
             )
         }
         val byId = evidence.mapIndexed { index, item ->
@@ -70,12 +78,31 @@ object CitationValidator {
         }
         replaced.append(answer, last, answer.length)
         val citations = valid.values.toList()
+        val unreferenced = countUnreferencedSentences(replaced.toString())
         return CitationValidation(
             text = replaced.toString(),
             citations = citations,
             invalidCitationTokens = invalid.toList(),
             hasAnyCitationToken = TOKEN.containsMatchIn(answer),
             unverified = citations.isEmpty(),
+            unreferencedSentenceCount = unreferenced,
         )
+    }
+
+    /**
+     * 规则版“未引用断言”检测：按中文/英文句末与换行切分，统计非空、含文字但
+     * 无 `[S#]` token 的句子数量。它是保守提示（标题/列表前缀可能误报），
+     * 不自动删改正文；真实支持率仍由 50 条抽样人工/LLM judge 承担。
+     */
+    private fun countUnreferencedSentences(text: String): Int {
+        if (text.trim() == ChatPrompt.REFUSAL_MESSAGE) return 0
+        return text.split(Regex("[。！？!?\\n]+"))
+            .map { it.trim().removePrefix("-").removePrefix("*").trim() }
+            .count { sentence ->
+                sentence.length >= 4 &&
+                    !sentence.startsWith("#") &&
+                    sentence.any { it.isLetterOrDigit() } &&
+                    !TOKEN.containsMatchIn(sentence)
+            }
     }
 }

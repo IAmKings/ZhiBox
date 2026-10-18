@@ -1,0 +1,49 @@
+{
+  "answersFile": "/tmp/b11-support-nokey.json",
+  "generatedAt": 1792330991646,
+  "gate": {
+    "providerConfigured": false,
+    "answerEnabled": false,
+    "networkAllowed": false,
+    "answerNetworkConsent": false,
+    "gateOpen": false,
+    "model": null
+  },
+  "runGated": true,
+  "counts": {
+    "total": 50,
+    "withEvidence": 50,
+    "noEvidence": 0,
+    "answered": 0,
+    "refused": 50
+  },
+  "qa": {
+    "successRate": 0.0,
+    "citationValidRate": null,
+    "citationInvalidCases": 0,
+    "citationInvalidQids": [],
+    "unverifiedCases": 0,
+    "unverifiedQids": [],
+    "noCitationCases": 0,
+    "noCitationQids": [],
+    "unreferencedCases": 0,
+    "unreferencedQids": [],
+    "fullyCitedRate": null,
+    "avgCitationsPerAnswer": null,
+    "noEvidenceRefusalAccuracy": null,
+    "noEvidenceWrongQids": [],
+    "latencyP50Ms": null,
+    "latencyP95Ms": null
+  },
+  "refusedByCode": {
+    "KEY_MISSING": 50
+  },
+  "support": {
+    "available": false,
+    "rate": null,
+    "counts": {},
+    "note": "未提供 --support-manual（人工/LLM judge 支持率未评）"
+  },
+  "harness": "B11SupportEvalTest",
+  "manifest": "/Users/pauldeman/Documents/ai_workspace/ZhiBox/scripts/eval/b11_support_manifest.json"
+}

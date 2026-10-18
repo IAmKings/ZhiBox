@@ -1,0 +1,622 @@
+{
+  "version": 1,
+  "generatedBy": "scripts/eval/b11_support_manifest.json (task-58)",
+  "source": {
+    "kb": "app/src/androidTest/assets/b10/kb.json",
+    "queries": "app/src/androidTest/assets/b10/queries.json"
+  },
+  "selection": {
+    "withEvidence": {
+      "count": 50,
+      "hopsBreakdown": {
+        "2": 18,
+        "3": 16,
+        "4": 16
+      }
+    },
+    "noEvidence": {
+      "count": 0
+    },
+    "total": 50
+  },
+  "queries": [
+    {
+      "qid": "q001",
+      "question": "张三所在组织总部位于哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        1,
+        2
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q002",
+      "question": "张三任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        1,
+        2
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q003",
+      "question": "张三所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        1,
+        2,
+        3
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q004",
+      "question": "张三任职城市最著名的特产是什么？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        1,
+        2,
+        3
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q005",
+      "question": "张三所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q006",
+      "question": "张三任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q007",
+      "question": "李四所在组织总部位于哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        5,
+        6
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q008",
+      "question": "李四任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        5,
+        6
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q009",
+      "question": "李四所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        5,
+        6,
+        7
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q010",
+      "question": "李四任职城市最著名的特产是什么？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        5,
+        6,
+        7
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q011",
+      "question": "李四所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q012",
+      "question": "李四任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q013",
+      "question": "王五所在组织总部位于哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        9,
+        10
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q014",
+      "question": "王五任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        9,
+        10
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q015",
+      "question": "王五所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        9,
+        10,
+        11
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q016",
+      "question": "王五任职城市最著名的特产是什么？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        9,
+        10,
+        11
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q017",
+      "question": "王五所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q018",
+      "question": "王五任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q019",
+      "question": "赵敏所在组织总部位于哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        13,
+        14
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q020",
+      "question": "赵敏任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        13,
+        14
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q021",
+      "question": "赵敏所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        13,
+        14,
+        15
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q022",
+      "question": "赵敏任职城市最著名的特产是什么？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        13,
+        14,
+        15
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q023",
+      "question": "赵敏所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        13,
+        14,
+        15,
+        16
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q024",
+      "question": "赵敏任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        13,
+        14,
+        15,
+        16
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q025",
+      "question": "刘洋所在组织总部位于哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        17,
+        18
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q026",
+      "question": "刘洋任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        17,
+        18
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q027",
+      "question": "刘洋所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        17,
+        18,
+        19
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q028",
+      "question": "刘洋任职城市最著名的特产是什么？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        17,
+        18,
+        19
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q029",
+      "question": "刘洋所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q030",
+      "question": "刘洋任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q031",
+      "question": "陈明所在组织总部位于哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        21,
+        22
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q032",
+      "question": "陈明任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        21,
+        22
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q033",
+      "question": "陈明所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        21,
+        22,
+        23
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q034",
+      "question": "陈明任职城市最著名的特产是什么？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        21,
+        22,
+        23
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q035",
+      "question": "陈明所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        21,
+        22,
+        23,
+        24
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q036",
+      "question": "陈明任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        21,
+        22,
+        23,
+        24
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q037",
+      "question": "周航所在组织总部位于哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        25,
+        26
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q038",
+      "question": "周航任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        25,
+        26
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q039",
+      "question": "周航所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        25,
+        26,
+        27
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q040",
+      "question": "周航任职城市最著名的特产是什么？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        25,
+        26,
+        27
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q041",
+      "question": "周航所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        25,
+        26,
+        27,
+        28
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q042",
+      "question": "周航任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        25,
+        26,
+        27,
+        28
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q043",
+      "question": "孙悦所在组织总部位于哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        29,
+        30
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q044",
+      "question": "孙悦任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        29,
+        30
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q045",
+      "question": "孙悦所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        29,
+        30,
+        31
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q046",
+      "question": "孙悦任职城市最著名的特产是什么？",
+      "hops": 3,
+      "evidenceChunkIndices": [
+        29,
+        30,
+        31
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q047",
+      "question": "孙悦所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        29,
+        30,
+        31,
+        32
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q048",
+      "question": "孙悦任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "evidenceChunkIndices": [
+        29,
+        30,
+        31,
+        32
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q049",
+      "question": "王丽所在组织总部位于哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        33,
+        34
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    },
+    {
+      "qid": "q050",
+      "question": "王丽任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "evidenceChunkIndices": [
+        33,
+        34
+      ],
+      "expectedRefusal": false,
+      "supportManual": null
+    }
+  ]
+}

@@ -67,6 +67,7 @@ def build_report(answers, manifest, support_manual):
     invalid_cases = [r for r in answered if r.get("invalid")]
     unverified_cases = [r for r in answered if r.get("unverified")]
     no_citation_cases = [r for r in answered if not r.get("citations")]
+    unreferenced_cases = [r for r in answered if (r.get("unreferencedSentenceCount") or 0) > 0]
 
     refusals_by_code = {}
     for record in records:
@@ -118,6 +119,9 @@ def build_report(answers, manifest, support_manual):
             "unverifiedQids": [r.get("qid") for r in unverified_cases],
             "noCitationCases": len(no_citation_cases),
             "noCitationQids": [r.get("qid") for r in no_citation_cases],
+            "unreferencedCases": len(unreferenced_cases),
+            "unreferencedQids": [r.get("qid") for r in unreferenced_cases],
+            "fullyCitedRate": ratio(len(answered) - len(unreferenced_cases), len(answered)),
             "avgCitationsPerAnswer": (
                 None if not answered
                 else round(statistics.mean(len(r.get("citations") or []) for r in answered), 3)

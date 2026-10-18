@@ -287,6 +287,58 @@ class OpenAiAnswerGeneratorTest {
         assertTrue(provider.lastUser.contains("证据正文 11".take(5)))
     }
 
+    @Test
+    fun modelRefusalTextIsTreatedAsNoEvidenceNotUnverifiedAnswer() = runBlocking {
+        val provider = FakeStreamingProvider { _, _, _, _ ->
+            flowOf(
+                LlmStreamEvent.Delta(ChatPrompt.REFUSAL_MESSAGE),
+                LlmStreamEvent.Completed(model = "m", latencyMs = 3L),
+            )
+        }
+        val generator = OpenAiAnswerGenerator(provider, FakeStore(llmConfig))
+
+        val events = generator.generate(AnswerRequest("q", evidence)).toList()
+
+        assertTrue("拒答前可有 Delta，但不得有 Completed", events.none { it is AnswerEvent.Completed })
+        val failed = events.last() as AnswerEvent.Failed
+        assertEquals(OpenAiAnswerGenerator.NO_EVIDENCE_CODE, failed.code)
+        assertEquals(ChatPrompt.REFUSAL_MESSAGE, failed.message)
+        assertEquals(1, provider.calls)
+    }
+
+    @Test
+    fun unreferencedSentenceCountIsReportedForMixedAnswer() = runBlocking {
+        val provider = FakeStreamingProvider { _, _, _, _ ->
+            flowOf(
+                LlmStreamEvent.Delta("结论一[S1]。这个结论没有引用。"),
+                LlmStreamEvent.Completed(model = "m", latencyMs = 3L),
+            )
+        }
+        val generator = OpenAiAnswerGenerator(provider, FakeStore(llmConfig))
+
+        val events = generator.generate(AnswerRequest("q", evidence)).toList()
+        val completed = events.filterIsInstance<AnswerEvent.Completed>().single()
+
+        assertEquals(1, completed.unreferencedSentenceCount)
+        assertTrue(completed.text.contains("这个结论没有引用。"))
+    }
+
+    @Test
+    fun fullyCitedAnswerHasZeroUnreferencedSentences() = runBlocking {
+        val provider = FakeStreamingProvider { _, _, _, _ ->
+            flowOf(
+                LlmStreamEvent.Delta("结论一[S1]。结论二[S2]。"),
+                LlmStreamEvent.Completed(model = "m", latencyMs = 3L),
+            )
+        }
+        val generator = OpenAiAnswerGenerator(provider, FakeStore(llmConfig))
+
+        val completed = generator.generate(AnswerRequest("q", evidence)).toList()
+            .filterIsInstance<AnswerEvent.Completed>().single()
+
+        assertEquals(0, completed.unreferencedSentenceCount)
+    }
+
     // ---- fakes ----
 
     private class FakeStreamingProvider(

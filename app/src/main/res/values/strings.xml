@@ -345,6 +345,7 @@
     <string name="chat_failed">问答失败：%1$s</string>
     <string name="chat_unverified_warning">该回答未通过证据校验（未引用任何证据），请谨慎参考。</string>
     <string name="chat_invalid_citation_warning">回答包含无效引用 %1$s，已替换为「未通过证据校验」标记。</string>
+    <string name="chat_unreferenced_warning">回答中有 %1$d 个句子未标注引用，已标记为未引用断言。</string>
     <string name="chat_no_citation_hint">未通过证据校验（回答未引用证据）</string>
     <string name="chat_citation_chip">引用 %1$s</string>
     <string name="chat_evidence_stale">引用的原文已不存在（可能已删除或未就绪）。</string>

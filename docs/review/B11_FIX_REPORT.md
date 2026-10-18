@@ -27,16 +27,19 @@
 ### 1.4 评测
 - `androidTest/.../B11QaEvalTest.kt`（`-e b11Eval 1`）：20 条（16 有证据：2/3/4 跳 6/5/5；4 KB 外无证据）；直接使用 B10 证据快照调真实生成器，不跑检索/模型。
 - `scripts/eval/b11_qa_manifest.json`、`score_b11_qa.py`：citation validity、NO_EVIDENCE 拒答率、successRate、p50/p95、refusedByCode、可选人工/LLM support。
+- `B11SupportEvalTest` + `b11_support_manifest.json`/`score_b11_support.py`：50 条有证据抽样（2/3/4 跳 18/16/16），输出 support 模板与 `fullyCitedRate/unreferencedCases`；真实 supportRate 需填模板。
+- `CitationValidator` 增加规则版逐句 coverage：`unreferencedSentenceCount` / `fullyCited`（按句末/换行统计无引用断言；只警示不删正文）。
 - `B11PrivacyPreferencesTest`、`LlmStreamingMockHttpsTest`（真实 TLS mock SSE 异常矩阵）。
 
 ## 2. 验证证据（当前工作区）
 
 | 门禁 | 结果 |
 |---|---|
-| JVM debug / release | **497/0 / 478/0** |
+| JVM debug / release | **504/0 / 485/0** |
 | lint / assemble | **0 errors / 34 warnings；BUILD SUCCESSFUL** |
 | 真机 instrumentation（PJZ110） | **20/20**（ChatRepository 9 + Compose B10 5 + Chat 6） |
 | B11 Qa harness gate-closed（PJZ110） | 1/1 run；4/4 NO_EVIDENCE 拒答正确；16 条 KEY_MISSING 拒（**质量指标不可用**） |
+| B11 Support 50 条 harness gate-closed | 1/1 run；50/50 KEY_MISSING 拒；`supportRate=null`（需真实 key + 人工/LLM judge） |
 | SSE/引用/隐私 JVM | 61 chat tests + 18 privacy/TLS mock tests，0 failures |
 
 证据：`docs/review/evidence/B11-compose-pjz110.txt`、`B11-chatrepository-pjz110.txt`、`B11-qa-gateclosed-{answers,score}.json`。
@@ -68,7 +71,7 @@
 
 ## 3. 未完成/门禁阻塞
 
-1. **真实 20 条问答 + 50 条支持率未跑**：当前连接的 PJZ110 无 LLM 配置；K40（有 key + 模型）未连接。需要用户在任一设备保存有效 key（并开启问答/联网/consent），或在 K40 运行 harness。
+1. **真实 20 条问答 + 50 条支持率未跑**：当前连接的 PJZ110 无 LLM 配置；K40（有 key + 模型）未连接。需要用户在任一设备保存有效 key（并开启问答/联网/consent），或在 K40 运行 harness。支持 harness 已就绪但 gate-closed 只有 KEY_MISSING。
 2. 引用有效性/支持率/拒答的真实质量结论不能由 gate-closed 结果替代；当前只验证了 4 条无证据题零网络拒答 100%。
 3. sourceScope 有数据契约/持久化，但 Chat UI 暂无来源多选入口（空=全库）；`ChatEvidence.documentId/sourceId` 因契约 Long 而数据层 String，用 hash 占位（不参与引用/持久化）。
 4. 真实 TLS mock 是整包响应，非 chunked 逐块/中途断流；真实 provider E2E 需真机网络验证。

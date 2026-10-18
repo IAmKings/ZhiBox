@@ -554,6 +554,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                             R.string.chat_invalid_citation_warning,
                             done.invalidCitationTokens.joinToString(" "),
                         )
+                        done.unreferencedSentenceCount > 0 -> str(
+                            R.string.chat_unreferenced_warning,
+                            done.unreferencedSentenceCount,
+                        )
                         else -> null
                     }
                     update {
@@ -582,7 +586,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 retrieveMs = retrieveMs,
                 generateMs = generateMs,
                 evidenceCount = evidence.size,
-                citationValid = completed?.let { it.citations.isNotEmpty() && !it.unverified && it.invalidCitationTokens.isEmpty() },
+                citationValid = completed?.let {
+                    it.citations.isNotEmpty() &&
+                        !it.unverified &&
+                        it.invalidCitationTokens.isEmpty() &&
+                        it.unreferencedSentenceCount == 0
+                },
                 invalidCitations = completed?.invalidCitationTokens?.size ?: 0,
             )
         } catch (e: CancellationException) {

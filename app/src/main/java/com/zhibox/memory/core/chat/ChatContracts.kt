@@ -82,6 +82,8 @@ sealed interface AnswerEvent {
         val invalidCitationTokens: List<String>,
         /** 没有任何有效引用但存在非空答案：UI 必须显示“未通过证据校验/未引用”警示。 */
         val unverified: Boolean,
+        /** 通过规则检测的“无引用断言句”数量（0 为逐句有引用）。 */
+        val unreferencedSentenceCount: Int = 0,
         val model: String,
         val latencyMs: Long,
     ) : AnswerEvent

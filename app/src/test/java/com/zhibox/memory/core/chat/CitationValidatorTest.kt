@@ -168,6 +168,50 @@ class CitationValidatorTest {
         assertEquals(ChatRole.SYSTEM, ChatRole.fromWire("unknown-role"))
     }
 
+    // ---- 逐句未引用断言规则 ----
+
+    @Test
+    fun everySentenceWithCitationIsFullyCited() {
+        val result = CitationValidator.validate(
+            "结论一[S1]。结论二[S2]。",
+            listOf(evidence(1L), evidence(2L)),
+        )
+        assertEquals(0, result.unreferencedSentenceCount)
+        assertTrue(result.fullyCited)
+        assertTrue(result.valid)
+    }
+
+    @Test
+    fun sentenceWithoutCitationIsCountedButTextKept() {
+        val result = CitationValidator.validate(
+            "结论一[S1]。这个结论没有引用。",
+            listOf(evidence(1L)),
+        )
+        assertEquals("规则应统计未引用断言", 1, result.unreferencedSentenceCount)
+        assertTrue("不删改正文", result.text.contains("这个结论没有引用。"))
+        assertTrue("ID 级 valid 仍为 true", result.valid)
+        assertFalse("逐句门禁不通过", result.fullyCited)
+    }
+
+    @Test
+    fun refusalTextDoesNotCountAsUnreferencedAssertion() {
+        val result = CitationValidator.validate(
+            ChatPrompt.REFUSAL_MESSAGE,
+            listOf(evidence(1L)),
+        )
+        assertEquals(0, result.unreferencedSentenceCount)
+        assertFalse(result.fullyCited)
+    }
+
+    @Test
+    fun headingAndListMarkersAreIgnoredForUnreferencedCounting() {
+        val result = CitationValidator.validate(
+            "## 回答\n- 结论一[S1]\n- 结论二[S2]",
+            listOf(evidence(1L), evidence(2L)),
+        )
+        assertEquals(0, result.unreferencedSentenceCount)
+    }
+
     // ---- 辅助 ----
 
     private fun evidence(chunkId: Long, evidenceId: String = "S?") = ChatEvidence(

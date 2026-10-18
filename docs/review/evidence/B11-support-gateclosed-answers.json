@@ -1,0 +1,1410 @@
+{
+  "generatedAt": 1792330991646,
+  "total": 50,
+  "gate": {
+    "providerConfigured": false,
+    "answerEnabled": false,
+    "networkAllowed": false,
+    "answerNetworkConsent": false,
+    "gateOpen": false,
+    "model": null
+  },
+  "records": [
+    {
+      "qid": "q001",
+      "question": "张三所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        1,
+        2
+      ],
+      "expectedEvidence": [
+        1,
+        2
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q002",
+      "question": "张三任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        1,
+        2
+      ],
+      "expectedEvidence": [
+        1,
+        2
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q003",
+      "question": "张三所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        1,
+        2,
+        3
+      ],
+      "expectedEvidence": [
+        1,
+        2,
+        3
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q004",
+      "question": "张三任职城市最著名的特产是什么？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        1,
+        2,
+        3
+      ],
+      "expectedEvidence": [
+        1,
+        2,
+        3
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q005",
+      "question": "张三所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "expectedEvidence": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q006",
+      "question": "张三任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "expectedEvidence": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q007",
+      "question": "李四所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        5,
+        6
+      ],
+      "expectedEvidence": [
+        5,
+        6
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q008",
+      "question": "李四任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        5,
+        6
+      ],
+      "expectedEvidence": [
+        5,
+        6
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q009",
+      "question": "李四所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        5,
+        6,
+        7
+      ],
+      "expectedEvidence": [
+        5,
+        6,
+        7
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q010",
+      "question": "李四任职城市最著名的特产是什么？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        5,
+        6,
+        7
+      ],
+      "expectedEvidence": [
+        5,
+        6,
+        7
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q011",
+      "question": "李四所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "expectedEvidence": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q012",
+      "question": "李四任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "expectedEvidence": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q013",
+      "question": "王五所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        9,
+        10
+      ],
+      "expectedEvidence": [
+        9,
+        10
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q014",
+      "question": "王五任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        9,
+        10
+      ],
+      "expectedEvidence": [
+        9,
+        10
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q015",
+      "question": "王五所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        9,
+        10,
+        11
+      ],
+      "expectedEvidence": [
+        9,
+        10,
+        11
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q016",
+      "question": "王五任职城市最著名的特产是什么？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        9,
+        10,
+        11
+      ],
+      "expectedEvidence": [
+        9,
+        10,
+        11
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q017",
+      "question": "王五所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "expectedEvidence": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q018",
+      "question": "王五任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "expectedEvidence": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q019",
+      "question": "赵敏所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        13,
+        14
+      ],
+      "expectedEvidence": [
+        13,
+        14
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q020",
+      "question": "赵敏任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        13,
+        14
+      ],
+      "expectedEvidence": [
+        13,
+        14
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q021",
+      "question": "赵敏所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        13,
+        14,
+        15
+      ],
+      "expectedEvidence": [
+        13,
+        14,
+        15
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q022",
+      "question": "赵敏任职城市最著名的特产是什么？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        13,
+        14,
+        15
+      ],
+      "expectedEvidence": [
+        13,
+        14,
+        15
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q023",
+      "question": "赵敏所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        13,
+        14,
+        15,
+        16
+      ],
+      "expectedEvidence": [
+        13,
+        14,
+        15,
+        16
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q024",
+      "question": "赵敏任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        13,
+        14,
+        15,
+        16
+      ],
+      "expectedEvidence": [
+        13,
+        14,
+        15,
+        16
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q025",
+      "question": "刘洋所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        17,
+        18
+      ],
+      "expectedEvidence": [
+        17,
+        18
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q026",
+      "question": "刘洋任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        17,
+        18
+      ],
+      "expectedEvidence": [
+        17,
+        18
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q027",
+      "question": "刘洋所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        17,
+        18,
+        19
+      ],
+      "expectedEvidence": [
+        17,
+        18,
+        19
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q028",
+      "question": "刘洋任职城市最著名的特产是什么？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        17,
+        18,
+        19
+      ],
+      "expectedEvidence": [
+        17,
+        18,
+        19
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q029",
+      "question": "刘洋所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "expectedEvidence": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q030",
+      "question": "刘洋任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "expectedEvidence": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q031",
+      "question": "陈明所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        21,
+        22
+      ],
+      "expectedEvidence": [
+        21,
+        22
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q032",
+      "question": "陈明任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        21,
+        22
+      ],
+      "expectedEvidence": [
+        21,
+        22
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q033",
+      "question": "陈明所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        21,
+        22,
+        23
+      ],
+      "expectedEvidence": [
+        21,
+        22,
+        23
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q034",
+      "question": "陈明任职城市最著名的特产是什么？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        21,
+        22,
+        23
+      ],
+      "expectedEvidence": [
+        21,
+        22,
+        23
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q035",
+      "question": "陈明所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        21,
+        22,
+        23,
+        24
+      ],
+      "expectedEvidence": [
+        21,
+        22,
+        23,
+        24
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q036",
+      "question": "陈明任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        21,
+        22,
+        23,
+        24
+      ],
+      "expectedEvidence": [
+        21,
+        22,
+        23,
+        24
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q037",
+      "question": "周航所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        25,
+        26
+      ],
+      "expectedEvidence": [
+        25,
+        26
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q038",
+      "question": "周航任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        25,
+        26
+      ],
+      "expectedEvidence": [
+        25,
+        26
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q039",
+      "question": "周航所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        25,
+        26,
+        27
+      ],
+      "expectedEvidence": [
+        25,
+        26,
+        27
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q040",
+      "question": "周航任职城市最著名的特产是什么？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        25,
+        26,
+        27
+      ],
+      "expectedEvidence": [
+        25,
+        26,
+        27
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q041",
+      "question": "周航所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        25,
+        26,
+        27,
+        28
+      ],
+      "expectedEvidence": [
+        25,
+        26,
+        27,
+        28
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q042",
+      "question": "周航任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        25,
+        26,
+        27,
+        28
+      ],
+      "expectedEvidence": [
+        25,
+        26,
+        27,
+        28
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q043",
+      "question": "孙悦所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        29,
+        30
+      ],
+      "expectedEvidence": [
+        29,
+        30
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q044",
+      "question": "孙悦任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        29,
+        30
+      ],
+      "expectedEvidence": [
+        29,
+        30
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q045",
+      "question": "孙悦所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        29,
+        30,
+        31
+      ],
+      "expectedEvidence": [
+        29,
+        30,
+        31
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q046",
+      "question": "孙悦任职城市最著名的特产是什么？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        29,
+        30,
+        31
+      ],
+      "expectedEvidence": [
+        29,
+        30,
+        31
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q047",
+      "question": "孙悦所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        29,
+        30,
+        31,
+        32
+      ],
+      "expectedEvidence": [
+        29,
+        30,
+        31,
+        32
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q048",
+      "question": "孙悦任职城市特产的生产公司位于哪个国家？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        29,
+        30,
+        31,
+        32
+      ],
+      "expectedEvidence": [
+        29,
+        30,
+        31,
+        32
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q049",
+      "question": "王丽所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        33,
+        34
+      ],
+      "expectedEvidence": [
+        33,
+        34
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q050",
+      "question": "王丽任职的机构坐落在哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        33,
+        34
+      ],
+      "expectedEvidence": [
+        33,
+        34
+      ],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "supportManual": null,
+      "refused": true,
+      "code": "KEY_MISSING",
+      "model": null,
+      "elapsedMs": 0
+    }
+  ]
+}

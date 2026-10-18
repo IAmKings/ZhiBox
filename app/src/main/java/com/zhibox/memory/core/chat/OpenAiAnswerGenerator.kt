@@ -117,6 +117,12 @@ class OpenAiAnswerGenerator(
             return@flow
         }
 
+        // 模型按提示词主动拒答：不把「资料不足」当作未通过引用校验的答案持久化。
+        if (rawAnswer.trim() == ChatPrompt.REFUSAL_MESSAGE) {
+            emit(AnswerEvent.Failed(NO_EVIDENCE_CODE, ChatPrompt.REFUSAL_MESSAGE))
+            return@flow
+        }
+
         // 5) 强制引用校验（Lead 契约：任何 Completed 前必须经过 CitationValidator）
         val validation = CitationValidator.validate(rawAnswer, evidence)
         emit(
@@ -125,6 +131,7 @@ class OpenAiAnswerGenerator(
                 citations = validation.citations,
                 invalidCitationTokens = validation.invalidCitationTokens,
                 unverified = validation.unverified,
+                unreferencedSentenceCount = validation.unreferencedSentenceCount,
                 model = completed?.model?.ifBlank { llmConfig.model } ?: llmConfig.model,
                 latencyMs = completed?.latencyMs ?: 0L,
             ),

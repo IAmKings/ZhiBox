@@ -218,6 +218,15 @@ class B11QaEvalTest {
             .put("citations", JSONArray(citationsJson(completed?.citations)))
             .put("invalid", JSONArray(completed?.invalidCitationTokens ?: emptyList<String>()))
             .put("unverified", completed?.unverified ?: false)
+            .put("unreferencedSentenceCount", completed?.unreferencedSentenceCount ?: 0)
+            .put(
+                "fullyCited",
+                completed != null &&
+                    completed!!.citations.isNotEmpty() &&
+                    !completed!!.unverified &&
+                    completed!!.invalidCitationTokens.isEmpty() &&
+                    completed!!.unreferencedSentenceCount == 0,
+            )
             .put("refused", refused)
             .put("code", failed?.code ?: JSONObject.NULL)
             .put("model", completed?.model ?: JSONObject.NULL)
@@ -242,6 +251,8 @@ class B11QaEvalTest {
         .put("citations", JSONArray(emptyList<JSONObject>()))
         .put("invalid", JSONArray(emptyList<String>()))
         .put("unverified", false)
+        .put("unreferencedSentenceCount", 0)
+        .put("fullyCited", false)
         .put("refused", true)
         .put("code", code)
         .put("model", JSONObject.NULL)
