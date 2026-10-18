@@ -353,18 +353,26 @@ class SagRetriever(
         // 2) 查询实体 seed → DB id 绑定（id<=0 用 normalizedName 回查；绑不到则丢弃）
         val queryEntityIds = resolveEntityIds(entitySeeds)
 
-        // 2b) **多跳桥接（真机多跳评测缺口修复）**：事件向量 seed → 其关联实体 → 与查询实体合并。
-        //     只做 query entity → event 时，查询仅命中"人物"事件无法桥接到该人物事件关联的
-        //     "组织/地点"事件，C2 桥接 chunk 永远进不了候选（120 条 2–4 跳评测 R@5 偏低根因）。
-        //     预算：查询实体优先、其次 seed-event 实体；去重后限制 IN 规模（frontier/kSeed 较大者）。
-        val seedEventEntityIds = if (vectorSeeds.isEmpty()) {
+        // 2b) **多跳桥接**：查询实体 exact 命中的锚点事件（C1）→ 其关联实体 → 与查询实体合并。
+        //     用 event 向量 top seed 当锚点会被无关高余弦事件带偏；query exact 命中更稳定。
+        val queryAnchorEventIds = if (queryEntityIds.isEmpty()) {
             emptyList()
         } else {
-            loadEventEntityIds(vectorSeeds.map { it.first })
-                .values.flatten()
-                .distinct()
+            safeSuspend {
+                db.eventEntityDao().activeEventIdsByEntityIds(queryEntityIds, budget.kSeed)
+            }.orEmpty()
         }
-        val hopEntityIds = (queryEntityIds + seedEventEntityIds)
+        val bridgeAnchorEventIds = queryAnchorEventIds.ifEmpty { vectorSeeds.map { it.first } }
+        val seedEventEntityIds = bridgeAnchorEventIds
+            .take(maxOf(1, budget.kSeed))
+            .flatMap { eventId -> loadEventEntityIds(listOf(eventId))[eventId].orEmpty() }
+            .distinct()
+        // 只取高辨识度类型，避免动作/时间/tags 等泛实体灌满 frontier。
+        val bridgeEntityIds = loadEntities(seedEventEntityIds)
+            .values
+            .filter { it.entityType in BRIDGE_ENTITY_TYPES }
+            .map { it.id }
+        val hopEntityIds = (queryEntityIds + bridgeEntityIds)
             .distinct()
             .take(maxOf(budget.frontier, budget.kSeed))
 
@@ -452,7 +460,36 @@ class SagRetriever(
                 entityNames = linkedEntityIds.mapNotNull { entityNames[it] },
             )
         }
-        val ordered = candidates.sortedWith(
+        // 桥接救援：锚点事件的下一跳（EVENT_ENTITY）若只有 incidence 分，容易被高余弦无关
+        // 事件挤出 kEvent；只提升“与锚点共享实体最多、且非锚点自身”的一个桥接事件。
+        val anchorEventIdSet = queryAnchorEventIds.toHashSet()
+        val anchorEventId = queryAnchorEventIds.firstOrNull() ?: vectorSeeds.firstOrNull()?.first
+        val anchorEntityIds = if (anchorEventId != null) {
+            loadEventEntityIds(listOf(anchorEventId)).values.flatten().toSet()
+        } else {
+            emptySet()
+        }
+        val bridgeCandidates = candidates.filter {
+            SagChannels.EVENT_ENTITY in it.channels && it.eventId !in anchorEventIdSet
+        }
+        val bridgeRescue = bridgeCandidates.maxWithOrNull(
+            compareByDescending<SagHit> { hit -> hit.entityIds.count { it in anchorEntityIds } }
+                .thenByDescending { it.score }
+                .thenBy { it.eventId ?: Long.MAX_VALUE },
+        )
+        val rescueCandidates = if (bridgeRescue == null) {
+            candidates
+        } else {
+            candidates.map {
+                if (it.chunkId == bridgeRescue.chunkId) {
+                    it.copy(
+                        score = maxOf(it.score, BRIDGE_RESCUE_SCORE),
+                        fusedScore = maxOf(it.fusedScore ?: it.score, BRIDGE_RESCUE_SCORE),
+                    )
+                } else it
+            }
+        }
+        val ordered = rescueCandidates.sortedWith(
             compareByDescending<SagHit> { it.score }
                 .thenBy { it.eventId ?: Long.MAX_VALUE }
                 .thenBy { it.chunkId },
@@ -817,6 +854,12 @@ class SagRetriever(
         internal const val STAGE_SELECT: String = "select"
         internal const val STAGE_SUPPLEMENT: String = "supplement"
         internal const val STAGE_TRACE: String = "trace"
+
+        /** 桥接救援分/类型白名单（只救援 1 个桥接事件，不批量提升）。 */
+        internal const val BRIDGE_RESCUE_SCORE: Double = 0.985
+        internal val BRIDGE_ENTITY_TYPES: Set<String> = setOf(
+            "person", "organization", "location", "product", "work", "group",
+        )
 
         // ── 稳定文案/常量 ──
         internal const val MULTI_REFUSED_REASON: String =

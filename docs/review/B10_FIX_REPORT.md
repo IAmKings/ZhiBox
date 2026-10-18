@@ -3,7 +3,7 @@
 - **日期**：2026-10-18
 - **依据**：`docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` §5（B10）、PRD FR-03/04/05、论文 §3.3/§3.4
 - **性质**：检索侧实现 + 多跳评测；B11 生成问答、B12 图谱未实现。
-- **结论**：**代码与自动门禁完成；多跳质量门禁未通过**。`multi_es_fast` R@5 0.26（门槛 ≥0.70），`multi` 本次为 mock selector 未验证真实 LLM 精排；B10 标记为**部分完成/实验**，不宣称验收通过。
+- **结论**：**代码与自动门禁完成；多跳质量门禁未通过**。`multi_es_fast` R@5 0.3403（门槛 ≥0.70），`multi` 本次为 mock selector 未验证真实 LLM 精排；B10 标记为**部分完成/实验**，不宣称验收通过。
 
 ---
 
@@ -25,6 +25,12 @@
 ### 1.2 UI
 - Search：三模式选择（混合 / SAG 快速 / SAG 精排）、effectiveMode/降级原因、refused 提示、trace 摘要（seed/expand/candidates/selected/耗时）、trace 导出（脱敏最近 50）、SagHit→Evidence 映射；settings 未新增 B10 页面。
 - multi LLM：SearchViewModel 已注入 provider/store 的 `LlmQueryEntityExtractor/LlmSagContextSelector`。
+
+### 1.3 B10.1 查询/桥接修正（本轮新增）
+
+- `LexicalQueryEntityExtractor`：新增 **query 子串精确命中**（2–12 字 n-gram 回查 normalizedName，128 候选上限），解决自然语言问句"张三所在组织…"无法 exact 绑定"张三"、实体 seed 退化为 FTS 泛召回的问题。
+- `SagRetriever`：桥接扩展锚点改为 **query 实体 exact 命中的事件**（无则回退向量 seed），并只提升 **1 个**与锚点共享实体最多的桥接事件（B10.1 桥接救援）；不再批量提升/污染 top-kEvent。
+- 实测 fast R@5 从 0.2597 → **0.3403**（2 跳 0.40、3 跳 0.3583、4 跳 0.2625），仍低于 0.70 门禁。
 
 ### 1.3 评测工具
 - `scripts/eval/gen_multihop_eval.py`：受控合成 KB **80 chunk（20 链×4）** + **120 条查询**（每链 2/3/4 跳各 2 条，多证据 chunk）。
@@ -60,18 +66,18 @@ B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected
 | 模式 | R@5 | R@10 | MRR | p50/p95 ms |
 |---|---|---|---|---|
 | vector（混合基线） | **0.1840** | 0.3056 | 0.3284 | 203 / 230 |
-| multi_es_fast（离线） | **0.2597** | 0.3840 | 0.5642 | 436 / 503 |
-| multi（mock selector） | 0.2597 | 0.3840 | 0.5642 | 415 / 441 |
+| multi_es_fast（离线，B10.1） | **0.3403** | 0.4486 | 0.4342 | 769 / 903 |
+| multi（mock selector） | 0.3403 | 0.4486 | 0.4342 | 731 / 881 |
 
 | 跳数 | vector R@5 | fast R@5 | multi R@5 |
 |---|---|---|---|
-| 2 跳（40） | 0.3125 | 0.4125 | 0.4125 |
-| 3 跳（40） | 0.1833 | 0.2167 | 0.2167 |
-| 4 跳（40） | 0.0563 | 0.1500 | 0.1500 |
+| 2 跳（40） | 0.3125 | 0.4000 | 0.4000 |
+| 3 跳（40） | 0.1833 | 0.3583 | 0.3583 |
+| 4 跳（40） | 0.0563 | 0.2625 | 0.2625 |
 
 **门禁判定**：
-- fast 相比 vector **+7.57pp**（>5pp 改善项通过）；
-- 但 fast R@5 **0.2597 < 0.70**，**绝对门槛未通过**；multi 本次 mock selector，未验证真实 LLM 精排，不能作为通过依据。
+- fast 相比 vector **+15.63pp**（>5pp 改善项通过）；
+- 但 fast R@5 **0.3403 < 0.70**，**绝对门槛未通过**；multi 本次 mock selector，未验证真实 LLM 精排，不能作为通过依据。
 - 264/单跳 262 集回归：本轮设备无 50 卡 262 语料，未执行，需 B10 修复后补测（回退 ≤0.5pp 门禁未验证）。
 
 ---

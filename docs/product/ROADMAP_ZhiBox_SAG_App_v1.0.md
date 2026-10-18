@@ -93,7 +93,7 @@ schema v7、抽取 pipeline/scheduler/worker、FTS/SAG 向量、补抽取/重试
 
 ## 5. B10 — SAG 结构化检索与多跳评测（🟡 部分完成 2026-10-18，见 `docs/review/B10_FIX_REPORT.md`）
 
-> 状态：三模式/预算/source scope/降级/trace/UI/测试已落地；真机多跳评测 fast R@5 **0.2597**（vector 0.1840，+7.57pp 改善，但未达 ≥0.70 绝对门槛），multi 本次为 mock selector，262 单跳回归未跑。B10 **质量门禁未通过**，标记实验/继续修复；详见报告。
+> 状态：三模式/预算/source scope/降级/trace/UI/测试已落地；真机多跳评测 fast R@5 **0.3403**（vector 0.1840，+15.63pp 改善，但未达 ≥0.70 绝对门槛），multi 本次为 mock selector，262 单跳回归未跑。B10 **质量门禁未通过**，标记实验/继续修复；详见报告。
 
 **目标**：三模式落地，`multi_es_fast` 在离线可用；`multi` 具备 LLM 选择能力；建立可回归的中文多跳评测。
 

@@ -69,8 +69,9 @@ class LexicalQueryEntityExtractorTest {
         assertTrue("应含数学", result.any { it.id == math })
         result.filter { it.id in setOf(zhang, shanghai, math) }.forEach { entity ->
             assertTrue("id 必须绑定 DB", entity.id > 0)
-            assertEquals("非精确命中来源为 entity_fts", "entity_fts", entity.source)
-            assertTrue("名次衰减分数在 [0.5,0.9]", entity.score in 0.5..0.9)
+            // B10.1：query 子串精确命中（自然人问句）优先 exact；其余 FTS 召回 entity_fts
+            assertTrue("来源应为 exact/entity_fts：${entity.source}", entity.source in setOf("exact", "entity_fts"))
+            assertTrue("分数应在 [0.5,1.0]", entity.score in 0.5..1.0)
         }
     }
 

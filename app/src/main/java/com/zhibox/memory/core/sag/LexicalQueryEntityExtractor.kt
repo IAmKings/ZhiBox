@@ -32,6 +32,20 @@ class LexicalQueryEntityExtractor(
             out[entity.id] = toQueryEntity(entity, score = 1.0, source = "exact")
         }
 
+        // 1b) **查询子串精确命中**：自然语言问句不是实体名本身（"张三所在组织..."），
+        //     必须从 query 的 n-gram 候选中回查 entity.normalizedName，再确认是该子串。
+        //     仅做整句全等会让 query entity 退化为 FTS 泛召回，桥接扩展锚点跑偏。
+        val substringCandidates = substringCandidates(normalizedName)
+        if (substringCandidates.isNotEmpty()) {
+            runCatching { db.entityDao().byNormalizedNames(substringCandidates) }
+                .getOrNull()
+                .orEmpty()
+                .filter { it.normalizedName.isNotBlank() && normalizedQuery.contains(it.normalizedName) }
+                .forEach { entity ->
+                    out.putIfAbsent(entity.id, toQueryEntity(entity, score = 1.0, source = "exact"))
+                }
+        }
+
         // 2) entity_fts bigram OR 召回（名次衰减；与 B9 写入同一 bigram 口径）
         val grams = SagSupport.queryGrams(normalizedQuery)
         val match = SagSupport.ftsOrMatch(grams)
@@ -61,6 +75,20 @@ class LexicalQueryEntityExtractor(
             .toList()
     }
 
+    /** 查询中所有 2..12 字候选（有界），用于 entity.normalizedName 的精确子串回查。 */
+    private fun substringCandidates(normalizedQuery: String): List<String> {
+        if (normalizedQuery.length < MIN_ENTITY_NAME_LENGTH) return emptyList()
+        val out = LinkedHashSet<String>(MAX_SUBSTRING_CANDIDATES)
+        val maxLen = minOf(12, normalizedQuery.length)
+        for (len in MIN_ENTITY_NAME_LENGTH..maxLen) {
+            for (start in 0..normalizedQuery.length - len) {
+                out += normalizedQuery.substring(start, start + len)
+                if (out.size >= MAX_SUBSTRING_CANDIDATES) return out.toList()
+            }
+        }
+        return out.toList()
+    }
+
     private fun toQueryEntity(entity: EntityEntity, score: Double, source: String): QueryEntity =
         QueryEntity(
             id = entity.id,
@@ -84,5 +112,8 @@ class LexicalQueryEntityExtractor(
 
         /** 单字实体噪声大（"唐"/"数"），不参与扩展 */
         private const val MIN_ENTITY_NAME_LENGTH = 2
+
+        /** 子串候选上限（避免长 query 的 O(n²) 候选撑爆 SQL IN） */
+        private const val MAX_SUBSTRING_CANDIDATES = 128
     }
 }
