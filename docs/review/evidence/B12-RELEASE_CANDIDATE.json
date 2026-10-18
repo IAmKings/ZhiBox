@@ -1,11 +1,14 @@
 {
-  "name": "zhibox-b12-internal-373277b-unsigned.apk",
-  "path": "dist/zhibox-b12-internal-373277b-unsigned.apk",
-  "sha256": "5855e224fcc869dd296adfbbc87a1fdbacc18a563c55817d785d8516bd2a20af",
-  "sizeBytes": 49356056,
-  "signed": false,
-  "isReleaseCandidate": false,
-  "note": "Unsigned internal build only. No ZHIBOX_* signing material configured; not installable/distributable as release candidate. Rebuild+sign with scripts/release.sh when keystore provided.",
-  "gitHeadAtBuild": "373277b",
-  "builtAt": "2026-10-19T02:06+08:00"
+  "name": "zhibox-0.1.0-mvp-1aeea59-b12-release.apk",
+  "path": "dist/zhibox-0.1.0-mvp-1aeea59-b12-release.apk",
+  "versionName": "0.1.0-mvp",
+  "sha256": "b9f41cc3a217369fd4e268c18c39242ebeda9d9855d704578fbda225eb0c7f6b",
+  "sizeBytes": 49383814,
+  "signed": true,
+  "isReleaseCandidate": true,
+  "signing": "release keystore (~/.zhibox-release/zhibox-release.jks, alias zhibox)",
+  "signerCertSha256": "b1d136badcc7e032a39d8504fb050f98f444017aeb5f5cfce66256afec1db1d1",
+  "apksignerVerify": "PASS (v1/v2 signing; cert printed). Not installed over debug APK because signatures differ; install on clean device.",
+  "gitHeadAtBuild": "1aeea59",
+  "builtAt": "2026-10-19T02:22+08:00"
 }

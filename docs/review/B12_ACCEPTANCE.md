@@ -2,7 +2,7 @@
 
 - **日期**：2026-10-19
 - **范围**：ROADMAP §7 B12 / PRD §11 P0 门禁
-- **结论**：**验收不通过（进行中）**；B12 代码/自动门禁第一批完成，但三档设备矩阵缺失、release 签名/验签未闭合，独立审查指出的图谱性能/entity 连接视图/抽取并发/trace errorCode 仍为缺口；不宣称发布候选通过。
+- **结论**：**验收不通过（进行中）**；代码/自动门禁、entity 连接、10k 查询基线、trace errorCode 与签名 RC 已完成；但三档设备矩阵仍缺失（仅 PJZ110），抽取并发控制/备份 UI 视觉/持久盘 p95 未闭合，不能宣称发布验收通过。
 
 ## 1. 设备矩阵
 
@@ -28,12 +28,12 @@
 | backup v3 UI/依赖提示/旧包补抽取提示/隐私说明 | UI 审计补缺完成；编译通过；未做专项设备视觉 | Settings task-61 |
 | trace 诊断导出（最近 50/脱敏/无正文/errorCode） | Settings 新增计数+导出；QA timingJson 增 errorCode/errorStage | task-61 + 本轮 |
 | JVM/lint/assemble | debug 513/0、release 494/0、lint 0/37、assembleDebug/Release 成功 | `/tmp/b12-gate1.log` |
-| release candidate | **不通过**：仅 unsigned internal build，未配签名材料/未验签/APK 构建早于 B12 提交 | 不以 RC 宣称；见 `evidence/B12-RELEASE_CANDIDATE.json`（构建后更新） |
+| release candidate | **通过（构建/验签）**：release keystore 签名，apksigner verify PASS；未覆盖安装 debug 包；三档安装矩阵仍缺 | `dist/zhibox-0.1.0-mvp-1aeea59-b12-release.apk`，SHA-256 `b9f41cc3a217369fd4e268c18c39242ebeda9d9855d704578fbda225eb0c7f6b`；见 `evidence/B12-RELEASE_CANDIDATE.json` |
 
 ## 3. 未完成项
 
 1. **三档设备矩阵**：K40 未连接、低端设备缺失；不能宣称三档通过。
-2. **release candidate 签名/验签**：无 release keystore（`ZHIBOX_*` 未配置），当前为 unsigned，不可分发；且旧 RC 构建早于 B12 提交；按 `docs/RELEASE.md` 由用户提供密钥后重构建/签名。
+2. **release candidate 安装矩阵**：签名/验签已 PASS，但未在 clean 设备安装 RC（PJZ110 已装 debug 包，覆盖会签名冲突）；待 clean 设备安装验收。
 3. **备份 v3 UI 视觉/回环**：B8/B9 已有备份回环测试，但 B12 UI 变更后未再跑专项设备回环；旧包/空 SAG 提示需视觉确认。
 4. **独立 Standards/Spec 审查 B12 变更**：已执行；硬性 RC/竞态/嵌套/文案问题已修，剩余抽取并发、entity 聚合性能/持久盘、备份视觉等缺口。
 5. **K40/B12 回归**：未复跑 B10/B11 全量真机；需设备可用时补。
@@ -43,5 +43,5 @@
 
 1. 串行跑备份 v3 导出→清库→导入回环 + 旧包/空 SAG 提示（PJZ110）。
 2. 连接 K40/低端设备补三档矩阵；无设备则如实标注。
-3. 配 release keystore → `scripts/release.sh` 签名 RC → `apksigner verify`。
+3. 在 clean 设备安装已签名 RC（或卸载 debug 后安装），完成安装矩阵。
 4. B12 独立审查、报告/ROADMAP/PRD 完成。

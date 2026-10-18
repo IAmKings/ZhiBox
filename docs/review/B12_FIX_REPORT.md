@@ -11,7 +11,7 @@
 - Graph 10k 基线（in-memory Room + 真实 DAO）：count all p95 **8ms**、page offset0 p95 2ms、offset5000 p95 3ms、offset9950 p95 3ms、source filter p95 3ms；全部远低于 1.5s 目标（下限参考，非持久盘）；seed active=10000/inactive=500。
 - QA trace `timingJson` 增 `errorCode/errorStage`（失败可归因；无正文）。
 - 门禁：JVM 513/0、release 494/0；lint 0/38；PJZ110 串行 instrumentation **32/32**（新增 Graph10k 1 例）；BackupV3 7/7、Migration 11/11。
-- 独立审查修复：Graph 切源/loadMore 竞态、Settings 预算写入竞态、详情嵌套 Scaffold、错误+空态叠加、隐私文案；**仍未闭合**：三档设备矩阵、签名 RC、抽取并发控制、entity 连接性能/持久盘、备份 UI 视觉。
+- 独立审查修复：Graph 切源/loadMore 竞态、Settings 预算写入竞态、详情嵌套 Scaffold、错误+空态叠加、隐私文案；签名 RC 已完成（apksigner PASS）。**仍未闭合**：三档设备安装矩阵、抽取并发控制、entity 连接性能/持久盘、备份 UI 视觉。
 
 ### 1.0.1 第一批判定（2026-10-19）
 - Graph DAO：`EventDao.activeGraphPage/countActiveGraph`；GraphDaoTest 4/4（PJZ110）。
@@ -19,9 +19,9 @@
 - Settings/备份/诊断：备份 v3 UI 审计补缺（格式计数/旧包补抽取/隐私说明）；检索/问答 trace 计数+脱敏导出。
 - 预算档位：`SagBudgetTier`/`SagBudgetPreferences` + Search/Chat 接线；Settings 三档 chips；SagBudgetTierTest 9/9。
 - 门禁：JVM debug 513/0、release 494/0；lint 0/37；assembleDebug/Release 成功；PJZ110 串行 instrumentation 31/31。
-- 构建产物：**unsigned internal build**（未配 `ZHIBOX_*` 签名材料，不可分发，**不称 release candidate**；SHA-256/size 见 `evidence/B12-RELEASE_CANDIDATE.json`）；签名/验签与三档矩阵待完成。
+- **release candidate**：使用本地 release keystore 构建并 **apksigner verify PASS**（v1/v2，证书 SHA-256 `b1d136ba…`）；产物 `dist/zhibox-0.1.0-mvp-1aeea59-b12-release.apk`（49383814 bytes）；SHA-256 `b9f41cc3a217369fd4e268c18c39242ebeda9d9855d704578fbda225eb0c7f6b`；未在已装 debug 包的设备上覆盖安装（签名不同，需清装/卸载），三档矩阵仍待补。
 - 设备回归：BackupV3RoundTrip **7/7**、MigrationTest/MigrationV1→V7 **11/11**（PJZ110，串行）；Graph10kBaseline 1/1；总串行 instrumentation 32/32。
-- 独立 Standards/Spec 审查发现：Graph 切源/loadMore 竞态、Settings 预算写入竞态、详情嵌套 Scaffold、错误+空态叠加、隐私文案矛盾、RC 实质为旧 unsigned 包；**本轮已修前 5 项**（请求代际/Job 取消、budgetSaving 禁用、embedded 详情、错误时不显示空态、备份文案）；RC 改为“unsigned internal build”并待签名；三档矩阵/抽取并发/trace errorCode/entity 连接聚合仍缺。
+- 独立 Standards/Spec 审查发现：Graph 切源/loadMore 竞态、Settings 预算写入竞态、详情嵌套 Scaffold、错误+空态叠加、隐私文案矛盾、RC 不可签/不可复现；**已分别修复**（请求代际/Job 取消、budgetSaving 禁用、embedded 详情、错误时不显示空态、备份文案），并已用 release keystore 重新构建/验签 RC。三档矩阵/抽取并发控制/持久盘 p95/备份 UI 视觉仍缺。
 - 详见 `B12_ACCEPTANCE.md`。
 
 
