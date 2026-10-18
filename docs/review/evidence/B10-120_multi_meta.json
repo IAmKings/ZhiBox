@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-18",
+  "device": "K40 6D8H6TXSDYXC85PZ",
+  "model": "embeddinggemma-2-text-vision-440m.litertlm",
+  "llm_base_url": "https://opencode.ai/zen/go/v1",
+  "llm_model": "deepseek-v4-flash",
+  "llm_key": "stored in Android Keystore; not recorded",
+  "eval_set": "app/src/androidTest/assets/b10/{kb,queries}.json (chain-unique synthetic; not independently human-annotated)",
+  "kb_sha256": "2c35b80a48ce3e7fb0678d154bf96b8e1be9a2debaa1ce6af07beebeb91362a0",
+  "queries_sha256": "1a298254d968bc99a07e1c7ba855db60a7f96c5a8058215022ad5996d0d1e726",
+  "n_queries": 120,
+  "mode": "multi (real LlmQueryEntityExtractor + LlmSagContextSelector)",
+  "raw_result": "B10-120_multi_evalrun.json",
+  "score": "B10-120_multi_score.json",
+  "multi_R@5": 0.7681,
+  "multi_R@10": 0.8201,
+  "multi_MRR": 1.0,
+  "multi_p50_ms": 7146,
+  "multi_p95_ms": 9377,
+  "degraded": 88,
+  "gate": "PRD main gate R@5 >=0.70 PASS (+58.62pp vs vector); latency and synthetic-set limitations recorded"
+}

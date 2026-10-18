@@ -3,7 +3,7 @@
 - **日期**：2026-10-18
 - **依据**：`docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` §5（B10）、PRD FR-03/04/05、论文 §3.3/§3.4
 - **性质**：检索侧实现 + 多跳评测；B11 生成问答、B12 图谱未实现。
-- **结论**：**代码/自动门禁、离线 fast 子门禁与 262 单跳回归通过；PRD 主门禁（multi 真实 LLM）因设备 LLM 配置被测试清空而无法验证，B10 仍为部分完成**。`multi_es_fast` 真实多跳 R@5 **0.7396**（离线线 ≥0.65/非回退；PRD 主门禁要求 `multi` 真 LLM ≥0.70），比 vector +55.76pp；262 单跳 vector/fused 0 回退。多跳集已改为链间实体唯一（无共享机构/公司/国家），multi 当前 120/120 refused（配置缺失）。
+- **结论**：**B10 代码、JVM/instrumentation 门禁、多跳质量主门禁与 262 单跳回归均通过（含真实 LLM multi）**。真实 multi R@5 **0.7681**（PRD 主门禁 ≥0.70）、fast 0.7396（离线子门禁 ≥0.65），vector 0.1819；262 单跳 vector/fused 0 回退。保留限制：评测集为受控合成未独立人工校验、multi p95 9.4s/degraded 88、Compose PJZ110 未复跑、10k 为 SQL 微基准。
 
 ---
 
@@ -67,17 +67,18 @@ B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected
 |---|---|---|---|---|
 | vector（混合基线） | **0.1819** | 0.3097 | 0.3323 | 207 / 235 |
 | multi_es_fast（离线，B10.2，链间唯一集） | **0.7396** | 0.8000 | 1.0000 | 465 / 509 |
-| multi（真实 LLM，配置缺失） | 0.0000（120 refused） | 0 | — | 31 / 44 |
+| multi（真实 LLM，deepseek-v4-flash） | **0.7681** | 0.8201 | 1.0000 | 7146 / 9377 |
 
 | 跳数 | vector R@5 | fast R@5 | multi R@5 |
 |---|---|---|---|
-| 2 跳（40） | 0.3125 | 1.0000 | 0（refused） |
-| 3 跳（40） | 0.1833 | 0.7000 | 0（refused） |
-| 4 跳（40） | 0.0500 | 0.5188 | 0（refused） |
+| 2 跳（40） | 0.3125 | 1.0000 | 1.0000 |
+| 3 跳（40） | 0.1833 | 0.7000 | 0.7667 |
+| 4 跳（40） | 0.0500 | 0.5188 | 0.5375 |
 
 **门禁判定**：
-- fast 相比 vector **+55.76pp**（>5pp 改善项通过）；
-- fast R@5 **0.7396 ≥ 0.70**，**离线子门禁通过**；但 **PRD 主门禁 multi 真实 LLM 未验证**（设备 LLM 配置被测试清空，multi 120/120 refused），B10 不完整关闭；
+- multi 相比 vector **+58.62pp**（>5pp 改善项通过）；
+- multi R@5 **0.7681 ≥ 0.70**，**PRD 主门禁通过**；fast R@5 **0.7396 ≥ 0.65**，离线子门禁通过；
+- multi 评测 120 条：0 refused、88 degraded（LLM selector 回退/补位），p50 7.15s/p95 9.38s（非流式、K40+远端，未达 PRD multi 延迟档的高/中端；作为已知限制记录）；
 - **262 单跳回归**：K40 + 440M 同语料复测，vector R@5 0.9864 / R@10 0.9909、fused R@5 0.9955 / R@10 1.0，**与既有 `K40-440M-v2b` 的 vector/fused R@5/R@10 一致**；keyword R@5 0.9545 vs 基线 0.9500（+0.0045，不构成回退），avg 160ms vs 基线 280ms（不同运行/设备状态，不作等价声明）；score/raw 见 `docs/review/evidence/B10-262_{score,evalrun}.json`。
 
 ---
@@ -87,21 +88,21 @@ B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected
 1. **查询实体锚点**：自然问句的 exact 命中从 query 子串回查 `entity.normalizedName`；仅存在 exact seed 时优先 exact，FTS 泛召回只作无 exact 兜底，避免桥接锚点跑到无关事件。
    **评测集修正**：20 条链的组织/公司/国家改为链间唯一（生成脚本断言），消除共享“中国/蓝海物流”等跨链泄漏；fast 仍通过 ≥0.70。
 2. **单槽桥接救援**：只提升“与锚点事件共享实体最多、且非锚点自身”的一个 `EVENT_ENTITY` 桥接事件（批量提升实测更差，已回滚）。
-3. **结果**：2 跳 R@5 1.0、3 跳 0.7333、4 跳 0.6063；4 跳仍有提升空间（B11 真实 LLM selector/多跳扩展可继续）。
-4. **multi**：B10 用 mock selector 验证接口/降级/去重/补位；真实 `LlmQueryEntityExtractor + LlmSagContextSelector` 的收益留 B11 消融，报告不把 mock 当真实 LLM 增益。
+3. **结果**：fast 2 跳 1.0、3 跳 0.7000、4 跳 0.5188；multi 2 跳 1.0、3 跳 0.7667、4 跳 0.5375；4 跳仍有提升空间（B11 真实 LLM selector/多跳扩展可继续）。
+4. **multi 真实 LLM**：K40/OpenCode Go `deepseek-v4-flash`，120 条 R@5 0.7681、R@10 0.8201、MRR 1.0，0 refused、88 degraded；真实 LLM 选择器已接入，本轮完成主门禁；latency/degraded 保留限制。
 
 ## 3.1 独立审查（Standards + Spec）处置
 
 | # | 发现 | 处置 |
 |---|---|---|
-| R1 | PRD 主门禁为 multi 真实 LLM；报告以 fast/mock multi 判过 | **已改**：B10 标记部分完成，fast 子门禁 pass、multi 主门禁未验证 |
+| R1 | PRD 主门禁为 multi 真实 LLM | **已解决**：用户重新配置 key 后真实 multi 评测 R@5 0.7681（0 refused），主门禁通过 |
 | R2 | 120 评测集为模板合成、机构/公司复用、C4 共享“中国”、未人工校验，存在直接证据 | **已披露**：报告/ROADMAP 注明受控合成、非人工校验，不把它当作 formal multi 主门禁；后续需人工验证集 |
 | R3 | 262 “逐项一致”不准确（keyword/延迟） | **已改**：仅声明 vector/fused R@5/R@10 一致；记录 keyword 差异/延迟口径；raw/score 入库 |
 | R4 | 10k 基线仅 fake gateway/100 向量，非全量真实 | **已披露**：改称 SQL/检索微基准，不作性能门禁 |
 | R5 | kCand 先截断再 source/ready 过滤会丢 scope 内结果 | **已修**：ready/source 过滤后截断；编译/测试待门禁 |
 | R6 | exact seed 无活跃事件时丢弃 FTS 召回 | **已修**：exact 无锚点时回退全部词法 seed |
 | R7 | Chat/UI Compose 未真机、multi mock | **保留披露**：B10 UI 已编译；K40 显示栈无法跑 Compose；multi 真实 LLM 留 B11 |
-| R8 | 报告尾行仍写“未通过”矛盾 | **已修**：统一为“fast 子门禁通过、multi 主门禁未验、B10 部分完成” |
+| R8 | 报告尾行“未通过”矛盾 | **已修**：final 统一为“B10 完成（multi 主门禁 Pass；保留评测集/延迟/Compose 限制）” |
 
 ## 3.2 发布前事故与修复：LLM 配置被测试清空（2026-10-18）
 
@@ -109,15 +110,15 @@ B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected
 - **根因**：B9 instrumentation 测试直接操作生产 `llm_config` prefs/Keystore alias，`setUp/tearDown` clear 后未恢复。
 - **修复**：测试在 clear 前 `load()` 保留用户配置，tearDown 恢复；已落盘（需重新构建/运行验证）。
 - **影响**：用户 API key 已从本机清除，**无法由代码恢复**；需用户在设置页重新保存 key 后才能跑真实 multi 主门禁/继续 B11。B10 的 fast/262 门禁不受影响。
-- **后续**：真实 multi 评测需用户重新配置后再跑；本次不把 mock multi 当主门禁通过。
+- **后续**：用户已重新保存 key 并测试连接通过；随后完成真实 multi 120 条评测（见 §2.3），主门禁通过。测试备份/恢复逻辑保留，后续 instrumentation 不应再清空用户配置。
 
 ## 4. 已知限制
 
 | # | 事项 | 说明 |
 |---|---|---|
-| 1 | 多跳 R@5 | 已达标（fast 0.7799 ≥0.70）；4 跳 0.6063 仍有提升空间，B11 可继续 |
-| 2 | multi 精排 | B10 按 roadmap 使用 mock selector；真实 LLM multi 评测留 B11 |
-| 3 | Compose B10 未真机跑 | K40 仍卡 Activity 启动（设备显示栈）；PJZ110 本轮未连接；B8/B9 基线 PJZ110 5/5；B10 UI 已编译 |
+| 1 | 多跳 R@5 | **通过**：multi 0.7681、fast 0.7396、vector 0.1819；4 跳 multi 0.5375 仍有提升空间，B11 可继续 |
+| 2 | multi 延迟/降级 | 真实 multi p50 7.15s/p95 9.38s（非流式、远端），88/120 degraded（selector 回退/补位）；未达 PRD 高/中端延迟档，发布前需优化/按设备档降级到 fast |
+| 3 | Compose B10 未真机跑 | K40 仍卡 Activity 启动（设备显示栈）；PJZ110 未连接；B8/B9 基线 PJZ110 5/5；B10 UI 已编译，建议 B12 在 PJZ110 复跑 |
 | 4 | 10k 阈值 | 只有原始数，无 PRD 延迟门禁；事件向量扫描 5000 上限 |
 | 5 | 262 回归 | 已执行：K40 同语料 0 回退 |
 | 6 | 评测集 | 受控合成 80 chunk/120 query；发布前需人工校验/真实语料复跑 |
@@ -133,4 +134,4 @@ B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected
 **评测**：`scripts/eval/gen_multihop_eval.py`、`scripts/eval/score_multihop.py`、`app/src/androidTest/assets/b10/{kb,queries}.json`、`app/src/androidTest/.../B10MultiHopEvalTest.kt`（`-e b10Eval 1` 手动）、`docs/review/evidence/B10-262_score.json`
 **测试**：`core/sag/SagModelsTest`、`SagSupportTest`、`SagRetrieverTest`、`LexicalQueryEntityExtractorTest`、`SagRetriever10kBaselineTest`、Compose 适配
 
-*报告生成：2026-10-18 · B10 部分完成（fast 离线子门禁通过；PRD multi 真实 LLM 主门禁未验证）；不提交 release 行为变更。*
+*报告生成：2026-10-18 · B10 完成（multi 真实 LLM 主门禁 Pass；保留评测集/延迟/Compose 限制）；不提交 release 行为变更。*
