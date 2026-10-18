@@ -1,6 +1,7 @@
 package com.zhibox.memory.core.llm
 
 import android.content.Context
+import java.util.UUID
 
 /**
  * LLM/SAG 功能开关（B8）：SAG 增强、带引用问答、以及**默认禁网**的联网开关。
@@ -18,6 +19,7 @@ object LlmPreferences {
     private const val KEY_SAG_ENABLED = "sag_enabled"
     private const val KEY_ANSWER_ENABLED = "answer_enabled"
     private const val KEY_NETWORK_ALLOWED = "network_allowed"
+    private const val KEY_OPENCODE_SESSION_ID = "opencode_session_id"
 
     /** SAG 增强开关默认值：关闭（未配置 LLM 时不得影响离线检索）。 */
     const val DEFAULT_SAG_ENABLED: Boolean = false
@@ -55,5 +57,18 @@ object LlmPreferences {
 
     fun setNetworkAllowed(context: Context, allowed: Boolean) {
         prefs(context).edit().putBoolean(KEY_NETWORK_ALLOWED, allowed).apply()
+    }
+
+    /**
+     * OpenCode Go 必需：稳定会话 ID（同一安装固定，避免每次请求换 ID 破坏路由/缓存亲和）。
+     * 非敏感随机 UUID；只由 [com.zhibox.memory.core.llm.OpenAiCompatibleLlmProvider] 注入到
+     * 官方 opencode.ai 网关请求头，不写日志、不进备份。
+     */
+    fun openCodeSessionId(context: Context): String {
+        val p = prefs(context)
+        p.getString(KEY_OPENCODE_SESSION_ID, null)?.takeIf { it.isNotBlank() }?.let { return it }
+        val generated = UUID.randomUUID().toString()
+        p.edit().putString(KEY_OPENCODE_SESSION_ID, generated).apply()
+        return generated
     }
 }

@@ -898,6 +898,11 @@ internal fun SettingsContent(
                         placeholder = { Text(stringResource(R.string.settings_llm_base_url_hint)) },
                         singleLine = true,
                     )
+                    Text(
+                        text = stringResource(R.string.settings_llm_opencode_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     OutlinedTextField(
                         value = llmModel,
                         onValueChange = { llmModel = it },

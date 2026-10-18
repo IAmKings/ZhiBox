@@ -21,6 +21,7 @@ import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URI
 import java.net.URL
+import java.util.UUID
 
 /** OpenAI-compatible `/chat/completions` 路径（连通性测试与 completion 共用）。 */
 internal const val CHAT_COMPLETIONS_PATH: String = "/chat/completions"
@@ -74,13 +75,16 @@ class OpenAiCompatibleLlmProvider internal constructor(
     /** 可注入时钟（测试用）；默认系统毫秒。 */
     private val clockMillis: () -> Long,
     private val connectionOpener: LlmHttpConnectionOpener,
+    /** OpenCode Go 的稳定会话 ID；默认随机 UUID（生产通过 [from] 读持久化值）。 */
+    private val openCodeSessionIdProvider: () -> String = { UUID.randomUUID().toString() },
 ) : LlmProvider, LlmCompletionProvider {
 
     /** 生产/一般用法：禁网策略由调用方提供，时钟默认系统毫秒。 */
     constructor(
         networkPolicy: NetworkPolicy,
         clockMillis: () -> Long = System::currentTimeMillis,
-    ) : this(networkPolicy, clockMillis, LlmHttpConnectionOpener.Default)
+        openCodeSessionIdProvider: () -> String = { UUID.randomUUID().toString() },
+    ) : this(networkPolicy, clockMillis, LlmHttpConnectionOpener.Default, openCodeSessionIdProvider)
 
     override suspend fun testConnection(config: LlmConfig): LlmTestResult = withContext(Dispatchers.IO) {
         preflight(config)?.let { return@withContext LlmTestResult.Failure(it.code, it.message) }
@@ -150,15 +154,20 @@ class OpenAiCompatibleLlmProvider internal constructor(
     companion object {
         /** 生产便捷构造：禁网策略实时读取设置（默认禁网）。 */
         fun from(context: Context): OpenAiCompatibleLlmProvider =
-            OpenAiCompatibleLlmProvider(NetworkPolicy.from(context))
+            OpenAiCompatibleLlmProvider(
+                networkPolicy = NetworkPolicy.from(context),
+                // OpenCode Go 要求同一会话稳定 session；按安装持久化，避免每次请求换 ID 影响路由/缓存
+                openCodeSessionIdProvider = { LlmPreferences.openCodeSessionId(context) },
+            )
 
         /** 测试专用：注入 fake connection opener（internal；不要在业务代码使用）。 */
         internal fun createForTesting(
             networkPolicy: NetworkPolicy,
             clockMillis: () -> Long = System::currentTimeMillis,
             opener: LlmHttpConnectionOpener,
+            openCodeSessionIdProvider: () -> String = { UUID.randomUUID().toString() },
         ): OpenAiCompatibleLlmProvider =
-            OpenAiCompatibleLlmProvider(networkPolicy, clockMillis, opener)
+            OpenAiCompatibleLlmProvider(networkPolicy, clockMillis, opener, openCodeSessionIdProvider)
     }
 
     // ---- 内部实现：preflight / HTTP 执行 ----
@@ -215,6 +224,14 @@ class OpenAiCompatibleLlmProvider internal constructor(
                 setRequestProperty("Accept", "application/json")
                 setRequestProperty("Authorization", "Bearer ${config.apiKey}")
                 setRequestProperty("User-Agent", "ZhiBox/${UA_VERSION} (Android)")
+                // OpenCode Go 网关要求稳定会话头（路由/prompt-cache 亲和）；只对官方域名注入，
+                // 避免把会话标识泄露给任意 OpenAI-compatible 服务端。
+                if (isOpenCodeEndpoint(endpoint)) {
+                    setRequestProperty(
+                        "x-opencode-session",
+                        normalizeOpenCodeSession(openCodeSessionIdProvider()),
+                    )
+                }
                 // 不要 setFixedLengthStreamingMode：见类 KDoc（401 error body 会被 JDK 丢弃）
             }
             connection.outputStream.use { it.write(requestBody.toString().toByteArray(Charsets.UTF_8)) }
@@ -294,6 +311,23 @@ internal fun validateConfig(config: LlmConfig): LlmTestResult.Failure? = when {
  * 拼接 `/chat/completions` 并校验 HTTPS。
  * 返回 null 表示不可用（非 https/畸形/含 userinfo）。
  */
+/**
+ * OpenCode Go 官方网关（兼容旧 `/zen/go/` 与当前 `/inference/go/` 路径）。
+ * 仅官方域名才注入 x-opencode-session；默认 UA 已满足“客户端自标识”要求。
+ */
+internal fun isOpenCodeEndpoint(endpoint: URL): Boolean {
+    val host = endpoint.host.lowercase()
+    if (host != "opencode.ai" && !host.endsWith(".opencode.ai")) return false
+    val path = endpoint.path.lowercase()
+    return path.contains("/go/") || path.endsWith("/go") || path.contains("/zen/go") || path.contains("/inference/go")
+}
+
+/** 网关要求 session 稳定且长度受限；UUID 已安全，这里再做字符白名单/长度兜底。 */
+internal fun normalizeOpenCodeSession(raw: String): String {
+    val cleaned = raw.trim().filter { it.isLetterOrDigit() || it == '-' || it == '_' }
+    return if (cleaned.isEmpty()) java.util.UUID.randomUUID().toString() else cleaned.take(128)
+}
+
 internal fun endpointOf(baseUrl: String): URL? {
     val trimmed = baseUrl.trim().trimEnd('/')
     if (!trimmed.startsWith("https://", ignoreCase = true)) return null

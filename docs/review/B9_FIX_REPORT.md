@@ -18,11 +18,11 @@
 | LLM | `LlmCompletionProvider` + OpenAI-compatible 非流式 completion + `RemoteLlmEventEntityExtractor`；禁网零请求、HTTPS-only、不跟重定向、key/正文不入错误 |
 | UI | 设置页抽取五态计数 + 补抽取/重试；来源页逐文档状态；导入页 ready 后抽取摘要（抽取失败不误报导入失败） |
 | 备份 | v3 导入后重建 event/entity FTS（v2 保持空）；extraction_job 全字段回环；FTS 仍不导出 |
-| JVM 测试 | **376 / 0 failed**（debug）、**357 / 0**（release unit） |
+| JVM 测试 | **379 / 0 failed**（debug）、**360 / 0**（release unit） |
 | 真机 instrumentation | **79 / 79 PASS**（K40 非 UI 全量，含 v6→v7、pipeline/scheduler/备份 FTS/LLM） |
 | Compose UI | B8 基线 PJZ110 **5/5 PASS**；B9 期间 PJZ110 未连接，本轮未重跑（B9 未改 Compose smoke 覆盖的 Home/Search/Evidence 业务） |
 | 真机迁移 | K40 原 v3 DB 启动后链式迁移到 **v7**：16 chunks 保留、4 索引齐全、`foreign_key_check` 空 |
-| lint/构建 | **0 errors / 33 warnings**；assembleDebug/Release 绿；release APK **49,208,940 B**（+56.7KB vs B8） |
+| lint/构建 | **0 errors / 34 warnings**；assembleDebug/Release 绿；release APK **49,208,940 B**（+56.7KB vs B8） |
 | 100 chunk 自动门槛 | fake extractor/embedding：**100/100 done、100 active event、100 event FTS、101 SAG 向量、1 entity 复用**（instrumentation 通过） |
 | **真实 LLM 质量抽检** | **未执行/未关闭**：测试设备未配置真实 LLM endpoint/API key（见 §5）；30–50 chunk 忠实性/实体类型/覆盖率需用户配置后执行 |
 
@@ -71,8 +71,8 @@
 
 ### 3.1 自动门禁
 ```text
-JVM debug = 376 tests / 0 failed
-release unit = 357 tests / 0 failed
+JVM debug = 379 tests / 0 failed
+release unit = 360 tests / 0 failed
 lint = 0 errors / 33 warnings
 compileDebug/Release/AndroidTest = SUCCESS
 assembleDebug/Release = SUCCESS
@@ -110,6 +110,24 @@ instrumentation fake extractor/embedding：100 chunks → 100 done、100 active 
 **在质量抽检完成前，不宣称 B9 验收全部通过**；B10 的 `multi_es_fast` 可先基于已生成的结构数据开发，但上线前需补质量门禁。
 
 ---
+
+## 4.1 接入修复：OpenCode Go 网关（2026-10-18）
+
+用户实际配置 `https://opencode.ai/zen/go/v1` + OpenCode Go API key，测试连接报
+`Request is missing x-opencode-session and cannot be routed`。
+
+- **根因**：OpenCode Go 要求每个请求携带稳定 `x-opencode-session`（路由/prompt-cache 亲和），
+  B8 的 OpenAI-compatible Provider 未发送该头；网关在鉴权前直接 400。
+- **修复**：Provider 对官方 `opencode.ai` 域名（兼容 `/zen/go/` 与 `/inference/go/` 路径）
+  自动注入持久化 UUID 会话头；非官方域名不注入，避免会话标识外泄；User-Agent 保持
+  `ZhiBox/<version> (Android)`（符合“客户端自标识”）。
+- **验证**：K40 设备读取用户已保存配置（baseUrl `/zen/go/v1`、model `deepseek-v4-flash`）真机探针：
+  修复前 400 MissingSessionID；修复后错误变为 **401 "This API key has expired. Create a new API key..."**
+  ——说明会话头已被网关接受；用户需在 OpenCode Console 重新生成 API key。
+- **UI**：Base URL 下增加 OpenCode Go 提示（`https://opencode.ai/inference/go/openai/v1`，旧
+  `/zen/go/v1` 也可；模型如 `glm-5.3`；会自动携带 session 头）。
+- **测试**：`LlmCompletionTest` 新增 3 例（两个官方路径带稳定头、非官方域名不带头、session
+  规范化/长度上限）；JVM 379/0。
 
 ## 5. 独立审查（Standards + Spec）与处置
 

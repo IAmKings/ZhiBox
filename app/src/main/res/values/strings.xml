@@ -235,6 +235,7 @@
     <string name="settings_llm_disabled_hint">未配置 LLM：离线检索可用，SAG 增强/问答未启用。</string>
     <string name="settings_llm_base_url">Base URL</string>
     <string name="settings_llm_base_url_hint">https://api.example.com/v1</string>
+    <string name="settings_llm_opencode_hint">OpenCode Go：Base URL 填 https://opencode.ai/inference/go/openai/v1（旧 /zen/go/v1 也可），模型填 glm-5.3 等；应用会自动携带 x-opencode-session。</string>
     <string name="settings_llm_model">模型名</string>
     <string name="settings_llm_model_hint">例如 gpt-4o-mini / deepseek-chat</string>
     <string name="settings_llm_api_key">API Key</string>

@@ -88,6 +88,52 @@ class LlmCompletionTest {
         assertEquals("test-model", (result as LlmCompletionResult.Success).model)
     }
 
+    // ---- OpenCode Go 会话头（用户实际接入：opencode.ai/zen/go 或 /inference/go） ----
+
+    @Test
+    fun `opencode go endpoints send stable x-opencode-session header`() {
+        for (base in listOf(
+            "https://opencode.ai/zen/go/v1",
+            "https://opencode.ai/inference/go/openai/v1",
+        )) {
+            val fake = FakeHttpConnection(200, successBody("ok"))
+            val provider = OpenAiCompatibleLlmProvider.createForTesting(
+                networkPolicy = NetworkPolicy.alwaysAllowed(),
+                opener = LlmHttpConnectionOpener { fake },
+                openCodeSessionIdProvider = { "zhibox-session-123" },
+            )
+            val result = runBlocking {
+                provider.complete(validConfig.copy(baseUrl = base), "s", "u")
+            }
+            assertTrue("应成功：$base -> $result", result is LlmCompletionResult.Success)
+            assertEquals(
+                "OpenCode Go 必须带 x-opencode-session：$base",
+                "zhibox-session-123",
+                fake.requestHeaders["x-opencode-session"],
+            )
+            assertTrue(fake.requestHeaders["User-Agent"].orEmpty().contains("ZhiBox/"))
+        }
+    }
+
+    @Test
+    fun `non opencode endpoint does not receive session header`() {
+        val fake = FakeHttpConnection(200, successBody("ok"))
+        val provider = providerWith(fake)
+        runBlocking { provider.complete(validConfig, "s", "u") }
+        assertTrue(fake.requestHeaders["x-opencode-session"] == null)
+    }
+
+    @Test
+    fun `opencode session header is normalized and bounded`() {
+        assertEquals("abc-123_x", normalizeOpenCodeSession("  abc-123_x  "))
+        assertEquals(128, normalizeOpenCodeSession("a".repeat(500)).length)
+        assertTrue(normalizeOpenCodeSession("///").isNotBlank())
+        assertTrue(isOpenCodeEndpoint(URL("https://opencode.ai/inference/go/openai/v1/chat/completions")))
+        assertTrue(isOpenCodeEndpoint(URL("https://opencode.ai/zen/go/v1/chat/completions")))
+        assertFalse(isOpenCodeEndpoint(URL("https://api.example.com/v1/chat/completions")))
+        assertFalse(isOpenCodeEndpoint(URL("https://evilopencode.ai/v1/chat/completions")))
+    }
+
     // ---- 非 2xx ----
 
     @Test
