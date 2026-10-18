@@ -153,24 +153,35 @@ class B8DaoRoundTripTest {
     // ---- event_entity ----
 
     @Test
-    fun eventEntityRelationRoundTrip() = runBlocking {
+    fun eventEntityRelationRoundTripAndUniquePair() = runBlocking {
         val chunkIds = seedDocumentWithChunks()
         val eventId = db.eventDao().upsert(EventEntity(chunkId = chunkIds.first(), canonicalText = "x", confidence = 1.0))
-        val entityId = db.entityDao().upsert(EntityEntity(normalizedName = "上海", entityType = "location", name = "上海"))
+        val entityA = db.entityDao().upsert(EntityEntity(normalizedName = "上海", entityType = "location", name = "上海"))
+        val entityB = db.entityDao().upsert(EntityEntity(normalizedName = "数学", entityType = "subject", name = "数学"))
 
         db.eventEntityDao().upsert(
-            EventEntityRel(eventId = eventId, entityId = entityId, role = "subject", weight = 0.5, description = "弱关联"),
+            EventEntityRel(eventId = eventId, entityId = entityA, role = "location", weight = 0.5, description = "弱关联"),
         )
-        val coreRelId = db.eventEntityDao().upsert(
-            EventEntityRel(eventId = eventId, entityId = entityId, role = "subject", weight = 1.0, description = "核心关联"),
+        db.eventEntityDao().upsert(
+            EventEntityRel(eventId = eventId, entityId = entityB, role = "subject", weight = 1.0, description = "核心关联"),
         )
         val rels = db.eventEntityDao().byEvent(eventId)
         assertEquals(2, rels.size)
         assertEquals("按 weight DESC 排序", 1.0, rels.first().weight, 0.0)
         assertEquals("核心关联", rels.first().description)
-        assertEquals(2, db.eventEntityDao().byEntity(entityId).size)
+        assertEquals(entityB, rels.first().entityId)
+        assertEquals(1, db.eventEntityDao().byEntity(entityA).size)
         assertEquals(2, db.eventEntityDao().all().size)
-        assertEquals(listOf(coreRelId), db.eventEntityDao().byEvent(eventId).filter { it.weight == 1.0 }.map { it.id })
+
+        // v7 唯一索引 (eventId, entityId)：同 pair 再写应替换而不是产生第二行
+        db.eventEntityDao().upsert(
+            EventEntityRel(eventId = eventId, entityId = entityB, role = "subject", weight = 2.0, description = "更新关联"),
+        )
+        val after = db.eventEntityDao().byEvent(eventId)
+        assertEquals("同 (eventId, entityId) 只保留一条", 2, after.size)
+        val updated = after.single { it.entityId == entityB }
+        assertEquals(2.0, updated.weight, 0.0001)
+        assertEquals("更新关联", updated.description)
 
         db.eventEntityDao().deleteByEvent(eventId)
         assertEquals(0, db.eventEntityDao().count())

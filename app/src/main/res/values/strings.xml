@@ -272,4 +272,25 @@
     <string name="settings_llm_privacy_hint">仅在开启对应开关且未禁止网络时，向上述 OpenAI-compatible 地址发送检索片段等必要数据；密钥仅保存在本机（加密存储），不写入日志/备份。</string>
     <string name="settings_llm_remote_hint">远程请求会携带检索到的文档片段（可能含个人信息），请只配置你信任的服务。</string>
     <string name="settings_llm_toggle_failed">保存开关失败：%1$s</string>
+
+    <!-- ==== B9：SAG 两阶段抽取（设置/来源/导入） ==== -->
+    <string name="settings_sag_section">SAG 抽取状态</string>
+    <string name="settings_sag_counts">队列 %1$d · 进行中 %2$d · 完成 %3$d · 失败 %4$d · 未索引 %5$d</string>
+    <string name="settings_sag_backfill">补抽取</string>
+    <string name="settings_sag_retry_failed">重试失败</string>
+    <string name="settings_sag_working">处理中…</string>
+    <string name="settings_sag_unavailable">SAG 抽取不可用：请先在「SAG 增强 / LLM」配置 LLM、开启「SAG 增强」并关闭「禁止网络」。</string>
+    <string name="settings_sag_no_jobs">暂无抽取任务（文档导入完成后会自动进入两阶段抽取）。</string>
+    <string name="settings_sag_backfill_done">已加入补抽取队列：%1$d 个 chunk</string>
+    <string name="settings_sag_retry_done">已重新排队失败抽取：%1$d 个 chunk</string>
+    <string name="settings_sag_action_failed">SAG 抽取操作失败：%1$s</string>
+
+    <string name="sources_sag_done">抽取 %1$d/%2$d</string>
+    <string name="sources_sag_active">抽取中 %1$d/%2$d</string>
+    <string name="sources_sag_failed">抽取失败 %1$d/%2$d</string>
+    <string name="sources_sag_not_indexed">SAG 未索引</string>
+    <string name="sources_sag_mixed">抽取 %1$d/%2$d · 失败 %3$d</string>
+
+    <string name="import_sag_summary">SAG 抽取：完成 %1$d · 队列 %2$d · 进行中 %3$d · 失败 %4$d · 未索引 %5$d</string>
+    <string name="import_sag_failed_hint">抽取失败与导入状态无关：文档已 ready，可离线检索；可到设置页「重试失败」。</string>
 </resources>

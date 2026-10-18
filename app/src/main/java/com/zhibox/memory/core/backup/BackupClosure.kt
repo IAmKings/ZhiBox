@@ -43,8 +43,17 @@ internal object BackupClosure {
     /** event_entity 关联：两端都必须在包内 */
     data class EventEntityRef(val eventId: Long, val entityId: Long)
 
-    /** sag_vector：多态 owner（EVENT→event.id / ENTITY→entity.id）必须被包含 */
-    data class SagVectorRef(val ownerType: String, val ownerId: Long)
+    /**
+     * sag_vector：多态 owner（EVENT→event.id / ENTITY→entity.id）必须被包含。
+     * v7 起 `(ownerType, ownerId, role, spaceId)` 唯一：role/spaceId 由生产映射传入参与预检；
+     * 默认空值仅为兼容既有调用/测试（空值时不参与重复判定）。
+     */
+    data class SagVectorRef(
+        val ownerType: String,
+        val ownerId: Long,
+        val role: String = "",
+        val spaceId: String = "",
+    )
 
     /** extraction_job：document/chunk 都必须在包内（v6 FK） */
     data class ExtractionJobRef(val id: String, val documentId: String, val chunkId: Long)
@@ -55,10 +64,16 @@ internal object BackupClosure {
      * 基础闭包：`document.sourceId ∈ sources`、`chunk.documentId ∈ documents`；
      * v3 闭包（参数非空时校验，v1/v2 包传空即跳过）：
      * - `event.chunkId ∈ chunks`，且 `(chunkId, extractionVersion)` 不重复（v6 唯一索引）；
-     * - `event_entity.eventId ∈ events`、`event_entity.entityId ∈ entities`；
-     * - `sag_vector.ownerType ∈ {EVENT, ENTITY}` 且 owner 在对应集合内；
-     * - `extraction_job.chunkId ∈ chunks`、`extraction_job.documentId ∈ documents`；
+     * - `event_entity.eventId ∈ events`、`event_entity.entityId ∈ entities`，且
+     *   `(eventId, entityId)` 不重复（v7 唯一索引）；
+     * - `sag_vector.ownerType ∈ {EVENT, ENTITY}` 且 owner 在对应集合内，且
+     *   `(ownerType, ownerId, role, spaceId)` 不重复（v7 唯一索引；role/spaceId 已知时预检）；
+     * - `extraction_job.chunkId ∈ chunks`、`extraction_job.documentId ∈ documents`，且每个
+     *   chunk 至多一条 job（v7 唯一索引 chunkId）；
      * - entity 的 id / normalizedName 包内唯一（v6 唯一索引）。
+     *
+     * 以上唯一约束若不在写库前预检，会以 SQLite UNIQUE 约束错误形式让整个导入事务回滚，
+     * 错误不可读；因此这里统一提前给出可读错误（B9/v7）。
      *
      * 向量段的两条引用（`vector.chunkId ∈ chunks`、空间索引合法）由
      * [BackupValidator.decodeVectors] 在解码时同步校验（同为纯 JVM）。
@@ -133,6 +148,7 @@ internal object BackupClosure {
                 }
             }
         }
+        val seenLinks = HashSet<String>(eventEntities.size)
         eventEntities.forEach { link ->
             check(link.eventId in eventIds) {
                 "备份包引用闭包不完整：event_entities.jsonl 引用了不存在的 event：${link.eventId}"
@@ -140,8 +156,22 @@ internal object BackupClosure {
             check(link.entityId in entityIds) {
                 "备份包引用闭包不完整：event_entities.jsonl 引用了不存在的 entity：${link.entityId}"
             }
+            // v7：event_entity (eventId, entityId) 唯一；包内重复会让导入事务撞唯一约束 → 提前可读拒绝
+            check(seenLinks.add("${link.eventId}|${link.entityId}")) {
+                "备份包引用闭包不合法：event_entities.jsonl 重复 (eventId, entityId)：" +
+                    "event=${link.eventId} / entity=${link.entityId}"
+            }
         }
+        val seenSagKeys = HashSet<String>(sagVectors.size)
         sagVectors.forEach { v ->
+            // v7：同一 owner 的同一语义角色在同一空间只允许一条向量；role/spaceId 由生产映射提供
+            // （空值来自旧调用/测试，不参与预检）。重复会在导入事务撞唯一约束 → 提前可读拒绝。
+            if (v.role.isNotEmpty() && v.spaceId.isNotEmpty()) {
+                check(seenSagKeys.add("${v.ownerType}|${v.ownerId}|${v.role}|${v.spaceId}")) {
+                    "备份包引用闭包不合法：sag_vectors.jsonl 重复 (ownerType, ownerId, role, spaceId)：" +
+                        "${v.ownerType}:${v.ownerId} / role=${v.role} / space=${v.spaceId}"
+                }
+            }
             when (SagOwnerType.fromValue(v.ownerType)) {
                 SagOwnerType.EVENT -> check(v.ownerId in eventIds) {
                     "备份包引用闭包不完整：sag_vectors.jsonl 引用了不存在的 event owner：${v.ownerId}"
@@ -156,6 +186,7 @@ internal object BackupClosure {
             }
         }
         val jobIds = HashSet<String>(extractionJobs.size)
+        val jobChunkIds = HashSet<Long>(extractionJobs.size)
         val docs = documents.mapTo(HashSet()) { it.id }
         extractionJobs.forEach { job ->
             check(job.id.isNotEmpty() && jobIds.add(job.id)) {
@@ -163,6 +194,10 @@ internal object BackupClosure {
             }
             check(job.chunkId in chunkIds) {
                 "备份包引用闭包不完整：extraction_jobs.jsonl 的 job ${job.id} 引用了不存在的 chunk：${job.chunkId}"
+            }
+            // v7：extraction_job.chunkId 唯一（每 chunk 一条，重抽取复用同一行）→ 重复可读拒绝
+            check(jobChunkIds.add(job.chunkId)) {
+                "备份包引用闭包不合法：extraction_jobs.jsonl 同一 chunk 存在多条 job：chunk=${job.chunkId}"
             }
             check(job.documentId in docs) {
                 "备份包引用闭包不完整：extraction_jobs.jsonl 的 job ${job.id} 引用了不存在的 document：${job.documentId}"

@@ -58,6 +58,7 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 | `docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` | **后续开发路线图**（B8–B12 批次、依赖、门禁、P1/P2 backlog） |
 | `docs/review/B6_FIX_REPORT.md` | B6 修复报告（文档漂移同步/脚本健壮性） |
 | `docs/review/B8_FIX_REPORT.md` | B8 实施报告（schema v6/抽取契约/LLM 安全基础/备份 v3 骨架） |
+| `docs/review/B9_FIX_REPORT.md` | B9 实施报告（schema v7/抽取管线/LLM completion/UI 两阶段/备份 FTS；真实质量抽检待执行） |
 | `docs/phase1/MVP1-ACCEPTANCE.md` | MVP-1 验收清单（§9.1/9.2/9.3 逐条对照与遗留项） |
 | `docs/RELEASE.md` | release 构建、签名、安装与回滚流程 |
 | `docs/SAG_Android_MVP_Implementation_Plan_v1.0.md` | **实施计划**（Phase 0/1 任务分解、判定门 G1–G4、验收映射） |

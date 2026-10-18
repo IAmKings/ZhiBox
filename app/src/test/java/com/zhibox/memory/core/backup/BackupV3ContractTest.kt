@@ -222,6 +222,19 @@ class BackupV3ContractTest {
     }
 
     @Test
+    fun duplicateEventEntityPairIsRejected() {
+        val error = assertThrows(IllegalStateException::class.java) {
+            validate(
+                eventEntityList = listOf(
+                    BackupClosure.EventEntityRef(10L, 20L),
+                    BackupClosure.EventEntityRef(10L, 20L),
+                ),
+            )
+        }
+        assertTrue(error.message!!, error.message!!.contains("重复 (eventId, entityId)"))
+    }
+
+    @Test
     fun sagVectorOwnerMustExistAndTypeMustBeKnown() {
         val missingOwner = assertThrows(IllegalStateException::class.java) {
             validate(sagVectorList = listOf(BackupClosure.SagVectorRef("EVENT", 999L)))
@@ -232,6 +245,28 @@ class BackupV3ContractTest {
             validate(sagVectorList = listOf(BackupClosure.SagVectorRef("BOGUS", 10L)))
         }
         assertTrue(unknownType.message!!, unknownType.message!!.contains("ownerType 未知"))
+    }
+
+    @Test
+    fun duplicateSagQuadrupletIsRejectedButDifferentRoleOrSpaceIsAllowed() {
+        val duplicate = assertThrows(IllegalStateException::class.java) {
+            validate(
+                sagVectorList = listOf(
+                    BackupClosure.SagVectorRef("EVENT", 10L, role = "event_content", spaceId = "space-a"),
+                    BackupClosure.SagVectorRef("EVENT", 10L, role = "event_content", spaceId = "space-a"),
+                ),
+            )
+        }
+        assertTrue(duplicate.message!!, duplicate.message!!.contains("重复 (ownerType, ownerId, role, spaceId)"))
+
+        // 不同 role 或不同 space 属于合法多向量（v7 唯一键区分）
+        validate(
+            sagVectorList = listOf(
+                BackupClosure.SagVectorRef("EVENT", 10L, role = "event_content", spaceId = "space-a"),
+                BackupClosure.SagVectorRef("EVENT", 10L, role = "event_summary", spaceId = "space-a"),
+                BackupClosure.SagVectorRef("EVENT", 10L, role = "event_content", spaceId = "space-b"),
+            ),
+        )
     }
 
     @Test
@@ -255,6 +290,19 @@ class BackupV3ContractTest {
             )
         }
         assertTrue(duplicateJob.message!!, duplicateJob.message!!.contains("id 非法或重复"))
+    }
+
+    @Test
+    fun sameChunkWithMultipleExtractionJobsIsRejected() {
+        val error = assertThrows(IllegalStateException::class.java) {
+            validate(
+                jobList = listOf(
+                    BackupClosure.ExtractionJobRef("job-1", "d1", 1L),
+                    BackupClosure.ExtractionJobRef("job-2", "d1", 1L),
+                ),
+            )
+        }
+        assertTrue(error.message!!, error.message!!.contains("同一 chunk 存在多条 job"))
     }
 
     // ---- 导出闭包（v3） ----

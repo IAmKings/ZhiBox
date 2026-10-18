@@ -160,6 +160,8 @@ data class ChunkEmbeddingEntity(
     tableName = "event",
     indices = [
         Index("chunkId"),
+        // B9/v7：按 chunk + active 过滤当前有效 event（检索/展示热路径；active=0 历史行不参与）
+        Index(value = ["chunkId", "active"]),
         Index(value = ["chunkId", "extractionVersion"], unique = true),
     ],
     foreignKeys = [
@@ -207,7 +209,12 @@ data class EntityEntity(
 
 @Entity(
     tableName = "event_entity",
-    indices = [Index("eventId"), Index("entityId")],
+    indices = [
+        Index("eventId"),
+        Index("entityId"),
+        // B9/v7：同一 event 对同一 entity 只留一条关联（重抽取/重复实体合并幂等）
+        Index(value = ["eventId", "entityId"], unique = true),
+    ],
     foreignKeys = [
         ForeignKey(
             entity = EventEntity::class,
@@ -301,6 +308,8 @@ data class AppKvEntity(
     indices = [
         Index(value = ["ownerType", "ownerId"]),
         Index(value = ["spaceId", "role", "ownerType"]),
+        // B9/v7：同一 owner 的同一语义角色在同一空间只留一条向量（重抽取 upsert 幂等）
+        Index(value = ["ownerType", "ownerId", "role", "spaceId"], unique = true),
     ],
 )
 data class SagVectorEntity(
@@ -339,7 +348,12 @@ data class EntityFtsEntity(
  */
 @Entity(
     tableName = "extraction_job",
-    indices = [Index("documentId"), Index("chunkId"), Index("status")],
+    indices = [
+        Index("documentId"),
+        // B9/v7：每 chunk 至多一条抽取任务（重抽取复用同一行，靠 attempt/status 推进）
+        Index(value = ["chunkId"], unique = true),
+        Index("status"),
+    ],
     foreignKeys = [
         ForeignKey(
             entity = DocumentEntity::class,

@@ -165,18 +165,20 @@ class ExtractionContractTest {
     }
 
     @Test
-    fun unknownEntityTypeReturnsInvalidEntityTypeCode() {
+    fun invalidEntityEntriesAreFilteredNotFailWholeEvent() {
+        // PRD FR-01：部分实体无效 → 过滤该实体，event 仍成功；无有效实体由 pipeline 兜底
         val badType = validJson.replace("\"type\": \"person\"", "\"type\": \"animal\"")
-        assertEquals(ExtractionErrorCodes.INVALID_ENTITY_TYPE, extractFailure(badType).code)
-    }
+        val badTypeResult = ExtractionJson.parse(badType)
+        assertTrue("未知实体类型应被过滤而不是整条失败：$badTypeResult", badTypeResult is ExtractionResult.Success)
+        assertEquals(2, (badTypeResult as ExtractionResult.Success).event.entities.size)
 
-    @Test
-    fun entityElementNotObjectReturnsInvalidFieldTypeCode() {
-        val bad = validJson.replace(
+        val notObject = validJson.replace(
             Regex("""\"entities\": \[[\s\S]*?]"""),
-            "\"entities\": [\"person\"]",
+            "\"entities\": [\"person\", {\"type\":\"time\",\"name\":\"今天\",\"description\":\"时间\"}]",
         )
-        assertEquals(ExtractionErrorCodes.INVALID_FIELD_TYPE, extractFailure(bad).code)
+        val notObjectResult = ExtractionJson.parse(notObject)
+        assertTrue("非对象实体应被过滤：$notObjectResult", notObjectResult is ExtractionResult.Success)
+        assertEquals(1, (notObjectResult as ExtractionResult.Success).event.entities.size)
     }
 
     @Test

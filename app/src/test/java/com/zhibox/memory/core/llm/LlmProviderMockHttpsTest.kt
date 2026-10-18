@@ -205,6 +205,53 @@ class LlmProviderMockHttpsTest {
         }
     }
 
+    @Test
+    fun completionOverTlsReturnsTextAndRequestShape() {
+        val completionJson =
+            """{"model":"gpt-4o-mini","choices":[{"message":{"role":"assistant","content":"{\"title\":\"t\"}"}}]}"""
+        MockHttpsServer { MockResponse(200, completionJson) }.use { server ->
+            val provider = OpenAiCompatibleLlmProvider(NetworkPolicy.alwaysAllowed())
+            val result = runBlocking {
+                provider.complete(
+                    validConfig.copy(baseUrl = server.baseUrl()),
+                    systemPrompt = "SYSTEM RULES",
+                    userPrompt = "CHUNK BODY",
+                    maxTokens = 384,
+                )
+            }
+
+            assertTrue("completion 应成功：$result", result is LlmCompletionResult.Success)
+            val success = result as LlmCompletionResult.Success
+            assertEquals("{\"title\":\"t\"}", success.text)
+            assertEquals("gpt-4o-mini", success.model)
+            assertTrue(success.latencyMs >= 0)
+
+            val request = server.requests.single()
+            assertEquals("POST", request.method)
+            assertEquals("/v1/chat/completions", request.path)
+            assertTrue(request.body.contains("\"role\":\"system\""))
+            assertTrue(request.body.contains("SYSTEM RULES"))
+            assertTrue(request.body.contains("\"role\":\"user\""))
+            assertTrue(request.body.contains("CHUNK BODY"))
+            assertTrue(request.body.contains("\"max_tokens\":384"))
+            assertFalse("请求体不得包含 API Key", request.body.contains(validConfig.apiKey))
+            assertEquals("Bearer " + validConfig.apiKey, request.headers["authorization"])
+        }
+    }
+
+    @Test
+    fun completionEmptyContentOverTlsMapsParseError() {
+        val emptyContent = """{"choices":[{"message":{"role":"assistant","content":""}}]}"""
+        MockHttpsServer { MockResponse(200, emptyContent) }.use { server ->
+            val provider = OpenAiCompatibleLlmProvider(NetworkPolicy.alwaysAllowed())
+            val result = runBlocking {
+                provider.complete(validConfig.copy(baseUrl = server.baseUrl()), "s", "u")
+            }
+            assertTrue(result is LlmCompletionResult.Failure)
+            assertEquals(LlmErrorCode.PARSE, (result as LlmCompletionResult.Failure).code)
+        }
+    }
+
     // ---- 本地 TLS mock 服务端（测试专用） ----
 
     private data class RecordedRequest(

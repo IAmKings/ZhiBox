@@ -10,6 +10,9 @@ import com.zhibox.memory.data.db.DocumentEntity
 import com.zhibox.memory.data.db.SourceEntity
 import com.zhibox.memory.data.db.SourceStatus
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +40,43 @@ class SourcesViewModel(application: Application) : AndroidViewModel(application)
 
     val documents: StateFlow<List<DocumentEntity>> = db.documentDao().observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * B9：每个 document 的 SAG 抽取聚合状态（来源页逐文档展示）。
+     * 抽取任务变化没有 Flow 观察器，这里在 documents 变化与页面进入时按 byDocument 聚合刷新。
+     */
+    private val _extractionByDocument = MutableStateFlow<Map<String, ExtractionDocUi>>(emptyMap())
+    val extractionByDocument: StateFlow<Map<String, ExtractionDocUi>> =
+        _extractionByDocument.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            documents.collect { docs ->
+                try {
+                    refreshExtractionFor(docs)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    // 抽取状态属诊断信息：失败不阻塞来源页原有文档状态展示
+                }
+            }
+        }
+    }
+
+    private suspend fun refreshExtractionFor(docs: List<DocumentEntity>) {
+        val map = withContext(Dispatchers.IO) {
+            val dao = db.extractionJobDao()
+            docs.associate { doc -> doc.id to ExtractionDocUi.from(dao.byDocument(doc.id)) }
+        }
+        _extractionByDocument.value = map
+    }
+
+    /** B9：页面进入时主动刷新一次抽取状态（任务在后台变化时避免长时间陈旧）。 */
+    fun refreshExtractionStatuses() {
+        safeLaunch {
+            refreshExtractionFor(documents.value)
+        }
+    }
 
     private val _deleting = MutableStateFlow(false)
     val deleting: StateFlow<Boolean> = _deleting.asStateFlow()

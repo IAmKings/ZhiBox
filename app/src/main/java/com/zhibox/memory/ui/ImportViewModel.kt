@@ -71,6 +71,10 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
     private val _jobs = MutableStateFlow<List<IngestJobEntity>>(emptyList())
     val jobs: StateFlow<List<IngestJobEntity>> = _jobs.asStateFlow()
 
+    /** B9：SAG 抽取汇总（文档 ready 后展示一行；与导入状态独立，抽取失败不算导入失败）。 */
+    private val _extractionSummary = MutableStateFlow<ExtractionCountsUi?>(null)
+    val extractionSummary: StateFlow<ExtractionCountsUi?> = _extractionSummary.asStateFlow()
+
     private var autoStartConsumed = false
     private var autoCancelConsumed = false
 
@@ -79,6 +83,9 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
         refreshStaging()
         observeRecentJobs()
         observeJobsForStatusExport()
+        // B9：抽取状态汇总（导入完成后第二阶段的进度；与导入任务流独立）
+        refreshExtractionSummary()
+        observeExtractionSummary()
     }
 
     private fun str(id: Int): String = app.getString(id)
@@ -148,6 +155,8 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
             } finally {
                 _importing.value = false
                 refreshStaging()
+                // B9：ready 文档会进入两阶段抽取；导入结束后刷新一次汇总供 UI 展示
+                refreshExtractionSummary()
             }
         }
     }
@@ -202,6 +211,29 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
                 db.ingestJobDao().observeRecent(JobStage.ACTIVE_VALUES, RECENT_JOB_LIMIT)
             }
             flow.collect { _jobs.value = it }
+        }
+    }
+
+    /** B9：刷新 SAG 抽取汇总（五态计数；聚合查询，避免每 job 单独查询）。 */
+    fun refreshExtractionSummary() {
+        safeLaunch {
+            _extractionSummary.value = withContext(Dispatchers.IO) {
+                db.extractionJobDao().readCounts()
+            }
+        }
+    }
+
+    /** 导入任务变化（含 ready）后去抖刷新抽取汇总，避免高频查询。 */
+    private fun observeExtractionSummary() {
+        viewModelScope.launch {
+            jobs.collectLatest {
+                delay(500)
+                runCatchingCancellable {
+                    _extractionSummary.value = withContext(Dispatchers.IO) {
+                        db.extractionJobDao().readCounts()
+                    }
+                }
+            }
         }
     }
 

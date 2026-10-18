@@ -16,6 +16,8 @@ import com.zhibox.memory.core.llm.LlmConfigStore
 import com.zhibox.memory.core.llm.LlmErrorCode
 import com.zhibox.memory.core.llm.LlmStoreException
 import com.zhibox.memory.core.llm.LlmPreferences
+import com.zhibox.memory.core.extraction.SagAvailability
+import com.zhibox.memory.core.extraction.SagExtractionScheduler
 import com.zhibox.memory.core.llm.LlmTestResult
 import com.zhibox.memory.core.llm.OpenAiCompatibleLlmProvider
 import com.zhibox.memory.core.ingest.ReembedScheduler
@@ -116,6 +118,15 @@ data class SettingsUiState(
     val answerEnabled: Boolean = false,
     /** 禁止网络总开关（true = 拒绝所有 LLM 调用；默认 true） */
     val networkDisabled: Boolean = true,
+    // ---- B9：SAG 两阶段抽取状态 ----
+    /** SAG 抽取可用性（LLM 配置 + SAG 开关 + 未禁网）；false 时补抽取/重试按钮禁用 */
+    val sagAvailable: Boolean = false,
+    /** 全局抽取任务计数（queued/running/done/failed/not_indexed） */
+    val extractionCounts: ExtractionCountsUi = ExtractionCountsUi(),
+    /** 补抽取/重试失败动作进行中（finally 复位） */
+    val extractionWorking: Boolean = false,
+    /** 抽取动作结果/错误（可读单行） */
+    val extractionMessage: String? = null,
 )
 
 /**
@@ -169,6 +180,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val sagEnabled: Boolean,
         val answerEnabled: Boolean,
         val networkDisabled: Boolean,
+        // B9
+        val sagAvailable: Boolean,
+        val extractionCounts: ExtractionCountsUi,
     )
 
     fun refresh() {
@@ -209,6 +223,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         sagEnabled = s.sagEnabled,
                         answerEnabled = s.answerEnabled,
                         networkDisabled = s.networkDisabled,
+                        sagAvailable = s.sagAvailable,
+                        extractionCounts = s.extractionCounts,
                     )
                 }
             } catch (e: CancellationException) {
@@ -269,6 +285,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val sagEnabled = LlmPreferences.sagEnabled(app)
         val answerEnabled = LlmPreferences.answerEnabled(app)
         val networkDisabled = !LlmPreferences.networkAllowed(app)
+        // B9：SAG 抽取可用性与任务计数（IO 上下文；可用性失败按不可用处理，不阻塞刷新）
+        val sagAvailable = runCatching { SagAvailability.isAvailable(app) }.getOrDefault(false)
+        val extractionCounts = readExtractionCounts()
         val storeState = SharedModelStore.state(app)
         val sharedNames = if (storeState == SharedModelStore.State.CONNECTED) {
             SharedModelStore.listNamesSync(app)
@@ -296,6 +315,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             sagEnabled = sagEnabled,
             answerEnabled = answerEnabled,
             networkDisabled = networkDisabled,
+            sagAvailable = sagAvailable,
+            extractionCounts = extractionCounts,
         )
     }
 
@@ -652,6 +673,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     llmTestMessage = str(R.string.settings_llm_saved),
                 )
             }
+            refreshSagSummary()
         }
     }
 
@@ -769,6 +791,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     llmTestMessage = str(R.string.settings_llm_clear_key_done),
                 )
             }
+            refreshSagSummary()
         }
     }
 
@@ -776,6 +799,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         updateToggle(
             failureId = R.string.settings_llm_toggle_failed,
             write = { LlmPreferences.setSagEnabled(app, enabled) },
+            refreshSag = true,
         ) { it.copy(sagEnabled = enabled) }
     }
 
@@ -791,12 +815,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         updateToggle(
             failureId = R.string.settings_llm_toggle_failed,
             write = { LlmPreferences.setNetworkAllowed(app, !disabled) },
+            refreshSag = true,
         ) { it.copy(networkDisabled = disabled) }
     }
 
     private fun updateToggle(
         failureId: Int,
         write: () -> Unit,
+        refreshSag: Boolean = false,
         apply: (SettingsUiState) -> SettingsUiState,
     ) {
         safeLaunch(
@@ -804,12 +830,73 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         ) {
             withContext(Dispatchers.IO) { write() }
             update { apply(it) }
+            if (refreshSag) refreshSagSummary()
         }
     }
 
     /** 错误/提示文案中的明文 key 兜底脱敏（正常情况下 core 不返回含 key 的消息）。 */
     private fun redactSecret(message: String, secret: String): String =
         if (secret.isNotBlank()) message.replace(secret, "***") else message
+
+    // ───────────────────────── B9：SAG 两阶段抽取（状态摘要 + 补抽取/重试） ─────────────────────────
+
+    /** 读取五类抽取任务计数（在 IO 上下文调用；共享口径见 ExtractionUi.readCounts）。 */
+    private suspend fun readExtractionCounts(): ExtractionCountsUi =
+        db.extractionJobDao().readCounts()
+
+    /** 刷新 SAG 可用性 + 抽取计数（LLM 配置/开关/禁网变化后调用；不触发整页 loading）。 */
+    private fun refreshSagSummary() {
+        safeLaunch {
+            val available = withContext(Dispatchers.IO) {
+                runCatching { SagAvailability.isAvailable(app) }.getOrDefault(false)
+            }
+            val counts = withContext(Dispatchers.IO) { readExtractionCounts() }
+            update { it.copy(sagAvailable = available, extractionCounts = counts) }
+        }
+    }
+
+    /** B9「补抽取」：把 ready 文档的未抽取/not_indexed chunk 重新入队（core scheduler 负责入队）。 */
+    fun backfillExtraction() {
+        runExtractionAction(R.string.settings_sag_backfill_done) {
+            SagExtractionScheduler.backfill(app, db)
+        }
+    }
+
+    /** B9「重试失败」：把终态 failed 的抽取任务重新排队（attempt 清零由 core 处理）。 */
+    fun retryFailedExtraction() {
+        runExtractionAction(R.string.settings_sag_retry_done) {
+            SagExtractionScheduler.retryFailed(app, db)
+        }
+    }
+
+    private fun runExtractionAction(doneId: Int, action: suspend () -> Int) {
+        if (_state.value.extractionWorking) return
+        if (!_state.value.sagAvailable) {
+            update { it.copy(extractionMessage = str(R.string.settings_sag_unavailable)) }
+            return
+        }
+        update { it.copy(extractionWorking = true, extractionMessage = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        extractionWorking = false,
+                        extractionMessage = str(R.string.settings_sag_action_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            try {
+                val n = withContext(Dispatchers.IO) { action() }
+                update { it.copy(extractionMessage = str(doneId, n)) }
+            } catch (e: CancellationException) {
+                throw e
+            } finally {
+                update { it.copy(extractionWorking = false) }
+                refreshSagSummary()
+            }
+        }
+    }
 
     fun reembedNow() {
         safeLaunch(

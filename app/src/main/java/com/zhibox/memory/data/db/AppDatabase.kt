@@ -32,7 +32,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MessageCitationEntity::class,
         QueryTraceEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -513,6 +513,77 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * schema v6 → v7（B9：抽取流水线约束收口，**纯 ALTER/CREATE + 去重**）：
+         *
+         * 1) `event` 增加 `(chunkId, active)` 索引：检索/展示"当前有效事件"按 chunk 过滤；
+         * 2) `event_entity` 增加唯一 `(eventId, entityId)`：同一事件对同一实体只保留一条关联；
+         * 3) `extraction_job.chunkId` 由普通索引改为**唯一**（每 chunk 一条抽取任务，重抽取复用行）；
+         * 4) `sag_vector` 增加唯一 `(ownerType, ownerId, role, spaceId)`：重抽取 upsert 幂等；
+         * 5) **先清理历史重复再建唯一索引**（v6 设计尚无唯一约束，手工/异常数据可能重复）：
+         *    event_entity 保留 MIN(id)、extraction_job 每 chunk 保留 MIN(rowid)、
+         *    sag_vector 按四元组保留 MIN(id)；
+         * 6) 不做网络/重嵌入，不修改既有行内容（除删除重复行）；迁移后 foreign_key_check 自检。
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // ---- 1) 去重（保留最小 id/rowid；先清子表重复，再建唯一索引） ----
+                db.execSQL(
+                    "DELETE FROM event_entity WHERE id NOT IN " +
+                        "(SELECT MIN(id) FROM event_entity GROUP BY eventId, entityId)"
+                )
+                db.execSQL(
+                    "DELETE FROM extraction_job WHERE rowid NOT IN " +
+                        "(SELECT MIN(rowid) FROM extraction_job GROUP BY chunkId)"
+                )
+                db.execSQL(
+                    "DELETE FROM sag_vector WHERE id NOT IN " +
+                        "(SELECT MIN(id) FROM sag_vector " +
+                        "GROUP BY ownerType, ownerId, role, spaceId)"
+                )
+
+                // ---- 2) event：当前有效事件热路径索引 ----
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_event_chunkId_active` " +
+                        "ON `event` (`chunkId`, `active`)"
+                )
+
+                // ---- 3) event_entity：关系唯一约束 ----
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_event_entity_eventId_entityId` " +
+                        "ON `event_entity` (`eventId`, `entityId`)"
+                )
+
+                // ---- 4) extraction_job：chunkId 索引升级为唯一（先删旧普通索引同名再建） ----
+                db.execSQL("DROP INDEX IF EXISTS `index_extraction_job_chunkId`")
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_extraction_job_chunkId` " +
+                        "ON `extraction_job` (`chunkId`)"
+                )
+
+                // ---- 5) sag_vector：owner 语义角色在空间内唯一 ----
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                        "`index_sag_vector_ownerType_ownerId_role_spaceId` " +
+                        "ON `sag_vector` (`ownerType`, `ownerId`, `role`, `spaceId`)"
+                )
+
+                // ---- 6) 迁移记录 + 外键完整性自检 ----
+                db.execSQL(
+                    "INSERT OR IGNORE INTO schema_migrations (`version`, `appliedAt`) " +
+                        "VALUES (7, ${System.currentTimeMillis()})"
+                )
+                val violations = db.query("PRAGMA foreign_key_check")
+                try {
+                    check(!violations.moveToFirst()) {
+                        "schema v6→v7 迁移后存在外键违规，已回滚（请检查重复数据清理/FK 级联）"
+                    }
+                } finally {
+                    violations.close()
+                }
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -525,6 +596,7 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(
                         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                        MIGRATION_6_7,
                     )
                     .build().also { instance = it }
             }

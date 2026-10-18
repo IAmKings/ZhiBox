@@ -275,6 +275,8 @@ fun SettingsScreen(
         setSagEnabled = viewModel::setSagEnabled,
         setAnswerEnabled = viewModel::setAnswerEnabled,
         setNetworkDisabled = viewModel::setNetworkDisabled,
+        backfillExtraction = viewModel::backfillExtraction,
+        retryFailedExtraction = viewModel::retryFailedExtraction,
     )
     SettingsContent(state = state, actions = actions)
 }
@@ -303,6 +305,9 @@ class SettingsActions(
     val setSagEnabled: (Boolean) -> Unit = {},
     val setAnswerEnabled: (Boolean) -> Unit = {},
     val setNetworkDisabled: (Boolean) -> Unit = {},
+    // B9：SAG 两阶段抽取
+    val backfillExtraction: () -> Unit = {},
+    val retryFailedExtraction: () -> Unit = {},
 )
 
 /** 无状态设置内容：供 [SettingsScreen] 与 @Preview / UI 测试直接渲染（B3-7）。 */
@@ -1004,6 +1009,72 @@ internal fun SettingsContent(
                 }
             }
 
+            // ---- B9：SAG 两阶段抽取状态（与导入状态独立；失败不影响离线检索） ----
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        stringResource(R.string.settings_sag_section),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    val counts = state.extractionCounts
+                    Text(
+                        stringResource(
+                            R.string.settings_sag_counts,
+                            counts.queued,
+                            counts.running,
+                            counts.done,
+                            counts.failed,
+                            counts.notIndexed,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (!counts.hasJobs) {
+                        Text(
+                            stringResource(R.string.settings_sag_no_jobs),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (!state.sagAvailable) {
+                        Text(
+                            stringResource(R.string.settings_sag_unavailable),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = actions.backfillExtraction,
+                            enabled = state.sagAvailable && !state.extractionWorking,
+                        ) {
+                            Text(
+                                if (state.extractionWorking) {
+                                    stringResource(R.string.settings_sag_working)
+                                } else {
+                                    stringResource(R.string.settings_sag_backfill)
+                                },
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = actions.retryFailedExtraction,
+                            enabled = state.sagAvailable &&
+                                !state.extractionWorking &&
+                                counts.failed > 0,
+                        ) {
+                            Text(stringResource(R.string.settings_sag_retry_failed))
+                        }
+                    }
+                    state.extractionMessage?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+
             // ---- 隐私与离线声明 ----
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1104,6 +1175,15 @@ private fun SettingsDarkPreview() {
                 sagEnabled = true,
                 answerEnabled = false,
                 networkDisabled = true,
+                // B9：抽取状态样例
+                sagAvailable = true,
+                extractionCounts = ExtractionCountsUi(
+                    queued = 2,
+                    running = 1,
+                    done = 45,
+                    failed = 1,
+                    notIndexed = 3,
+                ),
             ),
             actions = SettingsActions(),
         )

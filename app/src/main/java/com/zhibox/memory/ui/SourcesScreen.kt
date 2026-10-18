@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +50,12 @@ fun SourcesScreen(
 ) {
     val sources by viewModel.sources.collectAsState()
     val documents by viewModel.documents.collectAsState()
+    val extractionByDocument by viewModel.extractionByDocument.collectAsState()
+
+    // B9：进入页面时刷新一次逐文档抽取状态（后台任务变化时避免长期陈旧）
+    LaunchedEffect(Unit) {
+        viewModel.refreshExtractionStatuses()
+    }
     val loaded by viewModel.loaded.collectAsState()
     val deleting by viewModel.deleting.collectAsState()
     val deleteError by viewModel.deleteError.collectAsState()
@@ -82,6 +89,7 @@ fun SourcesScreen(
     SourcesContent(
         sources = sources,
         documents = documents,
+        extractionByDocument = extractionByDocument,
         loading = !loaded,
         deleteError = deleteError,
         onBack = onBack,
@@ -96,6 +104,8 @@ fun SourcesScreen(
 internal fun SourcesContent(
     sources: List<SourceEntity>,
     documents: List<DocumentEntity>,
+    /** B9：documentId → SAG 抽取聚合；缺省不变（Preview 兼容） */
+    extractionByDocument: Map<String, ExtractionDocUi> = emptyMap(),
     loading: Boolean = false,
     deleteError: String?,
     onBack: () -> Unit,
@@ -174,6 +184,13 @@ internal fun SourcesContent(
                                             MaterialTheme.colorScheme.tertiary
                                         },
                                     )
+
+                                    // B9：SAG 抽取状态与导入/文档状态并列展示（失败不影响文档可检索）
+                                    Text(
+                                        extractionLabel(extractionByDocument[doc.id]),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
                             }
                         }
@@ -181,6 +198,24 @@ internal fun SourcesContent(
                 }
             }
         }
+    }
+}
+
+/**
+ * B9：逐文档 SAG 抽取状态文案（total 含取消；active 含 queued+running）。
+ * - 无任务 → “SAG 未索引”（空 SAG 也给出明确空态）；
+ * - 有在途 → “抽取中 done+failed/total”；失败 → “抽取失败 f/total”；全部完成 → “抽取 n/n”。
+ */
+@Composable
+private fun extractionLabel(ui: ExtractionDocUi?): String {
+    if (ui == null || !ui.hasJobs) return stringResource(R.string.sources_sag_not_indexed)
+    val total = ui.total
+    return when {
+        ui.active > 0 -> stringResource(R.string.sources_sag_active, ui.done + ui.failed, total)
+        ui.done == total -> stringResource(R.string.sources_sag_done, ui.done, total)
+        ui.failed > 0 -> stringResource(R.string.sources_sag_failed, ui.failed, total)
+        ui.notIndexed > 0 && ui.done == 0 -> stringResource(R.string.sources_sag_not_indexed)
+        else -> stringResource(R.string.sources_sag_mixed, ui.done, total, ui.failed)
     }
 }
 

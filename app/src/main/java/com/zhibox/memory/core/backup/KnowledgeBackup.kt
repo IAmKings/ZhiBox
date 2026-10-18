@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.VisibleForTesting
 import androidx.room.withTransaction
+import com.zhibox.memory.core.extraction.SagFtsRebuilder
 import com.zhibox.memory.core.ingest.IngestRepository
 import com.zhibox.memory.core.model.ModelCatalog
 import com.zhibox.memory.core.model.ModelIntegrity
@@ -671,6 +672,8 @@ object KnowledgeBackup {
         .put("blobBase64", BackupValidator.encodeBlobBase64(v.vectorBlob))
         .put("vectorNorm", v.vectorNorm).put("createdAt", v.createdAt)
 
+    /** B9：extraction_job 全字段导出（status/attempt/errorCode/errorDetail/createdAt/updatedAt），
+     *  与抽取管线写入语义一致（失败状态/错误码在恢复后仍可诊断/重试）。 */
     private fun extractionJobJson(job: ExtractionJobEntity): JSONObject = JSONObject()
         .put("id", job.id).put("documentId", job.documentId).put("chunkId", job.chunkId)
         .put("status", job.status).put("attempt", job.attempt)
@@ -777,7 +780,9 @@ object KnowledgeBackup {
             events = events.map { BackupClosure.EventRef(it.id, it.chunkId, it.extractionVersion) },
             entities = entities.map { BackupClosure.EntityRef(it.id, it.normalizedName) },
             eventEntities = eventEntities.map { BackupClosure.EventEntityRef(it.eventId, it.entityId) },
-            sagVectors = sagVectors.map { BackupClosure.SagVectorRef(it.ownerType, it.ownerId) },
+            sagVectors = sagVectors.map {
+                BackupClosure.SagVectorRef(it.ownerType, it.ownerId, it.role, it.spaceId)
+            },
             extractionJobs = extractionJobs.map {
                 BackupClosure.ExtractionJobRef(it.id, it.documentId, it.chunkId)
             },
@@ -1310,7 +1315,42 @@ object KnowledgeBackup {
         snapshotBeforeImport(context)
 
         // 4) 单事务替换（任何一步异常整体回滚 → 原库保持不变）
-        return writeDatabase(context, parsed)
+        val restored = writeDatabase(context, parsed)
+
+        // 5) B9：SAG FTS（event/entity）是纯派生数据，v3 包不携带 → 事务提交后重建。
+        //    放在事务外：FTS 重建失败不应让已恢复的主数据不可用（事务已提交，数据已恢复）；
+        //    失败时抛可读错误提示可重试。v1/v2 包没有 SAG 数据 → 保持清空、不调用重建。
+        if (parsed.formatVersion >= 3) {
+            rebuildSagFtsAfterImport(context)
+        }
+        return restored
+    }
+
+    /**
+     * v3 导入成功后重建 event/entity FTS（B9）。
+     *
+     * 为什么在事务外：FTS 是派生数据（[SagFtsRebuilder] 先清空再分批重建），失败不应连带知识库
+     * 回滚——此时主事务已提交，数据已恢复；这里只把可读错误抛给 UI（提示"数据已恢复、索引重建
+     * 失败，可重试"）。重试入口：再次导入 / 设置页索引维护 / 直接调用 SagFtsRebuilder.rebuildAll。
+     */
+    private suspend fun rebuildSagFtsAfterImport(context: Context) {
+        val db = AppDatabase.get(context)
+        try {
+            runCatchingCancellable { SagFtsRebuilder.rebuildAll(db) }.onFailure { e ->
+                throw IllegalStateException(
+                    "知识库数据已恢复，但 SAG 索引（event/entity FTS）重建失败：" +
+                        "${e.message ?: e.javaClass.simpleName}。主数据不受影响，可重试重建" +
+                        "（再次导入或使用设置页索引维护）",
+                    e,
+                )
+            }
+        } finally {
+            // 恢复包内 queued 抽取任务必须唤醒 Worker；WorkManager 未初始化（Robolectric 等）
+            // 时不能把已成功的导入改判失败，任务保留 queued 由 App 启动/补抽取入口兜底。
+            runCatching {
+                com.zhibox.memory.core.extraction.SagExtractionScheduler.enqueue(context)
+            }
+        }
     }
 
     private suspend fun verifyModelsInPlace(context: Context, requirements: List<Requirement>) {

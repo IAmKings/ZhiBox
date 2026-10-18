@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -209,6 +210,10 @@ interface ChunkDao {
      */
     suspend fun searchFtsOrdered(matchQuery: String, limit: Int): List<Long> =
         searchFtsOrdered(matchQuery, limit, DocStatus.READY.value)
+
+    /** B9：某文档的全部 chunk（按 ordinal，抽取/展示按原文顺序） */
+    @Query("SELECT * FROM chunk WHERE documentId = :documentId ORDER BY ordinal")
+    suspend fun byDocument(documentId: String): List<ChunkEntity>
 
     @Query("SELECT * FROM chunk WHERE id IN (:ids)")
     suspend fun chunksByIds(ids: List<Long>): List<ChunkEntity>
@@ -602,11 +607,21 @@ interface EventDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFtsAll(rows: List<EventFtsEntity>): List<Long>
 
+    @Query("DELETE FROM event_fts WHERE eventId = :eventId")
+    suspend fun deleteFtsByEvent(eventId: Long)
+
+    @Query("DELETE FROM event_fts WHERE eventId IN (:eventIds)")
+    suspend fun deleteFtsByEvents(eventIds: List<Long>)
+
     @Query("DELETE FROM event_fts")
     suspend fun clearFts()
 
     @Query("SELECT COUNT(*) FROM event_fts")
     suspend fun countFts(): Int
+
+    /** B9 删除清理：移除没有 event 的 FTS 孤儿行（FTS4 无 FK） */
+    @Query("DELETE FROM event_fts WHERE eventId NOT IN (SELECT id FROM event)")
+    suspend fun deleteFtsOrphans(): Int
 
     /** 关键词召回：match 为 FTS4 MATCH 表达式（bigram OR）；返回 eventId 按 rowid 顺序 */
     @Query("SELECT eventId FROM event_fts WHERE event_fts MATCH :match ORDER BY rowid LIMIT :limit")
@@ -621,6 +636,18 @@ interface EntityDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(entities: List<EntityEntity>)
+
+    /**
+     * B9：按 normalizedName 唯一索引"插入或忽略"（返回 -1 表示已存在）。
+     * 抽取流水线先 insertIgnore 再按 normalizedName 回查，避免并发/重复实体的
+     * REPLACE（会级联删除旧 entity 的 event_entity/chunk_entity 关联）。
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnore(entity: EntityEntity): Long
+
+    /** B9：更新已存在 entity（description/entityType 合并时用；不改变 id/关联） */
+    @Update
+    suspend fun update(entity: EntityEntity)
 
     @Query("SELECT * FROM entity WHERE id = :id")
     suspend fun byId(id: Long): EntityEntity?
@@ -664,11 +691,25 @@ interface EntityDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFtsAll(rows: List<EntityFtsEntity>): List<Long>
 
+    @Query("DELETE FROM entity_fts WHERE entityId = :entityId")
+    suspend fun deleteFtsByEntity(entityId: Long)
+
+    @Query("DELETE FROM entity_fts WHERE entityId IN (:entityIds)")
+    suspend fun deleteFtsByEntities(entityIds: List<Long>)
+
     @Query("DELETE FROM entity_fts")
     suspend fun clearFts()
 
     @Query("SELECT COUNT(*) FROM entity_fts")
     suspend fun countFts(): Int
+
+    /** B9 删除清理：移除没有 entity 的 FTS 孤儿行（FTS4 无 FK） */
+    @Query("DELETE FROM entity_fts WHERE entityId NOT IN (SELECT id FROM entity)")
+    suspend fun deleteFtsOrphans(): Int
+
+    /** B9 删除清理：删除不再被任何 incidence 引用的实体（跨文档共享实体只在无引用时删） */
+    @Query("DELETE FROM entity WHERE id NOT IN (SELECT entityId FROM event_entity)")
+    suspend fun deleteOrphans(): Int
 
     @Query("SELECT entityId FROM entity_fts WHERE entity_fts MATCH :match ORDER BY rowid LIMIT :limit")
     suspend fun searchFts(match: String, limit: Int): List<Long>
@@ -718,6 +759,16 @@ interface SagVectorDao {
     @Insert
     suspend fun insertAll(vectors: List<SagVectorEntity>)
 
+    /**
+     * B9：按唯一索引 (ownerType, ownerId, role, spaceId) 幂等写入。
+     * 重抽取同一事件/实体时 REPLACE 旧向量（id 会变，调用方不要依赖 id 稳定）。
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(vector: SagVectorEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(vectors: List<SagVectorEntity>)
+
     @Query("SELECT * FROM sag_vector WHERE ownerType = :ownerType AND ownerId = :ownerId ORDER BY role")
     suspend fun byOwner(ownerType: String, ownerId: Long): List<SagVectorEntity>
 
@@ -746,6 +797,13 @@ interface SagVectorDao {
     @Query("DELETE FROM sag_vector WHERE ownerType = :ownerType AND ownerId = :ownerId")
     suspend fun deleteByOwner(ownerType: String, ownerId: Long)
 
+    /** B9：清理某 owner 指定语义角色的向量（如 event 重建 title 向量但保留 summary） */
+    @Query(
+        "DELETE FROM sag_vector WHERE ownerType = :ownerType " +
+            "AND ownerId = :ownerId AND role = :role"
+    )
+    suspend fun deleteByOwnerRole(ownerType: String, ownerId: Long, role: String)
+
     @Query("DELETE FROM sag_vector WHERE ownerType = :ownerType AND ownerId IN (:ownerIds)")
     suspend fun deleteByOwners(ownerType: String, ownerIds: List<Long>)
 
@@ -758,6 +816,14 @@ interface SagVectorDao {
      */
     @Query("DELETE FROM sag_vector")
     suspend fun deleteAll()
+
+    /** B9 删除清理：owner 已不存在的多态向量（event/entity 删除后无 FK 级联） */
+    @Query(
+        "DELETE FROM sag_vector WHERE " +
+            "(ownerType = 'EVENT' AND ownerId NOT IN (SELECT id FROM event)) OR " +
+            "(ownerType = 'ENTITY' AND ownerId NOT IN (SELECT id FROM entity))"
+    )
+    suspend fun deleteOrphans(): Int
 }
 
 /** B8：抽取任务队列（每 chunk 一条；状态机见 [ExtractionJobStatus]） */
@@ -768,6 +834,10 @@ interface ExtractionJobDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(jobs: List<ExtractionJobEntity>)
+
+    /** B9 调度：并发创建时以唯一 chunkId 兜底，已存在则忽略（不覆盖 RUNNING 等状态） */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnoreAll(jobs: List<ExtractionJobEntity>): List<Long>
 
     @Query("SELECT * FROM extraction_job WHERE id = :id")
     suspend fun get(id: String): ExtractionJobEntity?
@@ -781,6 +851,21 @@ interface ExtractionJobDao {
     /** 领取下一批排队任务（按创建时间 FIFO）；limit 建议 = 批大小 */
     @Query("SELECT * FROM extraction_job WHERE status = :queuedStatus ORDER BY createdAt, id LIMIT :limit")
     suspend fun nextQueued(queuedStatus: String, limit: Int): List<ExtractionJobEntity>
+
+    /** B9：按状态取任务（诊断/重试队列；按创建时间 FIFO，limit 建议 ≤批大小） */
+    @Query("SELECT * FROM extraction_job WHERE status = :status ORDER BY createdAt, id LIMIT :limit")
+    suspend fun byStatus(status: String, limit: Int): List<ExtractionJobEntity>
+
+    /** B9：某文档指定状态的任务（重抽取/取消清理用） */
+    @Query(
+        "SELECT * FROM extraction_job WHERE documentId = :documentId AND status = :status " +
+            "ORDER BY chunkId"
+    )
+    suspend fun byDocumentAndStatus(documentId: String, status: String): List<ExtractionJobEntity>
+
+    /** B9：排队数（worker/UI 判断是否有待抽取任务；queuedStatus=queued） */
+    @Query("SELECT COUNT(*) FROM extraction_job WHERE status = :status")
+    suspend fun queuedCount(status: String): Int
 
     /**
      * 原子认领：仅当仍为 fromStatus 时置 toStatus（QUEUED→RUNNING），返回 0 表示被其它执行者领走。
@@ -827,6 +912,33 @@ interface ExtractionJobDao {
             "WHERE status IN (:fromStatuses)"
     )
     suspend fun requeueInterrupted(fromStatuses: List<String>, toStatus: String, now: Long): Int
+
+    /**
+     * B9：无 LLM/开关关闭/禁网时标记"未索引"（notIndexedStatus=not_indexed）——
+     * 文档仍 ready，可离线检索原文；后续开启 LLM 后由 backfill 重置为 queued。
+     */
+    @Query(
+        "UPDATE extraction_job SET status = :notIndexedStatus, errorCode = :errorCode, " +
+            "errorDetail = :errorDetail, updatedAt = :now WHERE id = :id"
+    )
+    suspend fun markNotIndexed(
+        id: String,
+        notIndexedStatus: String,
+        errorCode: String?,
+        errorDetail: String?,
+        now: Long,
+    ): Int
+
+    /** B9：手动重试/补抽取前清零 attempt（避免沿用历史失败计数直接超限） */
+    @Query("UPDATE extraction_job SET attempt = 0, updatedAt = :now WHERE id = :id")
+    suspend fun resetAttempt(id: String, now: Long): Int
+
+    /** B9：整篇文档重抽取——清零 attempt 并置 queued（toStatus=queued） */
+    @Query(
+        "UPDATE extraction_job SET status = :toStatus, attempt = 0, errorCode = NULL, " +
+            "errorDetail = NULL, updatedAt = :now WHERE documentId = :documentId"
+    )
+    suspend fun requeueByDocument(documentId: String, toStatus: String, now: Long): Int
 
     @Query("SELECT COUNT(*) FROM extraction_job WHERE status IN (:statuses)")
     suspend fun activeCount(statuses: List<String>): Int

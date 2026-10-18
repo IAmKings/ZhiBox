@@ -39,7 +39,8 @@ import java.util.zip.ZipOutputStream
 /**
  * B8 备份 v3 回环（instrumentation，真实 Room + 真实 zip 包）：
  * 1) v3 导出→清库→导入：chunk/event/entity/event_entity/sag_vector/extraction_job 完整恢复；
- *    event_fts/entity_fts 为空（派生数据不导出，B9 重建）；chat/query_trace 不导出（P0 隐私）；
+ *    event_fts/entity_fts 由 B9 `SagFtsRebuilder` 重建（event 仅 active、entity 全量）；
+ *    chat/query_trace 不导出（P0 隐私）；
  * 2) 导入不清理已存在的 chat/query_trace（本地隐私数据与知识库恢复解耦）；
  * 3) 坏包（event.chunkId 失真 / sag 空间未注册）在写库前拒绝，原库数据不变；
  *    缺 extraction_jobs.jsonl 视为空 entry 可导入；
@@ -162,9 +163,10 @@ class BackupV3RoundTripTest {
         assertEquals(ExtractionJobStatus.QUEUED.value, jobs.first().status)
         assertEquals(ExtractionJobStatus.DONE.value, jobs.last().status)
 
-        // 派生 FTS 不导出：导入后 event/entity FTS 为空（B9 重建）
-        assertEquals(0, db.eventDao().countFts())
-        assertEquals(0, db.entityDao().countFts())
+        // B9：FTS 不随包导出，v3 导入成功后由 SagFtsRebuilder 重建：
+        // event 仅 active（1 行；superseded 历史行不进索引），entity 全量（1 行）
+        assertEquals("导入后 event FTS 应由 active event 重建", 1, db.eventDao().countFts())
+        assertEquals("导入后 entity FTS 应由全量 entity 重建", 1, db.entityDao().countFts())
         // 隐私数据不导出：清库后导入不会恢复 chat/query_trace
         assertTrue(db.chatDao().recentConversations(10).isEmpty())
         assertEquals(0, db.queryTraceDao().count())
@@ -306,6 +308,8 @@ class BackupV3RoundTripTest {
         assertEquals(0, db.entityDao().count())
         assertEquals(0, db.sagVectorDao().count())
         assertEquals(0, db.extractionJobDao().all().size)
+        assertEquals("v2 包不触发 SAG FTS 重建（format<3）", 0, db.eventDao().countFts())
+        assertEquals(0, db.entityDao().countFts())
     }
 
     // ---- seed ----

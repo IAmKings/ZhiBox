@@ -6,6 +6,8 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.zhibox.memory.core.embedding.EmbeddingRuntime
+import com.zhibox.memory.core.extraction.SagCleanup
+import com.zhibox.memory.core.extraction.SagExtractionScheduler
 import com.zhibox.memory.core.model.ModelCatalog
 import com.zhibox.memory.core.model.Sha256
 import com.zhibox.memory.core.search.VectorMatrixCache
@@ -427,6 +429,10 @@ class IngestRepository(
             if (!publishReady(documentId, jobId)) {
                 return@withContext finishCancelled(documentId, jobId)
             }
+
+            // B9：ready 后创建 SAG 抽取任务（queued / not_indexed）并触发独立 worker。
+            // 不阻塞导入成功：抽取失败可通过 UI 重试/补抽取恢复，ready 语义只由导入管线决定。
+            scheduleSagExtraction(documentId)
         } catch (c: CancellationException) {
             // P1-2：WorkManager 停止/协程取消 = 中断而非业务失败。清理必须用 NonCancellable，
             // 否则已取消的协程里任何 suspend DB 调用都会立刻再抛 CancellationException。
@@ -486,6 +492,21 @@ class IngestRepository(
         db.ingestJobDao().updateStageIfNotCancelled(
             jobId, stage.value, progress, now(), JobStage.CANCELLED.value,
         )
+    }
+
+    /**
+     * B9：把刚 ready 的文档接入 SAG 抽取队列。任何调度异常都不应把导入回退为失败：
+     * 文档已 ready，可离线检索；任务可由设置页「补抽取」/Worker 重试恢复。
+     */
+    private suspend fun scheduleSagExtraction(documentId: String) {
+        try {
+            SagExtractionScheduler.onDocumentReady(context, db, documentId)
+            SagExtractionScheduler.enqueue(context)
+        } catch (c: CancellationException) {
+            throw c
+        } catch (_: Exception) {
+            // 项目约定不写日志；任务缺失由 backfill 兜底，不污染导入状态
+        }
     }
 
     /**
@@ -662,6 +683,8 @@ class IngestRepository(
         val source = db.sourceDao().get(sourceId) ?: return@withContext
         check(db.ingestJobDao().activeCount(JobStage.ACTIVE_VALUES) == 0) { "导入进行中，请稍后再删除" }
         db.sourceDao().deleteCascade(sourceId)
+        // B9：event/entity 由 chunk FK 级联，但 FTS4/sag_vector/共享 entity 需显式清孤儿
+        SagCleanup.cleanupOrphans(db)
         val stored = File(source.uri)
         val docsDir = File(filesDir, "documents")
         // 仅清理本应用 documents 目录内的文件，uri 指向外部时不动

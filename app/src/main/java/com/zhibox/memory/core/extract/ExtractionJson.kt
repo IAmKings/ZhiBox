@@ -90,6 +90,11 @@ object ExtractionJson {
         )
     }
 
+    /**
+     * B9/PRD FR-01：部分实体无效 → 过滤该实体并继续（不吞掉整个 event，除非 event 最终无实体）。
+     * 因此 element 级错误（null/非数组）仍 Failure；单个实体元素缺字段/未知 type/空名则跳过，
+     * 由 pipeline 的「每 event ≥1 entity」业务校验兜底。
+     */
     private fun parseEntities(element: JsonElement?): List<ExtractedEntity> {
         if (element == null) {
             throw StrictJsonException(ExtractionErrorCodes.MISSING_FIELD, "缺少字段：entities")
@@ -99,22 +104,20 @@ object ExtractionJson {
                 ExtractionErrorCodes.INVALID_FIELD_TYPE,
                 "entities 必须是数组（实际 ${element::class.simpleName}）",
             )
-        return array.mapIndexed { index, item ->
-            val obj = item as? JsonObject
-                ?: throw StrictJsonException(
-                    ExtractionErrorCodes.INVALID_FIELD_TYPE,
-                    "entities[$index] 必须是对象",
-                )
-            val typeRaw = requireString(obj, "type", "entities[$index]")
-            val type = EntityType.fromWire(typeRaw)
-                ?: throw StrictJsonException(
-                    ExtractionErrorCodes.INVALID_ENTITY_TYPE,
-                    "entities[$index].type 不是 11 类之一：$typeRaw",
-                )
-            val name = requireString(obj, "name", "entities[$index]")
-            val description = requireString(obj, "description", "entities[$index]")
+        return array.mapIndexedNotNull { index, item ->
+            val obj = item as? JsonObject ?: return@mapIndexedNotNull null
+            val typeRaw = stringOrNull(obj["type"]) ?: return@mapIndexedNotNull null
+            val type = EntityType.fromWire(typeRaw) ?: return@mapIndexedNotNull null
+            val name = stringOrNull(obj["name"])?.trim().orEmpty()
+            if (name.isEmpty()) return@mapIndexedNotNull null
+            val description = stringOrNull(obj["description"]).orEmpty()
             ExtractedEntity(type = type, name = name, description = description)
         }
+    }
+
+    private fun stringOrNull(element: JsonElement?): String? {
+        val primitive = element as? JsonPrimitive ?: return null
+        return if (primitive.isString) primitive.content else null
     }
 
     private fun requireString(obj: JsonObject, key: String, path: String = ""): String {

@@ -56,6 +56,7 @@ fun ImportScreen(
     val message by viewModel.message.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val jobs by viewModel.jobs.collectAsState()
+    val extractionSummary by viewModel.extractionSummary.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.onScreenStarted(autoStart, autoCancel)
@@ -69,6 +70,7 @@ fun ImportScreen(
         message = message,
         errorMessage = errorMessage,
         jobs = jobs,
+        extractionSummary = extractionSummary,
         onImportAll = viewModel::importAll,
         onCancelImport = viewModel::cancelImport,
         onRetryFailed = viewModel::retryFailed,
@@ -88,6 +90,8 @@ internal fun ImportContent(
     message: String?,
     errorMessage: String?,
     jobs: List<IngestJobEntity>,
+    /** B9：SAG 抽取汇总（null=尚未加载；与导入状态独立） */
+    extractionSummary: ExtractionCountsUi? = null,
     onImportAll: () -> Unit,
     onCancelImport: () -> Unit,
     onRetryFailed: () -> Unit,
@@ -185,6 +189,31 @@ internal fun ImportContent(
                             message = it,
                             actionLabel = stringResource(R.string.action_dismiss),
                             onAction = onDismissError,
+                        )
+                    }
+                }
+            }
+
+            // B9：文档 ready 后展示一行 SAG 抽取摘要（第二阶段；抽取失败不是导入失败）
+            extractionSummary?.takeIf { it.hasJobs }?.let { counts ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        stringResource(
+                            R.string.import_sag_summary,
+                            counts.done,
+                            counts.queued,
+                            counts.running,
+                            counts.failed,
+                            counts.notIndexed,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (counts.failed > 0) {
+                        Text(
+                            stringResource(R.string.import_sag_failed_hint),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -363,6 +392,13 @@ private fun ImportLightPreview() {
             message = null,
             errorMessage = null,
             jobs = previewJobs,
+            extractionSummary = ExtractionCountsUi(
+                done = 3,
+                queued = 1,
+                running = 0,
+                failed = 1,
+                notIndexed = 2,
+            ),
             onImportAll = {},
             onCancelImport = {},
             onRetryFailed = {},
