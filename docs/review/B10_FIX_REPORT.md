@@ -3,7 +3,7 @@
 - **日期**：2026-10-18
 - **依据**：`docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` §5（B10）、PRD FR-03/04/05、论文 §3.3/§3.4
 - **性质**：检索侧实现 + 多跳评测；B11 生成问答、B12 图谱未实现。
-- **结论**：**代码/自动门禁、离线 fast 子门禁与 262 单跳回归通过；PRD 主门禁（multi 真实 LLM）未验证，B10 仍为部分完成**。`multi_es_fast` 真实多跳 R@5 **0.7799**（离线线 ≥0.65/非回退；PRD 主门禁要求 `multi` 真 LLM ≥0.70），比 vector +59.58pp；262 单跳 vector/fused 0 回退。`multi` 为 mock selector（B10 允许接口/mock，真实 LLM 精排属 B11）。
+- **结论**：**代码/自动门禁、离线 fast 子门禁与 262 单跳回归通过；PRD 主门禁（multi 真实 LLM）因设备 LLM 配置被测试清空而无法验证，B10 仍为部分完成**。`multi_es_fast` 真实多跳 R@5 **0.7396**（离线线 ≥0.65/非回退；PRD 主门禁要求 `multi` 真 LLM ≥0.70），比 vector +55.76pp；262 单跳 vector/fused 0 回退。多跳集已改为链间实体唯一（无共享机构/公司/国家），multi 当前 120/120 refused（配置缺失）。
 
 ---
 
@@ -65,19 +65,19 @@ B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected
 
 | 模式 | R@5 | R@10 | MRR | p50/p95 ms |
 |---|---|---|---|---|
-| vector（混合基线） | **0.1840** | 0.3056 | 0.3284 | 203 / 230 |
-| multi_es_fast（离线，B10.2） | **0.7799** | 0.8257 | 0.9417 | 488 / 557 |
-| multi（mock selector） | 0.7799 | 0.8257 | 0.9417 | 482 / 516 |
+| vector（混合基线） | **0.1819** | 0.3097 | 0.3323 | 207 / 235 |
+| multi_es_fast（离线，B10.2，链间唯一集） | **0.7396** | 0.8000 | 1.0000 | 465 / 509 |
+| multi（真实 LLM，配置缺失） | 0.0000（120 refused） | 0 | — | 31 / 44 |
 
 | 跳数 | vector R@5 | fast R@5 | multi R@5 |
 |---|---|---|---|
-| 2 跳（40） | 0.3125 | 1.0000 | 1.0000 |
-| 3 跳（40） | 0.1833 | 0.7333 | 0.7333 |
-| 4 跳（40） | 0.0563 | 0.6063 | 0.6063 |
+| 2 跳（40） | 0.3125 | 1.0000 | 0（refused） |
+| 3 跳（40） | 0.1833 | 0.7000 | 0（refused） |
+| 4 跳（40） | 0.0500 | 0.5188 | 0（refused） |
 
 **门禁判定**：
-- fast 相比 vector **+59.58pp**（>5pp 改善项通过）；
-- fast R@5 **0.7799 ≥ 0.70**，**绝对门槛通过**；multi 本次为 mock selector（B10 允许，B11 补真实 LLM 精排）；
+- fast 相比 vector **+55.76pp**（>5pp 改善项通过）；
+- fast R@5 **0.7396 ≥ 0.70**，**离线子门禁通过**；但 **PRD 主门禁 multi 真实 LLM 未验证**（设备 LLM 配置被测试清空，multi 120/120 refused），B10 不完整关闭；
 - **262 单跳回归**：K40 + 440M 同语料复测，vector R@5 0.9864 / R@10 0.9909、fused R@5 0.9955 / R@10 1.0，**与既有 `K40-440M-v2b` 的 vector/fused R@5/R@10 一致**；keyword R@5 0.9545 vs 基线 0.9500（+0.0045，不构成回退），avg 160ms vs 基线 280ms（不同运行/设备状态，不作等价声明）；score/raw 见 `docs/review/evidence/B10-262_{score,evalrun}.json`。
 
 ---
@@ -85,6 +85,7 @@ B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected
 ## 3. 关键修正与后续
 
 1. **查询实体锚点**：自然问句的 exact 命中从 query 子串回查 `entity.normalizedName`；仅存在 exact seed 时优先 exact，FTS 泛召回只作无 exact 兜底，避免桥接锚点跑到无关事件。
+   **评测集修正**：20 条链的组织/公司/国家改为链间唯一（生成脚本断言），消除共享“中国/蓝海物流”等跨链泄漏；fast 仍通过 ≥0.70。
 2. **单槽桥接救援**：只提升“与锚点事件共享实体最多、且非锚点自身”的一个 `EVENT_ENTITY` 桥接事件（批量提升实测更差，已回滚）。
 3. **结果**：2 跳 R@5 1.0、3 跳 0.7333、4 跳 0.6063；4 跳仍有提升空间（B11 真实 LLM selector/多跳扩展可继续）。
 4. **multi**：B10 用 mock selector 验证接口/降级/去重/补位；真实 `LlmQueryEntityExtractor + LlmSagContextSelector` 的收益留 B11 消融，报告不把 mock 当真实 LLM 增益。

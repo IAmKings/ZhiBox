@@ -93,7 +93,7 @@ schema v7、抽取 pipeline/scheduler/worker、FTS/SAG 向量、补抽取/重试
 
 ## 5. B10 — SAG 结构化检索与多跳评测（✅ 完成 2026-10-18，见 `docs/review/B10_FIX_REPORT.md`）
 
-> 状态：三模式/预算/source scope/降级/trace/UI/测试已落地；真机多跳评测 fast R@5 **0.7799**（vector 0.1840，+59.58pp）——**离线 fast 子门禁通过**；262 单跳 vector/fused 0 回退；但 PRD 主门禁要求 **multi 真实 LLM**，当前 multi 为 mock selector，主门禁未验证，B10 部分完成，真实 LLM 精排留 B11。评测集为受控合成、未人工校验；10k 为 SQL/检索微基准。详见报告。
+> 状态：三模式/预算/source scope/降级/trace/UI/测试已落地；真机多跳评测 fast R@5 **0.7396**（vector 0.1819，+55.76pp，链间唯一评测集）——**离线 fast 子门禁通过**；262 单跳 vector/fused 0 回退；但 PRD 主门禁要求 **multi 真实 LLM**，设备 LLM 配置被测试清空（测试已修），multi 本轮 120/120 refused，主门禁未验证，B10 部分完成。评测集为受控合成、未独立人工校验；10k 为 SQL/检索微基准。详见报告。
 
 **目标**：三模式落地，`multi_es_fast` 在离线可用；`multi` 具备 LLM 选择能力；建立可回归的中文多跳评测。
 

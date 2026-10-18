@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-18",
+  "device": "K40 6D8H6TXSDYXC85PZ",
+  "model": "embeddinggemma-2-text-vision-440m.litertlm",
+  "kb": "app/src/androidTest/assets/b10/kb.json",
+  "queries": "app/src/androidTest/assets/b10/queries.json",
+  "kb_sha256": "2c35b80a48ce3e7fb0678d154bf96b8e1be9a2debaa1ce6af07beebeb91362a0",
+  "queries_sha256": "1a298254d968bc99a07e1c7ba855db60a7f96c5a8058215022ad5996d0d1e726",
+  "n_queries": 120,
+  "hops": "2–4 (40 each); multi-evidence chunks",
+  "dataset": "controlled synthetic, chain-unique entities (no shared org/company/country); not independently human-annotated",
+  "modes": "vector / multi_es_fast / multi(real LLM; refused because device LLM config was empty at run time)",
+  "raw_result": "B10-120_evalrun.json",
+  "score": "B10-120_score.json",
+  "gate_fast": "R@5 0.7396 >= 0.70 PASS; vector 0.1819, +55.76pp",
+  "gate_multi": "BLOCKED: real LLM config missing; multi refused 120/120"
+}

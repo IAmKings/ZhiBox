@@ -147,11 +147,11 @@
       "id": 3,
       "documentId": "doc-b10-0",
       "ordinal": 2,
-      "content": "深圳市以特产智能音箱闻名，智能音箱由星云电子生产。",
+      "content": "深圳市以特产智能音箱闻名，智能音箱由星云电子制造生产。",
       "event": {
         "title": "深圳市的特产与生产企业",
         "summary": "深圳市以智能音箱闻名",
-        "content": "深圳市以特产智能音箱闻名，智能音箱由星云电子生产。"
+        "content": "深圳市以特产智能音箱闻名，智能音箱由星云电子制造生产。"
       },
       "entities": [
         {
@@ -166,7 +166,7 @@
         },
         {
           "type": "organization",
-          "name": "星云电子",
+          "name": "星云电子制造",
           "description": "生产企业"
         }
       ]
@@ -175,16 +175,16 @@
       "id": 4,
       "documentId": "doc-b10-0",
       "ordinal": 3,
-      "content": "星云电子位于中国，是智能音箱的主要生产商。",
+      "content": "星云电子制造位于中国，是智能音箱的主要生产商。",
       "event": {
-        "title": "星云电子与智能音箱",
-        "summary": "星云电子位于中国",
-        "content": "星云电子位于中国，是智能音箱的主要生产商。"
+        "title": "星云电子制造与智能音箱",
+        "summary": "星云电子制造位于中国",
+        "content": "星云电子制造位于中国，是智能音箱的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "星云电子",
+          "name": "星云电子制造",
           "description": "生产企业"
         },
         {
@@ -264,11 +264,11 @@
       "id": 7,
       "documentId": "doc-b10-1",
       "ordinal": 2,
-      "content": "杭州市以特产数据平台闻名，数据平台由云帆智造生产。",
+      "content": "杭州市以特产数据平台闻名，数据平台由云帆智造装备生产。",
       "event": {
         "title": "杭州市的特产与生产企业",
         "summary": "杭州市以数据平台闻名",
-        "content": "杭州市以特产数据平台闻名，数据平台由云帆智造生产。"
+        "content": "杭州市以特产数据平台闻名，数据平台由云帆智造装备生产。"
       },
       "entities": [
         {
@@ -283,7 +283,7 @@
         },
         {
           "type": "organization",
-          "name": "云帆智造",
+          "name": "云帆智造装备",
           "description": "生产企业"
         }
       ]
@@ -292,21 +292,21 @@
       "id": 8,
       "documentId": "doc-b10-1",
       "ordinal": 3,
-      "content": "云帆智造位于中国，是数据平台的主要生产商。",
+      "content": "云帆智造装备位于日本，是数据平台的主要生产商。",
       "event": {
-        "title": "云帆智造与数据平台",
-        "summary": "云帆智造位于中国",
-        "content": "云帆智造位于中国，是数据平台的主要生产商。"
+        "title": "云帆智造装备与数据平台",
+        "summary": "云帆智造装备位于日本",
+        "content": "云帆智造装备位于日本，是数据平台的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "云帆智造",
+          "name": "云帆智造装备",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "日本",
           "description": "国家"
         },
         {
@@ -381,11 +381,11 @@
       "id": 11,
       "documentId": "doc-b10-2",
       "ordinal": 2,
-      "content": "上海市以特产康复设备闻名，康复设备由仁和医疗生产。",
+      "content": "上海市以特产康复设备闻名，康复设备由仁和医疗器械生产。",
       "event": {
         "title": "上海市的特产与生产企业",
         "summary": "上海市以康复设备闻名",
-        "content": "上海市以特产康复设备闻名，康复设备由仁和医疗生产。"
+        "content": "上海市以特产康复设备闻名，康复设备由仁和医疗器械生产。"
       },
       "entities": [
         {
@@ -400,7 +400,7 @@
         },
         {
           "type": "organization",
-          "name": "仁和医疗",
+          "name": "仁和医疗器械",
           "description": "生产企业"
         }
       ]
@@ -409,21 +409,21 @@
       "id": 12,
       "documentId": "doc-b10-2",
       "ordinal": 3,
-      "content": "仁和医疗位于中国，是康复设备的主要生产商。",
+      "content": "仁和医疗器械位于德国，是康复设备的主要生产商。",
       "event": {
-        "title": "仁和医疗与康复设备",
-        "summary": "仁和医疗位于中国",
-        "content": "仁和医疗位于中国，是康复设备的主要生产商。"
+        "title": "仁和医疗器械与康复设备",
+        "summary": "仁和医疗器械位于德国",
+        "content": "仁和医疗器械位于德国，是康复设备的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "仁和医疗",
+          "name": "仁和医疗器械",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "德国",
           "description": "国家"
         },
         {
@@ -498,11 +498,11 @@
       "id": 15,
       "documentId": "doc-b10-3",
       "ordinal": 2,
-      "content": "北京市以特产在线课程闻名，在线课程由知远教育生产。",
+      "content": "北京市以特产在线课程闻名，在线课程由知远教育服务生产。",
       "event": {
         "title": "北京市的特产与生产企业",
         "summary": "北京市以在线课程闻名",
-        "content": "北京市以特产在线课程闻名，在线课程由知远教育生产。"
+        "content": "北京市以特产在线课程闻名，在线课程由知远教育服务生产。"
       },
       "entities": [
         {
@@ -517,7 +517,7 @@
         },
         {
           "type": "organization",
-          "name": "知远教育",
+          "name": "知远教育服务",
           "description": "生产企业"
         }
       ]
@@ -526,21 +526,21 @@
       "id": 16,
       "documentId": "doc-b10-3",
       "ordinal": 3,
-      "content": "知远教育位于中国，是在线课程的主要生产商。",
+      "content": "知远教育服务位于法国，是在线课程的主要生产商。",
       "event": {
-        "title": "知远教育与在线课程",
-        "summary": "知远教育位于中国",
-        "content": "知远教育位于中国，是在线课程的主要生产商。"
+        "title": "知远教育服务与在线课程",
+        "summary": "知远教育服务位于法国",
+        "content": "知远教育服务位于法国，是在线课程的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "知远教育",
+          "name": "知远教育服务",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "法国",
           "description": "国家"
         },
         {
@@ -615,11 +615,11 @@
       "id": 19,
       "documentId": "doc-b10-4",
       "ordinal": 2,
-      "content": "南京市以特产储能电池闻名，储能电池由青山储能生产。",
+      "content": "南京市以特产储能电池闻名，储能电池由青山储能设备生产。",
       "event": {
         "title": "南京市的特产与生产企业",
         "summary": "南京市以储能电池闻名",
-        "content": "南京市以特产储能电池闻名，储能电池由青山储能生产。"
+        "content": "南京市以特产储能电池闻名，储能电池由青山储能设备生产。"
       },
       "entities": [
         {
@@ -634,7 +634,7 @@
         },
         {
           "type": "organization",
-          "name": "青山储能",
+          "name": "青山储能设备",
           "description": "生产企业"
         }
       ]
@@ -643,21 +643,21 @@
       "id": 20,
       "documentId": "doc-b10-4",
       "ordinal": 3,
-      "content": "青山储能位于中国，是储能电池的主要生产商。",
+      "content": "青山储能设备位于英国，是储能电池的主要生产商。",
       "event": {
-        "title": "青山储能与储能电池",
-        "summary": "青山储能位于中国",
-        "content": "青山储能位于中国，是储能电池的主要生产商。"
+        "title": "青山储能设备与储能电池",
+        "summary": "青山储能设备位于英国",
+        "content": "青山储能设备位于英国，是储能电池的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "青山储能",
+          "name": "青山储能设备",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "英国",
           "description": "国家"
         },
         {
@@ -732,11 +732,11 @@
       "id": 23,
       "documentId": "doc-b10-5",
       "ordinal": 2,
-      "content": "广州市以特产冷链系统闻名，冷链系统由蓝海物流生产。",
+      "content": "广州市以特产冷链系统闻名，冷链系统由蓝海物流系统生产。",
       "event": {
         "title": "广州市的特产与生产企业",
         "summary": "广州市以冷链系统闻名",
-        "content": "广州市以特产冷链系统闻名，冷链系统由蓝海物流生产。"
+        "content": "广州市以特产冷链系统闻名，冷链系统由蓝海物流系统生产。"
       },
       "entities": [
         {
@@ -751,7 +751,7 @@
         },
         {
           "type": "organization",
-          "name": "蓝海物流",
+          "name": "蓝海物流系统",
           "description": "生产企业"
         }
       ]
@@ -760,21 +760,21 @@
       "id": 24,
       "documentId": "doc-b10-5",
       "ordinal": 3,
-      "content": "蓝海物流位于中国，是冷链系统的主要生产商。",
+      "content": "蓝海物流系统位于美国，是冷链系统的主要生产商。",
       "event": {
-        "title": "蓝海物流与冷链系统",
-        "summary": "蓝海物流位于中国",
-        "content": "蓝海物流位于中国，是冷链系统的主要生产商。"
+        "title": "蓝海物流系统与冷链系统",
+        "summary": "蓝海物流系统位于美国",
+        "content": "蓝海物流系统位于美国，是冷链系统的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "蓝海物流",
+          "name": "蓝海物流系统",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "美国",
           "description": "国家"
         },
         {
@@ -849,11 +849,11 @@
       "id": 27,
       "documentId": "doc-b10-6",
       "ordinal": 2,
-      "content": "成都市以特产显示屏闻名，显示屏由启明显示生产。",
+      "content": "成都市以特产显示屏闻名，显示屏由启明显示面板生产。",
       "event": {
         "title": "成都市的特产与生产企业",
         "summary": "成都市以显示屏闻名",
-        "content": "成都市以特产显示屏闻名，显示屏由启明显示生产。"
+        "content": "成都市以特产显示屏闻名，显示屏由启明显示面板生产。"
       },
       "entities": [
         {
@@ -868,7 +868,7 @@
         },
         {
           "type": "organization",
-          "name": "启明显示",
+          "name": "启明显示面板",
           "description": "生产企业"
         }
       ]
@@ -877,21 +877,21 @@
       "id": 28,
       "documentId": "doc-b10-6",
       "ordinal": 3,
-      "content": "启明显示位于中国，是显示屏的主要生产商。",
+      "content": "启明显示面板位于加拿大，是显示屏的主要生产商。",
       "event": {
-        "title": "启明显示与显示屏",
-        "summary": "启明显示位于中国",
-        "content": "启明显示位于中国，是显示屏的主要生产商。"
+        "title": "启明显示面板与显示屏",
+        "summary": "启明显示面板位于加拿大",
+        "content": "启明显示面板位于加拿大，是显示屏的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "启明显示",
+          "name": "启明显示面板",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "加拿大",
           "description": "国家"
         },
         {
@@ -966,11 +966,11 @@
       "id": 31,
       "documentId": "doc-b10-7",
       "ordinal": 2,
-      "content": "武汉市以特产精密零件闻名，精密零件由天工精密生产。",
+      "content": "武汉市以特产精密零件闻名，精密零件由天工精密零件生产。",
       "event": {
         "title": "武汉市的特产与生产企业",
         "summary": "武汉市以精密零件闻名",
-        "content": "武汉市以特产精密零件闻名，精密零件由天工精密生产。"
+        "content": "武汉市以特产精密零件闻名，精密零件由天工精密零件生产。"
       },
       "entities": [
         {
@@ -985,7 +985,7 @@
         },
         {
           "type": "organization",
-          "name": "天工精密",
+          "name": "天工精密零件",
           "description": "生产企业"
         }
       ]
@@ -994,21 +994,21 @@
       "id": 32,
       "documentId": "doc-b10-7",
       "ordinal": 3,
-      "content": "天工精密位于中国，是精密零件的主要生产商。",
+      "content": "天工精密零件位于澳大利亚，是精密零件的主要生产商。",
       "event": {
-        "title": "天工精密与精密零件",
-        "summary": "天工精密位于中国",
-        "content": "天工精密位于中国，是精密零件的主要生产商。"
+        "title": "天工精密零件与精密零件",
+        "summary": "天工精密零件位于澳大利亚",
+        "content": "天工精密零件位于澳大利亚，是精密零件的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "天工精密",
+          "name": "天工精密零件",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "澳大利亚",
           "description": "国家"
         },
         {
@@ -1083,11 +1083,11 @@
       "id": 35,
       "documentId": "doc-b10-8",
       "ordinal": 2,
-      "content": "西安市以特产有机茶叶闻名，有机茶叶由绿洲茶业生产。",
+      "content": "西安市以特产有机茶叶闻名，有机茶叶由绿洲茶业食品生产。",
       "event": {
         "title": "西安市的特产与生产企业",
         "summary": "西安市以有机茶叶闻名",
-        "content": "西安市以特产有机茶叶闻名，有机茶叶由绿洲茶业生产。"
+        "content": "西安市以特产有机茶叶闻名，有机茶叶由绿洲茶业食品生产。"
       },
       "entities": [
         {
@@ -1102,7 +1102,7 @@
         },
         {
           "type": "organization",
-          "name": "绿洲茶业",
+          "name": "绿洲茶业食品",
           "description": "生产企业"
         }
       ]
@@ -1111,21 +1111,21 @@
       "id": 36,
       "documentId": "doc-b10-8",
       "ordinal": 3,
-      "content": "绿洲茶业位于中国，是有机茶叶的主要生产商。",
+      "content": "绿洲茶业食品位于巴西，是有机茶叶的主要生产商。",
       "event": {
-        "title": "绿洲茶业与有机茶叶",
-        "summary": "绿洲茶业位于中国",
-        "content": "绿洲茶业位于中国，是有机茶叶的主要生产商。"
+        "title": "绿洲茶业食品与有机茶叶",
+        "summary": "绿洲茶业食品位于巴西",
+        "content": "绿洲茶业食品位于巴西，是有机茶叶的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "绿洲茶业",
+          "name": "绿洲茶业食品",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "巴西",
           "description": "国家"
         },
         {
@@ -1200,11 +1200,11 @@
       "id": 39,
       "documentId": "doc-b10-9",
       "ordinal": 2,
-      "content": "苏州市以特产理财产品闻名，理财产品由恒达财富生产。",
+      "content": "苏州市以特产理财产品闻名，理财产品由恒达财富管理生产。",
       "event": {
         "title": "苏州市的特产与生产企业",
         "summary": "苏州市以理财产品闻名",
-        "content": "苏州市以特产理财产品闻名，理财产品由恒达财富生产。"
+        "content": "苏州市以特产理财产品闻名，理财产品由恒达财富管理生产。"
       },
       "entities": [
         {
@@ -1219,7 +1219,7 @@
         },
         {
           "type": "organization",
-          "name": "恒达财富",
+          "name": "恒达财富管理",
           "description": "生产企业"
         }
       ]
@@ -1228,21 +1228,21 @@
       "id": 40,
       "documentId": "doc-b10-9",
       "ordinal": 3,
-      "content": "恒达财富位于中国，是理财产品的主要生产商。",
+      "content": "恒达财富管理位于印度，是理财产品的主要生产商。",
       "event": {
-        "title": "恒达财富与理财产品",
-        "summary": "恒达财富位于中国",
-        "content": "恒达财富位于中国，是理财产品的主要生产商。"
+        "title": "恒达财富管理与理财产品",
+        "summary": "恒达财富管理位于印度",
+        "content": "恒达财富管理位于印度，是理财产品的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "恒达财富",
+          "name": "恒达财富管理",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "印度",
           "description": "国家"
         },
         {
@@ -1317,11 +1317,11 @@
       "id": 43,
       "documentId": "doc-b10-10",
       "ordinal": 2,
-      "content": "重庆市以特产纪录片闻名，纪录片由光远影业生产。",
+      "content": "重庆市以特产纪录片闻名，纪录片由光远影业制作生产。",
       "event": {
         "title": "重庆市的特产与生产企业",
         "summary": "重庆市以纪录片闻名",
-        "content": "重庆市以特产纪录片闻名，纪录片由光远影业生产。"
+        "content": "重庆市以特产纪录片闻名，纪录片由光远影业制作生产。"
       },
       "entities": [
         {
@@ -1336,7 +1336,7 @@
         },
         {
           "type": "organization",
-          "name": "光远影业",
+          "name": "光远影业制作",
           "description": "生产企业"
         }
       ]
@@ -1345,21 +1345,21 @@
       "id": 44,
       "documentId": "doc-b10-10",
       "ordinal": 3,
-      "content": "光远影业位于中国，是纪录片的主要生产商。",
+      "content": "光远影业制作位于韩国，是纪录片的主要生产商。",
       "event": {
-        "title": "光远影业与纪录片",
-        "summary": "光远影业位于中国",
-        "content": "光远影业位于中国，是纪录片的主要生产商。"
+        "title": "光远影业制作与纪录片",
+        "summary": "光远影业制作位于韩国",
+        "content": "光远影业制作位于韩国，是纪录片的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "光远影业",
+          "name": "光远影业制作",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "韩国",
           "description": "国家"
         },
         {
@@ -1434,11 +1434,11 @@
       "id": 47,
       "documentId": "doc-b10-11",
       "ordinal": 2,
-      "content": "天津市以特产管理咨询闻名，管理咨询由海纳咨询生产。",
+      "content": "天津市以特产管理咨询闻名，管理咨询由海纳咨询顾问生产。",
       "event": {
         "title": "天津市的特产与生产企业",
         "summary": "天津市以管理咨询闻名",
-        "content": "天津市以特产管理咨询闻名，管理咨询由海纳咨询生产。"
+        "content": "天津市以特产管理咨询闻名，管理咨询由海纳咨询顾问生产。"
       },
       "entities": [
         {
@@ -1453,7 +1453,7 @@
         },
         {
           "type": "organization",
-          "name": "海纳咨询",
+          "name": "海纳咨询顾问",
           "description": "生产企业"
         }
       ]
@@ -1462,21 +1462,21 @@
       "id": 48,
       "documentId": "doc-b10-11",
       "ordinal": 3,
-      "content": "海纳咨询位于中国，是管理咨询的主要生产商。",
+      "content": "海纳咨询顾问位于意大利，是管理咨询的主要生产商。",
       "event": {
-        "title": "海纳咨询与管理咨询",
-        "summary": "海纳咨询位于中国",
-        "content": "海纳咨询位于中国，是管理咨询的主要生产商。"
+        "title": "海纳咨询顾问与管理咨询",
+        "summary": "海纳咨询顾问位于意大利",
+        "content": "海纳咨询顾问位于意大利，是管理咨询的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "海纳咨询",
+          "name": "海纳咨询顾问",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "意大利",
           "description": "国家"
         },
         {
@@ -1551,11 +1551,11 @@
       "id": 51,
       "documentId": "doc-b10-12",
       "ordinal": 2,
-      "content": "青岛市以特产数据库闻名，数据库由锐思数据生产。",
+      "content": "青岛市以特产数据库闻名，数据库由锐思数据软件生产。",
       "event": {
         "title": "青岛市的特产与生产企业",
         "summary": "青岛市以数据库闻名",
-        "content": "青岛市以特产数据库闻名，数据库由锐思数据生产。"
+        "content": "青岛市以特产数据库闻名，数据库由锐思数据软件生产。"
       },
       "entities": [
         {
@@ -1570,7 +1570,7 @@
         },
         {
           "type": "organization",
-          "name": "锐思数据",
+          "name": "锐思数据软件",
           "description": "生产企业"
         }
       ]
@@ -1579,21 +1579,21 @@
       "id": 52,
       "documentId": "doc-b10-12",
       "ordinal": 3,
-      "content": "锐思数据位于中国，是数据库的主要生产商。",
+      "content": "锐思数据软件位于西班牙，是数据库的主要生产商。",
       "event": {
-        "title": "锐思数据与数据库",
-        "summary": "锐思数据位于中国",
-        "content": "锐思数据位于中国，是数据库的主要生产商。"
+        "title": "锐思数据软件与数据库",
+        "summary": "锐思数据软件位于西班牙",
+        "content": "锐思数据软件位于西班牙，是数据库的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "锐思数据",
+          "name": "锐思数据软件",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "西班牙",
           "description": "国家"
         },
         {
@@ -1668,11 +1668,11 @@
       "id": 55,
       "documentId": "doc-b10-13",
       "ordinal": 2,
-      "content": "长沙市以特产文创产品闻名，文创产品由博雅文创生产。",
+      "content": "长沙市以特产文创产品闻名，文创产品由博雅文创设计生产。",
       "event": {
         "title": "长沙市的特产与生产企业",
         "summary": "长沙市以文创产品闻名",
-        "content": "长沙市以特产文创产品闻名，文创产品由博雅文创生产。"
+        "content": "长沙市以特产文创产品闻名，文创产品由博雅文创设计生产。"
       },
       "entities": [
         {
@@ -1687,7 +1687,7 @@
         },
         {
           "type": "organization",
-          "name": "博雅文创",
+          "name": "博雅文创设计",
           "description": "生产企业"
         }
       ]
@@ -1696,21 +1696,21 @@
       "id": 56,
       "documentId": "doc-b10-13",
       "ordinal": 3,
-      "content": "博雅文创位于中国，是文创产品的主要生产商。",
+      "content": "博雅文创设计位于荷兰，是文创产品的主要生产商。",
       "event": {
-        "title": "博雅文创与文创产品",
-        "summary": "博雅文创位于中国",
-        "content": "博雅文创位于中国，是文创产品的主要生产商。"
+        "title": "博雅文创设计与文创产品",
+        "summary": "博雅文创设计位于荷兰",
+        "content": "博雅文创设计位于荷兰，是文创产品的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "博雅文创",
+          "name": "博雅文创设计",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "荷兰",
           "description": "国家"
         },
         {
@@ -1785,11 +1785,11 @@
       "id": 59,
       "documentId": "doc-b10-14",
       "ordinal": 2,
-      "content": "厦门市以特产新型材料闻名，新型材料由中科新材生产。",
+      "content": "厦门市以特产新型材料闻名，新型材料由中科新材研发生产。",
       "event": {
         "title": "厦门市的特产与生产企业",
         "summary": "厦门市以新型材料闻名",
-        "content": "厦门市以特产新型材料闻名，新型材料由中科新材生产。"
+        "content": "厦门市以特产新型材料闻名，新型材料由中科新材研发生产。"
       },
       "entities": [
         {
@@ -1804,7 +1804,7 @@
         },
         {
           "type": "organization",
-          "name": "中科新材",
+          "name": "中科新材研发",
           "description": "生产企业"
         }
       ]
@@ -1813,21 +1813,21 @@
       "id": 60,
       "documentId": "doc-b10-14",
       "ordinal": 3,
-      "content": "中科新材位于中国，是新型材料的主要生产商。",
+      "content": "中科新材研发位于瑞典，是新型材料的主要生产商。",
       "event": {
-        "title": "中科新材与新型材料",
-        "summary": "中科新材位于中国",
-        "content": "中科新材位于中国，是新型材料的主要生产商。"
+        "title": "中科新材研发与新型材料",
+        "summary": "中科新材研发位于瑞典",
+        "content": "中科新材研发位于瑞典，是新型材料的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "中科新材",
+          "name": "中科新材研发",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "瑞典",
           "description": "国家"
         },
         {
@@ -1902,11 +1902,11 @@
       "id": 63,
       "documentId": "doc-b10-15",
       "ordinal": 2,
-      "content": "合肥市以特产有机大米闻名，有机大米由东篱农业生产。",
+      "content": "合肥市以特产有机大米闻名，有机大米由东篱农业种植生产。",
       "event": {
         "title": "合肥市的特产与生产企业",
         "summary": "合肥市以有机大米闻名",
-        "content": "合肥市以特产有机大米闻名，有机大米由东篱农业生产。"
+        "content": "合肥市以特产有机大米闻名，有机大米由东篱农业种植生产。"
       },
       "entities": [
         {
@@ -1921,7 +1921,7 @@
         },
         {
           "type": "organization",
-          "name": "东篱农业",
+          "name": "东篱农业种植",
           "description": "生产企业"
         }
       ]
@@ -1930,21 +1930,21 @@
       "id": 64,
       "documentId": "doc-b10-15",
       "ordinal": 3,
-      "content": "东篱农业位于中国，是有机大米的主要生产商。",
+      "content": "东篱农业种植位于瑞士，是有机大米的主要生产商。",
       "event": {
-        "title": "东篱农业与有机大米",
-        "summary": "东篱农业位于中国",
-        "content": "东篱农业位于中国，是有机大米的主要生产商。"
+        "title": "东篱农业种植与有机大米",
+        "summary": "东篱农业种植位于瑞士",
+        "content": "东篱农业种植位于瑞士，是有机大米的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "东篱农业",
+          "name": "东篱农业种植",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "瑞士",
           "description": "国家"
         },
         {
@@ -2019,11 +2019,11 @@
       "id": 67,
       "documentId": "doc-b10-16",
       "ordinal": 2,
-      "content": "宁波市以特产变压器闻名，变压器由新元电气生产。",
+      "content": "宁波市以特产变压器闻名，变压器由新元电气设备生产。",
       "event": {
         "title": "宁波市的特产与生产企业",
         "summary": "宁波市以变压器闻名",
-        "content": "宁波市以特产变压器闻名，变压器由新元电气生产。"
+        "content": "宁波市以特产变压器闻名，变压器由新元电气设备生产。"
       },
       "entities": [
         {
@@ -2038,7 +2038,7 @@
         },
         {
           "type": "organization",
-          "name": "新元电气",
+          "name": "新元电气设备",
           "description": "生产企业"
         }
       ]
@@ -2047,21 +2047,21 @@
       "id": 68,
       "documentId": "doc-b10-16",
       "ordinal": 3,
-      "content": "新元电气位于中国，是变压器的主要生产商。",
+      "content": "新元电气设备位于新加坡，是变压器的主要生产商。",
       "event": {
-        "title": "新元电气与变压器",
-        "summary": "新元电气位于中国",
-        "content": "新元电气位于中国，是变压器的主要生产商。"
+        "title": "新元电气设备与变压器",
+        "summary": "新元电气设备位于新加坡",
+        "content": "新元电气设备位于新加坡，是变压器的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "新元电气",
+          "name": "新元电气设备",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "新加坡",
           "description": "国家"
         },
         {
@@ -2136,11 +2136,11 @@
       "id": 71,
       "documentId": "doc-b10-17",
       "ordinal": 2,
-      "content": "无锡市以特产仿制药闻名，仿制药由瑞康制药生产。",
+      "content": "无锡市以特产仿制药闻名，仿制药由瑞康制药研发生产。",
       "event": {
         "title": "无锡市的特产与生产企业",
         "summary": "无锡市以仿制药闻名",
-        "content": "无锡市以特产仿制药闻名，仿制药由瑞康制药生产。"
+        "content": "无锡市以特产仿制药闻名，仿制药由瑞康制药研发生产。"
       },
       "entities": [
         {
@@ -2155,7 +2155,7 @@
         },
         {
           "type": "organization",
-          "name": "瑞康制药",
+          "name": "瑞康制药研发",
           "description": "生产企业"
         }
       ]
@@ -2164,21 +2164,21 @@
       "id": 72,
       "documentId": "doc-b10-17",
       "ordinal": 3,
-      "content": "瑞康制药位于中国，是仿制药的主要生产商。",
+      "content": "瑞康制药研发位于泰国，是仿制药的主要生产商。",
       "event": {
-        "title": "瑞康制药与仿制药",
-        "summary": "瑞康制药位于中国",
-        "content": "瑞康制药位于中国，是仿制药的主要生产商。"
+        "title": "瑞康制药研发与仿制药",
+        "summary": "瑞康制药研发位于泰国",
+        "content": "瑞康制药研发位于泰国，是仿制药的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "瑞康制药",
+          "name": "瑞康制药研发",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "泰国",
           "description": "国家"
         },
         {
@@ -2253,11 +2253,11 @@
       "id": 75,
       "documentId": "doc-b10-18",
       "ordinal": 2,
-      "content": "济南市以特产装配式建筑闻名，装配式建筑由天成建设生产。",
+      "content": "济南市以特产装配式建筑闻名，装配式建筑由天成建设集团生产。",
       "event": {
         "title": "济南市的特产与生产企业",
         "summary": "济南市以装配式建筑闻名",
-        "content": "济南市以特产装配式建筑闻名，装配式建筑由天成建设生产。"
+        "content": "济南市以特产装配式建筑闻名，装配式建筑由天成建设集团生产。"
       },
       "entities": [
         {
@@ -2272,7 +2272,7 @@
         },
         {
           "type": "organization",
-          "name": "天成建设",
+          "name": "天成建设集团",
           "description": "生产企业"
         }
       ]
@@ -2281,21 +2281,21 @@
       "id": 76,
       "documentId": "doc-b10-18",
       "ordinal": 3,
-      "content": "天成建设位于中国，是装配式建筑的主要生产商。",
+      "content": "天成建设集团位于越南，是装配式建筑的主要生产商。",
       "event": {
-        "title": "天成建设与装配式建筑",
-        "summary": "天成建设位于中国",
-        "content": "天成建设位于中国，是装配式建筑的主要生产商。"
+        "title": "天成建设集团与装配式建筑",
+        "summary": "天成建设集团位于越南",
+        "content": "天成建设集团位于越南，是装配式建筑的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "天成建设",
+          "name": "天成建设集团",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "越南",
           "description": "国家"
         },
         {
@@ -2370,11 +2370,11 @@
       "id": 79,
       "documentId": "doc-b10-19",
       "ordinal": 2,
-      "content": "福州市以特产图像识别软件闻名，图像识别软件由云图科技生产。",
+      "content": "福州市以特产图像识别软件闻名，图像识别软件由云图科技算法生产。",
       "event": {
         "title": "福州市的特产与生产企业",
         "summary": "福州市以图像识别软件闻名",
-        "content": "福州市以特产图像识别软件闻名，图像识别软件由云图科技生产。"
+        "content": "福州市以特产图像识别软件闻名，图像识别软件由云图科技算法生产。"
       },
       "entities": [
         {
@@ -2389,7 +2389,7 @@
         },
         {
           "type": "organization",
-          "name": "云图科技",
+          "name": "云图科技算法",
           "description": "生产企业"
         }
       ]
@@ -2398,21 +2398,21 @@
       "id": 80,
       "documentId": "doc-b10-19",
       "ordinal": 3,
-      "content": "云图科技位于中国，是图像识别软件的主要生产商。",
+      "content": "云图科技算法位于马来西亚，是图像识别软件的主要生产商。",
       "event": {
-        "title": "云图科技与图像识别软件",
-        "summary": "云图科技位于中国",
-        "content": "云图科技位于中国，是图像识别软件的主要生产商。"
+        "title": "云图科技算法与图像识别软件",
+        "summary": "云图科技算法位于马来西亚",
+        "content": "云图科技算法位于马来西亚，是图像识别软件的主要生产商。"
       },
       "entities": [
         {
           "type": "organization",
-          "name": "云图科技",
+          "name": "云图科技算法",
           "description": "生产企业"
         },
         {
           "type": "location",
-          "name": "中国",
+          "name": "马来西亚",
           "description": "国家"
         },
         {
