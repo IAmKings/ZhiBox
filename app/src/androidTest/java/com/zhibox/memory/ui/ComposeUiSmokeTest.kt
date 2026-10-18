@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.zhibox.memory.MainActivity
@@ -79,9 +80,9 @@ class ComposeUiSmokeTest {
         }
 
         composeRule.onNodeWithText(str(R.string.search_title)).assertIsDisplayed()
-        // 2 条命中都在 LazyColumn 可见区（首屏 2 条）
+        // 结果区在可滚动 Column 内；小屏需滚动到第 2 条
         composeRule.onNodeWithText(DOC_TITLE_A).assertIsDisplayed()
-        composeRule.onNodeWithText(DOC_TITLE_B).assertIsDisplayed()
+        composeRule.onNodeWithText(DOC_TITLE_B).performScrollTo().assertIsDisplayed()
 
         // 命中卡片 = Card + Modifier.clickable：merged semantics 上 click 动作
         composeRule.onNodeWithText(DOC_TITLE_A).performClick()
@@ -119,7 +120,8 @@ class ComposeUiSmokeTest {
 
         composeRule.onNodeWithText(str(R.string.search_refused_title)).assertIsDisplayed()
         composeRule.onNodeWithText(refusal).assertIsDisplayed()
-        composeRule.onNodeWithText(str(R.string.search_refused_hint)).assertIsDisplayed()
+        // 拒绝态 mode=MULTI：B10 起提示为 multi 专用文案
+        composeRule.onNodeWithText(str(R.string.search_multi_refused_hint)).performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText(str(R.string.action_dismiss)).performClick()
         composeRule.waitForIdle()
         assertTrue("拒绝态动作应触发 onDismissError", dismissed.get())

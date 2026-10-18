@@ -60,7 +60,7 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 | `docs/review/B8_FIX_REPORT.md` | B8 实施报告（schema v6/抽取契约/LLM 安全基础/备份 v3 骨架） |
 | `docs/review/B9_FIX_REPORT.md` | B9 实施报告（schema v7/抽取管线/LLM completion/UI 两阶段/备份 FTS；质量门禁通过） |
 | `docs/review/B9_EXTRACTION_EVAL_RESULT.md` | B9 真实 LLM 100 chunk 成功率（99%）+ 50 chunk 抽检结果 |
-| `docs/review/B10_FIX_REPORT.md` | B10 实施报告（三模式/预算/降级/trace/多跳评测；multi 0.7681 主门禁 Pass、fast 0.7396、262 0 回退） |
+| `docs/review/B10_FIX_REPORT.md` | B10 实施报告（三模式/预算/降级/trace/多跳评测；multi 0.7681 主门禁 Pass、fast 0.7396、262 0 回退、PJZ110 Compose 5/5） |
 | `docs/phase1/MVP1-ACCEPTANCE.md` | MVP-1 验收清单（§9.1/9.2/9.3 逐条对照与遗留项） |
 | `docs/RELEASE.md` | release 构建、签名、安装与回滚流程 |
 | `docs/SAG_Android_MVP_Implementation_Plan_v1.0.md` | **实施计划**（Phase 0/1 任务分解、判定门 G1–G4、验收映射） |

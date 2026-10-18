@@ -307,6 +307,8 @@
     <string name="search_degraded_reason">已降级：%1$s</string>
     <string name="search_multi_refused_hint">→ multi（SAG 精排）需要配置并允许联网的 LLM；可切换到「SAG 快速」或「混合」后重试。</string>
     <string name="search_trace_title">检索 trace（脱敏诊断）</string>
+    <string name="search_trace_expand">展开</string>
+    <string name="search_trace_collapse">收起</string>
     <string name="search_trace_counts">种子事件 %1$d · 种子实体 %2$d · 展开事件 %3$d · 候选 %4$d · 选中 %5$d · 耗时 %6$d ms</string>
     <string name="search_trace_stage">· %1$s：%2$d（%3$d ms）</string>
     <string name="search_trace_export">导出 trace JSON</string>

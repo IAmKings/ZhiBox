@@ -93,7 +93,7 @@ schema v7、抽取 pipeline/scheduler/worker、FTS/SAG 向量、补抽取/重试
 
 ## 5. B10 — SAG 结构化检索与多跳评测（✅ 完成 2026-10-18，见 `docs/review/B10_FIX_REPORT.md`）
 
-> 状态：三模式/预算/source scope/降级/trace/UI/测试已落地；真机多跳评测 真实 **multi** 多跳 R@5 **0.7681**（PRD 主门禁 ≥0.70 通过；OpenCode Go deepseek-v4-flash，0 refused/88 degraded，p50 7.15s/p95 9.38s）；fast R@5 0.7396（离线子门禁通过）、vector 0.1819；262 单跳 vector/fused 0 回退。保留限制：评测集受控合成未独立人工校验、multi 延迟未达高/中端档、4 跳 0.5375、Compose PJZ110 未复跑、10k 为 SQL/检索微基准。详见报告。详见报告。
+> 状态：三模式/预算/source scope/降级/trace/UI/测试已落地；真机多跳评测 真实 **multi** 多跳 R@5 **0.7681**（PRD 主门禁 ≥0.70 通过；OpenCode Go deepseek-v4-flash，0 refused/88 degraded，p50 7.15s/p95 9.38s）；fast R@5 0.7396（离线子门禁通过）、vector 0.1819；262 单跳 vector/fused 0 回退。保留限制：评测集受控合成未独立人工校验、multi 延迟未达高/中端档、4 跳 0.5375、10k 为 SQL/检索微基准；Compose UI 已在 PJZ110 5/5 通过。详见报告。详见报告。
 
 **目标**：三模式落地，`multi_es_fast` 在离线可用；`multi` 具备 LLM 选择能力；建立可回归的中文多跳评测。
 

@@ -3,7 +3,7 @@
 - **日期**：2026-10-18
 - **依据**：`docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` §5（B10）、PRD FR-03/04/05、论文 §3.3/§3.4
 - **性质**：检索侧实现 + 多跳评测；B11 生成问答、B12 图谱未实现。
-- **结论**：**B10 代码、JVM/instrumentation 门禁、多跳质量主门禁与 262 单跳回归均通过（含真实 LLM multi）**。真实 multi R@5 **0.7681**（PRD 主门禁 ≥0.70）、fast 0.7396（离线子门禁 ≥0.65），vector 0.1819；262 单跳 vector/fused 0 回退。保留限制：评测集为受控合成未独立人工校验、multi p95 9.4s/degraded 88、Compose PJZ110 未复跑、10k 为 SQL 微基准。
+- **结论**：**B10 代码、JVM/instrumentation 门禁、多跳质量主门禁与 262 单跳回归均通过（含真实 LLM multi）**。真实 multi R@5 **0.7681**（PRD 主门禁 ≥0.70）、fast 0.7396（离线子门禁 ≥0.65），vector 0.1819；262 单跳 vector/fused 0 回退。保留限制：评测集为受控合成未独立人工校验、multi p95 9.4s/degraded 88、10k 为 SQL 微基准。Compose UI 已在 PJZ110 5/5 通过。
 
 ---
 
@@ -81,6 +81,19 @@ B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected
 - multi 评测 120 条：0 refused、88 degraded（LLM selector 回退/补位），p50 7.15s/p95 9.38s（非流式、K40+远端，未达 PRD multi 延迟档的高/中端；作为已知限制记录）；
 - **262 单跳回归**：K40 + 440M 同语料复测，vector R@5 0.9864 / R@10 0.9909、fused R@5 0.9955 / R@10 1.0，**与既有 `K40-440M-v2b` 的 vector/fused R@5/R@10 一致**；keyword R@5 0.9545 vs 基线 0.9500（+0.0045，不构成回退），avg 160ms vs 基线 280ms（不同运行/设备状态，不作等价声明）；score/raw 见 `docs/review/evidence/B10-262_{score,evalrun}.json`。
 
+### 2.4 B10 Compose UI 真机门禁（PJZ110）
+
+2026-10-18 在 PJZ110（`1fc6056b`）安装 debug + androidTest APK 后执行：
+
+```text
+am instrument -w -r -e class ComposeUiSmokeTest,ComposeRecreateSmokeTest ...
+OK (5 tests)
+```
+
+- 通过：SearchContent 两命中渲染/点击、拒绝态文案/动作、Evidence 返回、Sources 空态、MainActivity recreate；
+- K40 重测结论：MIUI 日志 `Abort background activity starts from 10400`，测试宿主 `ComponentActivity` 无法显示，属设备策略限制；不是 B10 UI 回归。
+- 证据：`docs/review/evidence/B10-compose-pjz110.log`。
+
 ---
 
 ## 3. 关键修正与后续
@@ -118,7 +131,7 @@ B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected
 |---|---|---|
 | 1 | 多跳 R@5 | **通过**：multi 0.7681、fast 0.7396、vector 0.1819；4 跳 multi 0.5375 仍有提升空间，B11 可继续 |
 | 2 | multi 延迟/降级 | 真实 multi p50 7.15s/p95 9.38s（非流式、远端），88/120 degraded（selector 回退/补位）；未达 PRD 高/中端延迟档，发布前需优化/按设备档降级到 fast |
-| 3 | Compose B10 未真机跑 | K40 仍卡 Activity 启动（设备显示栈）；PJZ110 未连接；B8/B9 基线 PJZ110 5/5；B10 UI 已编译，建议 B12 在 PJZ110 复跑 |
+| 3 | Compose B10 | **PJZ110 5/5 通过**（ComposeUiSmokeTest 4 + ComposeRecreateSmokeTest 1）；K40 因 MIUI 禁止后台启动测试宿主 `ComponentActivity` 无法跑 Compose instrumentation（非 App 问题） |
 | 4 | 10k 阈值 | 只有原始数，无 PRD 延迟门禁；事件向量扫描 5000 上限 |
 | 5 | 262 回归 | 已执行：K40 同语料 0 回退 |
 | 6 | 评测集 | 受控合成 80 chunk/120 query；发布前需人工校验/真实语料复跑 |

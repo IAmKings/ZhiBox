@@ -2,6 +2,8 @@ package com.zhibox.memory.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -10,8 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -22,9 +22,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -124,7 +128,10 @@ internal fun SearchContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                // B10 真机修复：小屏 + trace/错误态内容高于视口时，结果/提示需可滚动；
+                // 不使用嵌套 LazyColumn（外层滚动 + 内层 lazy 会测量冲突）。
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -231,17 +238,31 @@ internal fun SearchContent(
                         style = MaterialTheme.typography.bodySmall,
                     )
 
-                    // ---- B10：精简 trace + 脱敏导出 ----
+                    // ---- B10：精简 trace（默认折叠，避免挤占结果区）+ 脱敏导出 ----
+                    var traceExpanded by remember { mutableStateOf(false) }
                     Card(Modifier.fillMaxWidth()) {
                         Column(
                             Modifier.padding(12.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            Text(
-                                stringResource(R.string.search_trace_title),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    stringResource(R.string.search_trace_title),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                TextButton(onClick = { traceExpanded = !traceExpanded }) {
+                                    Text(
+                                        stringResource(
+                                            if (traceExpanded) R.string.search_trace_collapse
+                                            else R.string.search_trace_expand,
+                                        ),
+                                    )
+                                }
+                            }
                             Text(
                                 stringResource(
                                     R.string.search_trace_counts,
@@ -254,29 +275,31 @@ internal fun SearchContent(
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            r.trace.stages.forEach { stage ->
-                                Text(
-                                    stringResource(
-                                        R.string.search_trace_stage,
-                                        stage.name,
-                                        stage.count,
-                                        stage.ms,
-                                    ),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            OutlinedButton(
-                                onClick = onExportTrace,
-                                enabled = !exportingTrace,
-                            ) {
-                                Text(
-                                    if (exportingTrace) {
-                                        stringResource(R.string.search_trace_exporting)
-                                    } else {
-                                        stringResource(R.string.search_trace_export)
-                                    },
-                                )
+                            if (traceExpanded) {
+                                r.trace.stages.forEach { stage ->
+                                    Text(
+                                        stringResource(
+                                            R.string.search_trace_stage,
+                                            stage.name,
+                                            stage.count,
+                                            stage.ms,
+                                        ),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                OutlinedButton(
+                                    onClick = onExportTrace,
+                                    enabled = !exportingTrace,
+                                ) {
+                                    Text(
+                                        if (exportingTrace) {
+                                            stringResource(R.string.search_trace_exporting)
+                                        } else {
+                                            stringResource(R.string.search_trace_export)
+                                        },
+                                    )
+                                }
                             }
                             traceExportMessage?.let {
                                 Text(
@@ -294,11 +317,8 @@ internal fun SearchContent(
                             message = stringResource(R.string.search_empty_message),
                         )
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            items(r.hits, key = { it.chunkId }) { h ->
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            r.hits.forEach { h ->
                                 Card(
                                     Modifier
                                         .fillMaxWidth()
