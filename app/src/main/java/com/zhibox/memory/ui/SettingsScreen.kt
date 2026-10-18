@@ -49,6 +49,7 @@ import com.zhibox.memory.core.ingest.IngestRepository
 import com.zhibox.memory.core.model.ModelCatalog
 import com.zhibox.memory.core.model.PathPreferences
 import com.zhibox.memory.core.model.SharedModelStore
+import com.zhibox.memory.core.sag.SagBudgetTier
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
 import java.io.File
 
@@ -114,6 +115,37 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.settings_import_dialog_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // B12：备份格式与 v3 SAG 数据概览（v1/v2 包计数为 0）
+                    Text(
+                        stringResource(R.string.settings_import_format_version, pv.formatVersion),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        stringResource(
+                            R.string.settings_import_sag_counts,
+                            pv.eventCount,
+                            pv.entityCount,
+                            pv.eventEntityCount,
+                            pv.sagVectorCount,
+                            pv.extractionJobCount,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (pv.formatVersion < 3) {
+                        Text(
+                            stringResource(R.string.settings_import_legacy_sag_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    } else if (pv.eventCount == 0 && pv.extractionJobCount == 0) {
+                        Text(
+                            stringResource(R.string.settings_import_sag_empty_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
                     Text(
                         stringResource(R.string.settings_import_spaces_requirements),
                         style = MaterialTheme.typography.bodyMedium,
@@ -303,9 +335,11 @@ fun SettingsScreen(
             }
         },
         setAnswerNetworkConsent = viewModel::setAnswerNetworkConsent,
+        setBudgetTier = viewModel::setBudgetTier,
         setNetworkDisabled = viewModel::setNetworkDisabled,
         backfillExtraction = viewModel::backfillExtraction,
         retryFailedExtraction = viewModel::retryFailedExtraction,
+        exportTrace = viewModel::exportTraceJson,
     )
     SettingsContent(state = state, actions = actions)
 }
@@ -338,6 +372,10 @@ class SettingsActions(
     // B9：SAG 两阶段抽取
     val backfillExtraction: () -> Unit = {},
     val retryFailedExtraction: () -> Unit = {},
+    // B12：trace 诊断导出
+    val exportTrace: () -> Unit = {},
+    // B12：检索预算档位
+    val setBudgetTier: (SagBudgetTier) -> Unit = {},
 )
 
 /** 无状态设置内容：供 [SettingsScreen] 与 @Preview / UI 测试直接渲染（B3-7）。 */
@@ -668,6 +706,11 @@ internal fun SettingsContent(
                         stringResource(R.string.settings_migration_hint),
                         style = MaterialTheme.typography.bodySmall,
                     )
+                    Text(
+                        stringResource(R.string.settings_backup_privacy_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     state.migrationMessage?.let {
                         Text(
                             it,
@@ -841,6 +884,58 @@ internal fun SettingsContent(
                     Text(
                         stringResource(R.string.settings_fts_hint),
                         style = MaterialTheme.typography.bodySmall,
+                    )
+
+                    // ---- B12：检索/问答 trace 诊断（脱敏导出，无正文）----
+                    HorizontalDivider()
+                    Text(
+                        stringResource(R.string.settings_trace_section),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    val traceTotal = state.traceTotalCount
+                    if (traceTotal == null) {
+                        LoadingState(message = stringResource(R.string.settings_index_checking))
+                    } else {
+                        Text(
+                            stringResource(R.string.settings_trace_summary, traceTotal),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        if (state.traceRecentModes.isNotEmpty()) {
+                            Text(
+                                stringResource(
+                                    R.string.settings_trace_modes,
+                                    state.traceRecentModes.entries.joinToString(" · ") {
+                                        "${it.key} ${it.value}"
+                                    },
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = actions.exportTrace,
+                        enabled = !state.traceExporting,
+                    ) {
+                        Text(
+                            if (state.traceExporting) {
+                                stringResource(R.string.settings_trace_exporting)
+                            } else {
+                                stringResource(R.string.settings_trace_export)
+                            },
+                        )
+                    }
+                    state.traceExportMessage?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Text(
+                        stringResource(R.string.settings_trace_privacy_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -1067,6 +1162,41 @@ internal fun SettingsContent(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+
+                    // ---- B12：检索预算档位（PRD §7.2；下一次检索/问答生效）----
+                    HorizontalDivider()
+                    Text(
+                        stringResource(R.string.settings_budget_section),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SagBudgetTier.entries.forEach { tier ->
+                            FilterChip(
+                                selected = state.budgetTier == tier,
+                                onClick = { actions.setBudgetTier(tier) },
+                                label = { Text(budgetTierLabel(tier)) },
+                            )
+                        }
+                    }
+                    val tierBudget = state.budgetTier.budget
+                    Text(
+                        stringResource(
+                            R.string.settings_budget_current,
+                            tierBudget.kPool,
+                            tierBudget.kSeed,
+                            tierBudget.frontier,
+                            tierBudget.kCand,
+                            tierBudget.kEvent,
+                            tierBudget.kOut,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        stringResource(R.string.settings_budget_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 
@@ -1152,6 +1282,14 @@ internal fun SettingsContent(
             }
         }
     }
+}
+
+/** B12：预算档位展示名（高/中/低端设备，PRD §7.2）。 */
+@Composable
+private fun budgetTierLabel(tier: SagBudgetTier): String = when (tier) {
+    SagBudgetTier.HIGH -> stringResource(R.string.settings_budget_tier_high)
+    SagBudgetTier.MID -> stringResource(R.string.settings_budget_tier_mid)
+    SagBudgetTier.LOW -> stringResource(R.string.settings_budget_tier_low)
 }
 
 @Composable
@@ -1245,6 +1383,10 @@ private fun SettingsDarkPreview() {
                     failed = 1,
                     notIndexed = 3,
                 ),
+                // B12：trace 诊断样例
+                traceTotalCount = 12,
+                traceRecentModes = mapOf("qa" to 3, "multi_es_fast" to 7, "vector" to 2),
+                budgetTier = SagBudgetTier.MID,
             ),
             actions = SettingsActions(),
         )

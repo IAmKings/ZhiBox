@@ -10,6 +10,8 @@ import com.zhibox.memory.core.llm.LlmQueryEntityExtractor
 import com.zhibox.memory.core.llm.LlmSagContextSelector
 import com.zhibox.memory.core.llm.OpenAiCompatibleLlmProvider
 import com.zhibox.memory.core.sag.RetrievalMode
+import com.zhibox.memory.core.sag.SagBudgetPreferences
+import com.zhibox.memory.core.sag.SagBudgetTier
 import com.zhibox.memory.core.sag.SagHit
 import com.zhibox.memory.core.sag.SagQuery
 import com.zhibox.memory.core.sag.SagResult
@@ -126,7 +128,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             // 也会显示阶段提示；只有同 key 已构建（warm）才不提示。
             _loadingModel.value = !EmbeddingRuntime.isEngineWarm(app)
             try {
-                val request = SagQuery(query = q, mode = requestMode, topK = 10)
+                val budget = SagBudgetPreferences.tier(app).budget
+                val request = SagQuery(query = q, mode = requestMode, topK = 10, budget = budget)
                 _result.value = withContext(Dispatchers.Default) { retriever.retrieve(request) }
             } catch (e: CancellationException) {
                 throw e

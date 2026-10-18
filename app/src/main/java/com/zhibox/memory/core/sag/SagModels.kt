@@ -56,6 +56,19 @@ data class SagBudget(
     }
 }
 
+/** B12：设备/用户预算档位（PRD §7.2；高/中/低端设备可切换，默认 HIGH）。 */
+enum class SagBudgetTier(val wire: String, val budget: SagBudget) {
+    HIGH("high", SagBudget(kPool = 500, kSeed = 50, frontier = 50, kCand = 100, kEvent = 5, kOut = 10)),
+    MID("mid", SagBudget(kPool = 300, kSeed = 30, frontier = 30, kCand = 60, kEvent = 4, kOut = 10)),
+    LOW("low", SagBudget(kPool = 150, kSeed = 20, frontier = 20, kCand = 40, kEvent = 3, kOut = 10)),
+    ;
+
+    companion object {
+        fun fromWire(value: String?): SagBudgetTier =
+            entries.firstOrNull { it.wire == value } ?: HIGH
+    }
+}
+
 /**
  * 单次检索请求。
  *

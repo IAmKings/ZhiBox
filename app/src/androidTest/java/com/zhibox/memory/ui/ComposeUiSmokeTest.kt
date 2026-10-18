@@ -169,7 +169,9 @@ class ComposeUiSmokeTest {
             }
         }
 
-        composeRule.onNodeWithText(str(R.string.sources_title)).assertIsDisplayed()
+        // B12：SourcesContent 不再自带 Scaffold/title（标题由 SourcesScreen 统一持有），
+        // 这里直接测内容空态与动作；标题由 SourcesScreen 的顶部栏负责。
+        composeRule.onNodeWithText(context.getString(R.string.sources_summary, 0, 0, 0)).assertIsDisplayed()
         composeRule.onNodeWithText(str(R.string.sources_empty)).assertIsDisplayed()
         composeRule.onNodeWithText(str(R.string.sources_go_import)).performClick()
         composeRule.waitForIdle()

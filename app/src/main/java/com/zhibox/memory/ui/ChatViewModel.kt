@@ -24,6 +24,7 @@ import com.zhibox.memory.core.llm.LlmConfigStore
 import com.zhibox.memory.core.llm.LlmPreferences
 import com.zhibox.memory.core.llm.OpenAiCompatibleLlmProvider
 import com.zhibox.memory.core.sag.RetrievalMode
+import com.zhibox.memory.core.sag.SagBudgetPreferences
 import com.zhibox.memory.core.sag.SagHit
 import com.zhibox.memory.core.sag.SagQuery
 import com.zhibox.memory.core.sag.SagResult
@@ -463,6 +464,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         mode = mode,
                         topK = TOP_K,
                         sourceIds = _state.value.sourceScope,
+                        budget = SagBudgetPreferences.tier(app).budget,
                     ),
                 )
             }

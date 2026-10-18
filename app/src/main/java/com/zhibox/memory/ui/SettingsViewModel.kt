@@ -24,9 +24,13 @@ import com.zhibox.memory.core.ingest.ReembedScheduler
 import com.zhibox.memory.core.model.ModelCatalog
 import com.zhibox.memory.core.model.PathPreferences
 import com.zhibox.memory.core.model.SharedModelStore
+import com.zhibox.memory.core.sag.SagBudgetPreferences
+import com.zhibox.memory.core.sag.SagBudgetTier
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.DocStatus
 import kotlinx.coroutines.CancellationException
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -120,6 +124,8 @@ data class SettingsUiState(
     val networkDisabled: Boolean = true,
     /** B11：问答首次联网隐私说明是否已同意（未同意前 Chat 不发起生成请求） */
     val answerNetworkConsent: Boolean = false,
+    /** B12：检索预算档位（PRD §7.2，默认 HIGH；下一轮检索/问答生效） */
+    val budgetTier: SagBudgetTier = SagBudgetTier.HIGH,
     // ---- B9：SAG 两阶段抽取状态 ----
     /** SAG 抽取可用性（LLM 配置 + SAG 开关 + 未禁网）；false 时补抽取/重试按钮禁用 */
     val sagAvailable: Boolean = false,
@@ -129,6 +135,14 @@ data class SettingsUiState(
     val extractionWorking: Boolean = false,
     /** 抽取动作结果/错误（可读单行） */
     val extractionMessage: String? = null,
+    // ---- B12：检索/问答 trace 诊断（脱敏导出） ----
+    /** query_trace 总条数（null=尚未读取） */
+    val traceTotalCount: Int? = null,
+    /** 最近 50 条 trace 按 mode 计数（qa/vector/multi_es_fast/multi…） */
+    val traceRecentModes: Map<String, Int> = emptyMap(),
+    val traceExporting: Boolean = false,
+    /** trace 导出结果/错误（可读；不含正文） */
+    val traceExportMessage: String? = null,
 )
 
 /**
@@ -183,9 +197,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val answerEnabled: Boolean,
         val networkDisabled: Boolean,
         val answerNetworkConsent: Boolean,
+        val budgetTier: SagBudgetTier,
         // B9
         val sagAvailable: Boolean,
         val extractionCounts: ExtractionCountsUi,
+        // B12：trace 诊断
+        val traceTotalCount: Int,
+        val traceRecentModes: Map<String, Int>,
     )
 
     fun refresh() {
@@ -227,8 +245,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         answerEnabled = s.answerEnabled,
                         networkDisabled = s.networkDisabled,
                         answerNetworkConsent = s.answerNetworkConsent,
+                        budgetTier = s.budgetTier,
                         sagAvailable = s.sagAvailable,
                         extractionCounts = s.extractionCounts,
+                        traceTotalCount = s.traceTotalCount,
+                        traceRecentModes = s.traceRecentModes,
                     )
                 }
             } catch (e: CancellationException) {
@@ -290,9 +311,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val answerEnabled = LlmPreferences.answerEnabled(app)
         val networkDisabled = !LlmPreferences.networkAllowed(app)
         val answerNetworkConsent = LlmPreferences.answerNetworkConsent(app)
+        val budgetTier = SagBudgetPreferences.tier(app)
         // B9：SAG 抽取可用性与任务计数（IO 上下文；可用性失败按不可用处理，不阻塞刷新）
         val sagAvailable = runCatching { SagAvailability.isAvailable(app) }.getOrDefault(false)
         val extractionCounts = readExtractionCounts()
+        // B12：query_trace 诊断（总条数 + 最近 50 条按 mode 计数；无正文）
+        val traceDao = db.queryTraceDao()
+        val traceTotalCount = traceDao.count()
+        val traceRecentModes = traceDao.recent(TRACE_RECENT_LIMIT)
+            .groupingBy { it.mode }
+            .eachCount()
         val storeState = SharedModelStore.state(app)
         val sharedNames = if (storeState == SharedModelStore.State.CONNECTED) {
             SharedModelStore.listNamesSync(app)
@@ -321,8 +349,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             answerEnabled = answerEnabled,
             networkDisabled = networkDisabled,
             answerNetworkConsent = answerNetworkConsent,
+            budgetTier = budgetTier,
             sagAvailable = sagAvailable,
             extractionCounts = extractionCounts,
+            traceTotalCount = traceTotalCount,
+            traceRecentModes = traceRecentModes,
         )
     }
 
@@ -511,6 +542,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun confirmImport(dropIncompatibleGpuVectors: Boolean) {
         val uri = _state.value.importUri ?: return
+        // B12：导入前快照预览，成功后据此给出 SAG 补抽取提示（v1/v2 或 SAG 空包）
+        val preview = _state.value.importPreview
         update { it.copy(migrationMessage = str(R.string.settings_backup_importing), importPreview = null) }
         safeLaunch(
             onError = { t ->
@@ -521,9 +554,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         ) {
             val result = KnowledgeBackup.import(app, uri, dropIncompatibleGpuVectors)
             result.onSuccess { n ->
+                val sagHint = when {
+                    preview != null && preview.formatVersion < 3 -> "\n" + str(R.string.settings_import_legacy_sag_hint)
+                    preview != null && preview.eventCount == 0 && preview.extractionJobCount == 0 ->
+                        "\n" + str(R.string.settings_import_sag_after_hint)
+                    else -> ""
+                }
                 update {
                     it.copy(
-                        migrationMessage = str(R.string.settings_backup_import_done, n),
+                        migrationMessage = str(R.string.settings_backup_import_done, n) + sagHint,
                         importUri = null,
                     )
                 }
@@ -816,6 +855,21 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         ) { it.copy(answerEnabled = enabled) }
     }
 
+    /** B12：保存检索预算档位（IO 持久化；下一次检索/问答读取生效）。 */
+    fun setBudgetTier(tier: SagBudgetTier) {
+        if (_state.value.budgetTier == tier) return
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(error = str(R.string.settings_budget_save_failed, t.readableMessage()))
+                }
+            },
+        ) {
+            withContext(Dispatchers.IO) { SagBudgetPreferences.setTier(app, tier) }
+            update { it.copy(budgetTier = tier) }
+        }
+    }
+
     /** B11：记录/撤销「问答首次联网隐私说明」同意（首次开启问答前必须取得）。 */
     fun setAnswerNetworkConsent(granted: Boolean) {
         safeLaunch(
@@ -918,6 +972,81 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // ───────────────────────── B12：trace 诊断导出（脱敏，无正文） ─────────────────────────
+
+    /**
+     * 导出最近 50 条检索/问答 trace（脱敏诊断）：只写 queryHash/mode/timingJson/degradedReason/
+     * createdAt；不含查询正文、文档内容与 key。写入应用私有 filesDir/trace_exports/。
+     */
+    fun exportTraceJson() {
+        if (_state.value.traceExporting) return
+        update { it.copy(traceExporting = true, traceExportMessage = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        traceExporting = false,
+                        traceExportMessage = str(R.string.settings_trace_export_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            try {
+                val outcome = withContext(Dispatchers.IO) {
+                    val rows = db.queryTraceDao().recent(TRACE_EXPORT_LIMIT)
+                    if (rows.isEmpty()) {
+                        0 to null
+                    } else {
+                        val array = JSONArray()
+                        rows.forEach { row ->
+                            array.put(
+                                JSONObject()
+                                    .put("id", row.id)
+                                    .put("queryHash", row.queryHash)
+                                    .put("mode", row.mode)
+                                    .put("timingJson", row.timingJson)
+                                    .put("degradedReason", row.degradedReason ?: JSONObject.NULL)
+                                    .put("createdAt", row.createdAt),
+                            )
+                        }
+                        val dir = File(app.filesDir, TRACE_EXPORT_DIR).apply { mkdirs() }
+                        val file = File(dir, "query_trace_${System.currentTimeMillis()}.json")
+                        file.writeText(array.toString(2))
+                        rows.size to file.absolutePath
+                    }
+                }
+                val count = outcome.first
+                val path = outcome.second
+                update {
+                    it.copy(
+                        traceExportMessage = if (path == null) {
+                            str(R.string.settings_trace_export_empty)
+                        } else {
+                            str(R.string.settings_trace_exported, count, path)
+                        },
+                        traceTotalCount = _state.value.traceTotalCount,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } finally {
+                update { it.copy(traceExporting = false) }
+                refreshTraceStats()
+            }
+        }
+    }
+
+    /** 刷新 trace 总条数与最近 50 条的模式分布（诊断展示）。 */
+    private fun refreshTraceStats() {
+        safeLaunch {
+            val stats = withContext(Dispatchers.IO) {
+                val dao = db.queryTraceDao()
+                dao.count() to dao.recent(TRACE_RECENT_LIMIT).groupingBy { it.mode }.eachCount()
+            }
+            update { it.copy(traceTotalCount = stats.first, traceRecentModes = stats.second) }
+        }
+    }
+
     fun reembedNow() {
         safeLaunch(
             onError = { t -> update { it.copy(error = str(R.string.settings_reembed_enqueue_failed, t.readableMessage())) } },
@@ -928,6 +1057,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun cancelReembed() {
         ReembedScheduler.cancel(app)
+    }
+
+    private companion object {
+        /** B12：trace 导出/展示条数（UI 只展示最近 50 条）。 */
+        const val TRACE_EXPORT_LIMIT = 50
+        const val TRACE_RECENT_LIMIT = 50
+        const val TRACE_EXPORT_DIR = "trace_exports"
     }
 
     private fun observeReembedProgress() {

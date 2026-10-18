@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -86,18 +87,50 @@ fun SourcesScreen(
         )
     }
 
-    SourcesContent(
-        sources = sources,
-        documents = documents,
-        extractionByDocument = extractionByDocument,
-        loading = !loaded,
-        deleteError = deleteError,
-        onBack = onBack,
-        onOpenImport = onOpenImport,
-        onDeleteRequest = { source -> pendingDelete = source.id to source.title },
-        onDismissError = viewModel::clearDeleteError,
-    )
+    // B12：来源 / 图谱切换（图谱数据/分页独立在 GraphViewModel）
+    var tab by remember { mutableStateOf(SOURCES_TAB_SOURCES) }
+    val graphViewModel: GraphViewModel = viewModel()
+
+    ZhiBoxScreen(title = stringResource(R.string.sources_title), onBack = onBack) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = tab == SOURCES_TAB_SOURCES,
+                    onClick = { tab = SOURCES_TAB_SOURCES },
+                    label = { Text(stringResource(R.string.sources_tab_sources)) },
+                )
+                FilterChip(
+                    selected = tab == SOURCES_TAB_GRAPH,
+                    onClick = { tab = SOURCES_TAB_GRAPH },
+                    label = { Text(stringResource(R.string.sources_tab_graph)) },
+                )
+            }
+            if (tab == SOURCES_TAB_GRAPH) {
+                GraphScreen(graphViewModel, modifier = Modifier.weight(1f))
+            } else {
+                SourcesContent(
+                    sources = sources,
+                    documents = documents,
+                    extractionByDocument = extractionByDocument,
+                    loading = !loaded,
+                    deleteError = deleteError,
+                    onOpenImport = onOpenImport,
+                    onDeleteRequest = { source -> pendingDelete = source.id to source.title },
+                    onDismissError = viewModel::clearDeleteError,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
 }
+
+private const val SOURCES_TAB_SOURCES = "sources"
+private const val SOURCES_TAB_GRAPH = "graph"
 
 /** 无状态来源内容：供 [SourcesScreen] 与 @Preview / UI 测试直接渲染（B3-7）。 */
 @Composable
@@ -108,24 +141,24 @@ internal fun SourcesContent(
     extractionByDocument: Map<String, ExtractionDocUi> = emptyMap(),
     loading: Boolean = false,
     deleteError: String?,
-    onBack: () -> Unit,
     onOpenImport: () -> Unit,
     onDeleteRequest: (SourceEntity) -> Unit,
     onDismissError: () -> Unit,
+    // 兼容既有 androidTest/preview 调用（B12 起 Scaffold 由 SourcesScreen 统一持有）
+    @Suppress("UNUSED_PARAMETER") onBack: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     val docsBySource = remember(documents) { documents.groupBy { it.sourceId } }
     val readyCount = remember(documents) {
         documents.count { DocStatus.fromValue(it.status) == DocStatus.READY }
     }
 
-    ZhiBoxScreen(title = stringResource(R.string.sources_title), onBack = onBack) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
             Text(
                 stringResource(R.string.sources_summary, sources.size, readyCount, documents.size),
                 style = MaterialTheme.typography.bodySmall,
@@ -199,7 +232,6 @@ internal fun SourcesContent(
             }
         }
     }
-}
 
 /**
  * B9：逐文档 SAG 抽取状态文案（total 含取消；active 含 queued+running）。
@@ -276,7 +308,6 @@ private fun SourcesLightPreview() {
             sources = previewSources,
             documents = previewDocuments,
             deleteError = null,
-            onBack = {},
             onOpenImport = {},
             onDeleteRequest = {},
             onDismissError = {},
@@ -292,7 +323,6 @@ private fun SourcesDarkPreview() {
             sources = previewSources,
             documents = previewDocuments,
             deleteError = null,
-            onBack = {},
             onOpenImport = {},
             onDeleteRequest = {},
             onDismissError = {},
@@ -308,7 +338,6 @@ private fun SourcesEmptyPreview() {
             sources = emptyList(),
             documents = emptyList(),
             deleteError = null,
-            onBack = {},
             onOpenImport = {},
             onDeleteRequest = {},
             onDismissError = {},
@@ -324,7 +353,6 @@ private fun SourcesErrorPreview() {
             sources = previewSources,
             documents = previewDocuments,
             deleteError = "删除失败：数据库被占用",
-            onBack = {},
             onOpenImport = {},
             onDeleteRequest = {},
             onDismissError = {},

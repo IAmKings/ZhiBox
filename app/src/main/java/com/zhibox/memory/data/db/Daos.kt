@@ -604,6 +604,34 @@ interface EventDao {
     @Query("SELECT COUNT(*) FROM event WHERE active = 1")
     suspend fun countActive(): Int
 
+    // ---- B12 图谱视图：来源可选过滤的 active event 分页（Sources 页 event + entity/chunk 原文） ----
+    //
+    // 说明：
+    // - 只返回 active=1 的当前有效 event（被 supersede 的历史行不进入图谱，避免重复节点）；
+    // - `sourceId = null` 表示全部来源（`:sourceId IS NULL` 分支），非空时按 document.sourceId 过滤；
+    // - 分页按 event.id DESC（新事件优先，稳定翻页）；event+entity/chunk 详情由调用方用
+    //   EventEntityDao.byEvents / EntityDao.byIds / ChunkDao.chunksByIds / DocumentDao.byIds 批量补齐，
+    //   本查询只取 event 主体，避免 JOIN 展开导致行数膨胀。
+
+    /** B12：按来源（可选）过滤的 active event 分页；sourceId=null 表示不过滤。 */
+    @Query(
+        "SELECT e.* FROM event e " +
+            "JOIN chunk c ON c.id = e.chunkId " +
+            "JOIN document d ON d.id = c.documentId " +
+            "WHERE e.active = 1 AND (:sourceId IS NULL OR d.sourceId = :sourceId) " +
+            "ORDER BY e.id DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun activeGraphPage(sourceId: String?, limit: Int, offset: Int): List<EventEntity>
+
+    /** B12：与 [activeGraphPage] 同过滤条件的 active event 总数（分页/空态用）。 */
+    @Query(
+        "SELECT COUNT(*) FROM event e " +
+            "JOIN chunk c ON c.id = e.chunkId " +
+            "JOIN document d ON d.id = c.documentId " +
+            "WHERE e.active = 1 AND (:sourceId IS NULL OR d.sourceId = :sourceId)"
+    )
+    suspend fun countActiveGraph(sourceId: String?): Int
+
     // ---- event_fts：写入/重建/检索（bigram 文本由 core/search 生成） ----
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFts(row: EventFtsEntity): Long

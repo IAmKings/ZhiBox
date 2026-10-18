@@ -348,7 +348,7 @@ P0 成功定义：用户可在离线模式完成 chunk 检索；在配置 LLM �
 | B9 | 抽取/索引 | ✅ 导入联动抽取、event/entity 向量/FTS、状态/重试/补抽取已落地；真实 LLM 100 chunk 成功率 99%、50 chunk 抽检三项达标（见 `docs/review/B9_EXTRACTION_EVAL_RESULT.md`；自建语料/AI 辅助标注） | 抽取成功率/质量抽检 |
 | B10 | 检索/评测 | ✅ 三模式/双路径/预算/trace 已落地；真实 multi R@5 0.7681 主门禁通过、fast 0.7396、262 单跳 0 回退；保留评测集/延迟/Compose 限制（见 `docs/review/B10_FIX_REPORT.md`） | 多跳 R@5 ≥0.70 |
 | B11 | 精排+问答 | ✅ 真实 QA citation validity 100%、无证据拒答 100%；50 support 支持率 98%、citation/fullyCited 100%；JVM 504/0、PJZ110 instrumentation 21/21（见 `docs/review/B11_FIX_REPORT.md`） | 引用/证据/禁网门禁 |
-| B12 | 图谱/发布 | 图谱/详情、设置/诊断、备份 v3、真机验收 | P0 全验收 |
+| B12 | 图谱/发布 | 🟡 图谱/设置/备份 v3 UI/诊断/预算档位第一批已落地；三档矩阵/签名/独立审查未闭合（见 `docs/review/B12_ACCEPTANCE.md`） | P0 全验收 |
 
 P1：PDF/Office/网页导入、Explore/3D、多轮 Agent/工具、别名、抽取质量专项。
 P2：MCP/REST/OpenAI/Dify/dsh-sag、本地 LLM、同步/多用户、多模态、ANN。

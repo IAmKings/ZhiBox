@@ -143,7 +143,7 @@
     <string name="settings_section_migration">知识库迁移</string>
     <string name="settings_export">导出知识库</string>
     <string name="settings_import">导入知识库</string>
-    <string name="settings_migration_hint">导出包含文档、分块、关键词索引与全部向量。导入到新设备时需本机装有对应模型：缺失会在导入预览中列出（可在模型商店下载后重试）；GPU 向量跨 GPU 家族建议丢弃重嵌入。</string>
+    <string name="settings_migration_hint">导出包含文档、分块、全部向量与 SAG 事件层（v3 格式）；关键词索引（FTS）在导入后从原文重建。导入到新设备时需本机装有对应模型：缺失会在导入预览中列出（可在模型商店下载后重试）；GPU 向量跨 GPU 家族建议丢弃重嵌入。</string>
     <string name="settings_exporting">导出中…</string>
     <string name="settings_export_done">已导出 %1$d 条向量</string>
     <string name="settings_export_failed">导出失败：%1$s</string>
@@ -195,7 +195,7 @@
     <string name="settings_kb_summary">%1$d 个文档就绪 · %2$d 个块</string>
 
     <string name="settings_section_privacy">隐私与离线声明</string>
-    <string name="settings_privacy_text">· 检索、嵌入、导入默认离线运行；未配置 LLM 或开启禁网时不发起任何 LLM 请求\n· 仅在你显式保存并开启 SAG 增强/问答、且关闭禁网后，才会向指定 HTTPS 端点发送检索片段（发送前显示目标域名）\n· 模型下载是另一条显式联网路径（URL + SHA-256 校验）\n· 知识数据（文档/向量/索引）仅存于本机应用沙箱，不上传不备份</string>
+    <string name="settings_privacy_text">· 检索、嵌入、导入默认离线运行；未配置 LLM 或开启禁网时不发起任何 LLM 请求\n· SAG 增强/问答默认关闭；仅在你显式开启两者、关闭禁网并同意首次联网说明后，才会向指定 HTTPS 端点发送检索片段（发送前显示目标域名）\n· 模型下载是另一条显式联网路径（URL + SHA-256 校验）\n· 知识数据（文档/向量/索引/SAG 事件层）仅存于本机应用沙箱，不上传不备份\n· 知识库备份不包含聊天/问答记录、query trace 与 API Key</string>
 
     <string name="settings_refresh_failed">刷新设置失败：%1$s</string>
     <string name="settings_leave_title">下载仍在进行</string>
@@ -362,4 +362,55 @@
     <string name="settings_answer_consent_required">开启问答前需先阅读并同意首次联网隐私说明。</string>
     <string name="settings_answer_consent_agreed">已同意首次联网隐私说明</string>
     <string name="settings_answer_consent_agree">我已了解并同意</string>
+
+    <!-- ==== B12：备份 v3 视角与诊断 trace ==== -->
+    <string name="settings_import_format_version">备份格式：v%1$d（当前支持 v1–v3）</string>
+    <string name="settings_import_sag_counts">SAG 数据：事件 %1$d · 实体 %2$d · 事件-实体 %3$d · SAG 向量 %4$d · 抽取任务 %5$d</string>
+    <string name="settings_import_legacy_sag_hint">旧版备份（v1/v2）不含 SAG 事件层；导入后可在「SAG 抽取状态」点「补抽取」重建。</string>
+    <string name="settings_import_sag_empty_hint">包内 SAG 事件层为空；导入后建议在「SAG 抽取状态」点「补抽取」。</string>
+    <string name="settings_import_sag_after_hint">导入完成；如 SAG 事件层为空或需重建，可到「SAG 抽取状态」点「补抽取」。</string>
+    <string name="settings_backup_privacy_note">备份包含文档/分块/向量与 SAG 事件层（v3）；FTS 索引导入后从原文重建；聊天记录、query trace、API Key 不导出。</string>
+
+    <string name="settings_trace_section">检索 / 问答 trace</string>
+    <string name="settings_trace_summary">共 %1$d 条（最近 50 条可导出）</string>
+    <string name="settings_trace_modes">最近 50 条按模式：%1$s</string>
+    <string name="settings_trace_export">导出脱敏 trace</string>
+    <string name="settings_trace_exporting">导出中…</string>
+    <string name="settings_trace_exported">已导出 %1$d 条 trace：%2$s</string>
+    <string name="settings_trace_export_empty">暂无可导出的 trace（先执行检索/问答）</string>
+    <string name="settings_trace_export_failed">导出 trace 失败：%1$s</string>
+    <string name="settings_trace_privacy_hint">仅含 queryHash/耗时/降级原因，无查询正文与文档内容。</string>
+
+    <!-- ==== B12：来源图谱 / 事件详情 ==== -->
+    <string name="sources_tab_sources">来源</string>
+    <string name="sources_tab_graph">图谱</string>
+    <string name="graph_filter_all">全部来源</string>
+    <string name="graph_summary">共 %1$d 个事件（已加载 %2$d 个）</string>
+    <string name="graph_load_more">加载更多</string>
+    <string name="graph_loading_more">加载中…</string>
+    <string name="graph_empty_title">图谱暂无事件</string>
+    <string name="graph_empty_message">SAG 增强未启用，或当前筛选下来源尚无抽取事件；可在设置页开启 SAG 并「补抽取」。</string>
+    <string name="graph_source_doc">来源：%1$s · 文档：%2$s</string>
+    <string name="graph_entity_more">+%1$d</string>
+    <string name="graph_event_detail_title">事件详情</string>
+    <string name="graph_detail_entities">关联实体（%1$d）</string>
+    <string name="graph_detail_entity_line">· %1$s（%2$s）</string>
+    <string name="graph_detail_entity_unknown_type">未知类型</string>
+    <string name="graph_detail_content">原文片段</string>
+    <string name="graph_detail_location">定位：第 %1$d 块 · 字符 %2$d–%3$d</string>
+    <string name="graph_detail_no_content">原文不存在（文档可能已删除）</string>
+    <string name="graph_load_failed">图谱加载失败：%1$s</string>
+    <string name="graph_detail_failed">事件详情加载失败：%1$s</string>
+    <string name="graph_retry">重试</string>
+    <string name="graph_event_untitled">未命名事件</string>
+    <string name="graph_detail_summary_empty">（无摘要）</string>
+
+    <!-- ==== B12：检索预算档位（PRD §7.2） ==== -->
+    <string name="settings_budget_section">检索预算档位</string>
+    <string name="settings_budget_tier_high">高（默认）</string>
+    <string name="settings_budget_tier_mid">中</string>
+    <string name="settings_budget_tier_low">低</string>
+    <string name="settings_budget_current">当前预算：候选池 %1$d · 种子 %2$d · 扩展 %3$d · 候选 %4$d · 事件 %5$d · 输出 %6$d</string>
+    <string name="settings_budget_hint">切换后对下一次检索/问答生效；低档位减少候选与实体扩展，适合低端设备。</string>
+    <string name="settings_budget_save_failed">保存预算档位失败：%1$s</string>
 </resources>
