@@ -347,7 +347,7 @@ P0 成功定义：用户可在离线模式完成 chunk 检索；在配置 LLM �
 | B8 | 数据/基础 | ✅ schema v6、LLM provider/密钥、抽取接口/prompt、备份 v3 骨架（见 `docs/review/B8_FIX_REPORT.md`） | 迁移/备份/单测 |
 | B9 | 抽取/索引 | ✅ 导入联动抽取、event/entity 向量/FTS、状态/重试/补抽取已落地；真实 LLM 100 chunk 成功率 99%、50 chunk 抽检三项达标（见 `docs/review/B9_EXTRACTION_EVAL_RESULT.md`；自建语料/AI 辅助标注） | 抽取成功率/质量抽检 |
 | B10 | 检索/评测 | ✅ 三模式/双路径/预算/trace 已落地；真实 multi R@5 0.7681 主门禁通过、fast 0.7396、262 单跳 0 回退；保留评测集/延迟/Compose 限制（见 `docs/review/B10_FIX_REPORT.md`） | 多跳 R@5 ≥0.70 |
-| B11 | 精排+问答 | 🟡 流式/引用校验/Chat UI/隐私/异常矩阵已落地；sourceScope/模式/引用 rank/逐句未引用规则已修；真实 20 QA+50 支持率待设备 key（见 `docs/review/B11_FIX_REPORT.md`） | 引用/证据/禁网门禁 |
+| B11 | 精排+问答 | 🟡 流式/引用校验/Chat UI/隐私/异常矩阵已落地；sourceScope/模式/引用 rank/逐句未引用规则已修；20 QA+50 support harness 就绪；真实质量待设备 key（见 `docs/review/B11_FIX_REPORT.md`） | 引用/证据/禁网门禁 |
 | B12 | 图谱/发布 | 图谱/详情、设置/诊断、备份 v3、真机验收 | P0 全验收 |
 
 P1：PDF/Office/网页导入、Explore/3D、多轮 Agent/工具、别名、抽取质量专项。

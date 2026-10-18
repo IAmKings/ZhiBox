@@ -48,6 +48,12 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 
 **B7 路线收敛的额外影响**：旧 `.task`（Path C）、Granite、LFM2.5 下线（旧模型文件保留在磁盘、不再识别）；升级后设置页提示"检测到 N 个旧模型空间"，相关文档需重新导入；含已下线空间的旧备份导入会在写库前被拒绝（原库不变）；新导出的备份会把"仅有旧模型向量"的文档标记为 `failed`（可见/可删/可重新导入）。270M/740M 为实验模型，建议验证门通过后再作为默认。
 
+## 带引用问答（B11，开发中）
+
+B11 在 B10 多跳检索证据上增加**单轮**带引用问答：先在本地检索证据，再把本轮 query + 最多 10 条证据发送到用户配置的 OpenAI-compatible LLM，流式返回 `[S1]…[Sn]` 引用答案；无证据直接拒答，非法/缺失引用会警示。会话/消息/引用本地持久化，历史不注入下一问；source scope 与检索模式可在 Chat 内选择；API Key 存 Android Keystore，禁网/首次联网同意/日志脱敏见 [B11 使用与隐私说明](docs/product/B11_CHAT_PRIVACY_GUIDE.md)。
+
+> 当前状态：代码/自动门禁/Compose 已通过；真实 20 条问答 + 50 条支持率主门禁待有效 LLM key，B11 标 🟡 部分完成（见 [B11 报告](docs/review/B11_FIX_REPORT.md)）。
+
 ## 文档导航
 
 | 文档 | 内容 |

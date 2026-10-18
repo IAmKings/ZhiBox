@@ -37,7 +37,7 @@
 |---|---|
 | JVM debug / release | **504/0 / 485/0** |
 | lint / assemble | **0 errors / 34 warnings；BUILD SUCCESSFUL** |
-| 真机 instrumentation（PJZ110） | **20/20**（ChatRepository 9 + Compose B10 5 + Chat 6） |
+| 真机 instrumentation（PJZ110） | **21/21**（ChatRepository 9 + Compose B10 5 + Chat 7） |
 | B11 Qa harness gate-closed（PJZ110） | 1/1 run；4/4 NO_EVIDENCE 拒答正确；16 条 KEY_MISSING 拒（**质量指标不可用**） |
 | B11 Support 50 条 harness gate-closed | 1/1 run；50/50 KEY_MISSING 拒；`supportRate=null`（需真实 key + 人工/LLM judge） |
 | SSE/引用/隐私 JVM | 61 chat tests + 18 privacy/TLS mock tests，0 failures |

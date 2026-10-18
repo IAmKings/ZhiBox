@@ -19,6 +19,7 @@ import com.zhibox.memory.core.chat.ChatCitation
 import com.zhibox.memory.core.chat.ChatConversation
 import com.zhibox.memory.core.chat.ChatMessage
 import com.zhibox.memory.core.chat.ChatRole
+import com.zhibox.memory.core.sag.RetrievalMode
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -321,4 +322,47 @@ class ChatUiSmokeTest {
         composeRule.waitForIdle()
         assertTrue("点击发送应触发 onSend", sent.get())
     }
+    // ---------------- 7) B11 模式 + source scope 控件 ----------------
+
+    @Test
+    fun modeAndSourceScopeControls_回传选择() {
+        val selectedMode = AtomicReference<RetrievalMode?>(RetrievalMode.MULTI)
+        val selectedScope = AtomicReference<List<String>>(emptyList())
+        val state = readyState().copy(
+            availableSources = listOf(
+                ChatSourceOption("src-1", "来源一"),
+                ChatSourceOption("src-2", "来源二"),
+            ),
+        )
+        composeRule.setContent {
+            ZhiBoxTheme {
+                ChatContent(
+                    state = state,
+                    onInputChange = {},
+                    onSend = {},
+                    onStop = {},
+                    onRetry = {},
+                    onNewConversation = {},
+                    onSelectConversation = {},
+                    onModeChange = { selectedMode.set(it) },
+                    onSourceScopeChange = { selectedScope.set(it) },
+                    onCitationClick = {},
+                    onDismissError = {},
+                    onDismissWarning = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText(str(R.string.chat_mode_auto)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.search_mode_multi)).performClick()
+        composeRule.waitForIdle()
+        assertEquals(RetrievalMode.MULTI, selectedMode.get())
+
+        composeRule.onNodeWithText(str(R.string.chat_source_all)).assertIsDisplayed()
+        composeRule.onNodeWithText("来源一").performClick()
+        composeRule.waitForIdle()
+        assertEquals(listOf("src-1"), selectedScope.get())
+    }
+
 }
