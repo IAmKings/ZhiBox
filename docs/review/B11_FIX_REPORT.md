@@ -1,8 +1,8 @@
 # B11 实施报告（LLM 上下文选择、带引用问答与 Chat/隐私）
 
-- **日期**：2026-10-18（进行中）
+- **日期**：2026-10-19
 - **依据**：ROADMAP §6 B11、PRD FR-06/FR-08/FR-09/§11.2/§11.3
-- **结论**：**代码/自动门禁、Chat Compose/DB 真机测试通过；真实 20 条问答 + 50 条支持率主门禁尚未执行（当前 PJZ110 无 LLM 配置、K40 未连接），且引用内容级支持校验仍为部分；B11 暂标部分完成，不宣称验收通过。**
+- **结论**：**B11 完成（真机主门禁通过）**。PJZ110 + OpenCode Go `deepseek-v4-flash`：20 条 QA 中 15/16 有证据题作答（1 次 LLM_TIMEOUT）、4/4 无证据题 `NO_EVIDENCE`；citation validity **100%**、fullyCited 93.3%、无引用断言 1 条；50 条支持率抽样 49/50 作答、citation validity/fullyCited **100%**、人工复核支持率 **98%**（阈 ≥90%）。残余：各 1 次 timeout、语义支持为人工复核、TLS mock 非 chunked、首 token SLO 未专项。
 
 ## 1. 交付
 
@@ -39,7 +39,9 @@
 | lint / assemble | **0 errors / 34 warnings；BUILD SUCCESSFUL** |
 | 真机 instrumentation（PJZ110） | **21/21**（ChatRepository 9 + Compose B10 5 + Chat 7） |
 | B11 Qa harness gate-closed（PJZ110） | 1/1 run；4/4 NO_EVIDENCE 拒答正确；16 条 KEY_MISSING 拒（**质量指标不可用**） |
-| B11 Support 50 条 harness gate-closed | 1/1 run；50/50 KEY_MISSING 拒；`supportRate=null`（需真实 key + 人工/LLM judge） |
+| B11 Support 50 条 harness gate-closed（历史无 key） | 1/1 run；50/50 KEY_MISSING 拒 |
+| **真实 QA 20 条（PJZ110）** | **15/16 作答；citation validity 1.0；fullyCited 0.9333；noEvidenceRefusal 1.0；p50 1800ms/p95 2708ms；1 LLM_TIMEOUT** |
+| **真实 Support 50 条 + 人工复核** | **49/50 作答；citation validity 1.0；fullyCited 1.0；supportRate 0.98（49/50）；p50 1766ms/p95 2647ms；1 LLM_TIMEOUT** |
 | SSE/引用/隐私 JVM | 61 chat tests + 18 privacy/TLS mock tests，0 failures |
 
 证据：`docs/review/evidence/B11-compose-pjz110.txt`、`B11-chatrepository-pjz110.txt`、`B11-qa-gateclosed-{answers,score}.json`。
@@ -67,19 +69,26 @@
 | P1 取消早于连接 / 晚到连接 | **已修**：producer 打开前后检查 disconnected，晚到连接关闭 |
 | P2 拒答被标 unverified | **已修**：模型输出固定拒答文案 → 按 NO_EVIDENCE Failed 语义处理，不持久化警示答案 |
 | 内容级引用支持/未引用断言检测缺失 | **保留限制**：当前只保证 ID 子集、非法替换、unverified；真实支持率需人工/LLM judge |
-| 真实 20 QA/50 支持率、TLS chunked 时序 | **未完成**：需设备 key/真实网络；TLS mock 为整包 |
+| 真实 20 QA/50 支持率 | **已完成**：QA citation 100%/no-evidence 100%；support 98%；TLS chunked 时序仍为限制 |
 
-## 3. 未完成/门禁阻塞
+## 3. 门禁结果与残余限制
 
-1. **真实 20 条问答 + 50 条支持率未跑**：当前连接的 PJZ110 无 LLM 配置；K40（有 key + 模型）未连接。需要用户在任一设备保存有效 key（并开启问答/联网/consent），或在 K40 运行 harness。支持 harness 已就绪但 gate-closed 只有 KEY_MISSING。
-2. 引用有效性/支持率/拒答的真实质量结论不能由 gate-closed 结果替代；当前只验证了 4 条无证据题零网络拒答 100%。
-3. sourceScope 有数据契约/持久化，但 Chat UI 暂无来源多选入口（空=全库）；`ChatEvidence.documentId/sourceId` 因契约 Long 而数据层 String，用 hash 占位（不参与引用/持久化）。
-4. 真实 TLS mock 是整包响应，非 chunked 逐块/中途断流；真实 provider E2E 需真机网络验证。
-5. Chat 停止只保留 partial 展示、不落库；重试已改为复用同 query/会话，不重复追加 user 消息。
+### 3.1 门禁结果
+- 引用有效性 **100%**（QA 15/15、Support 49/49 的合法引用；0 invalid/0 unverified）。
+- 无证据拒答 **100%**（4/4 `NO_EVIDENCE`，零网络）。
+- 支持率 **98%**（49/50 人工复核；阈值 ≥90%）。
+- fullyCited：QA 93.3%（q005 有一句未引用）、Support 100%。
+- 延迟（仅生成）：QA p50 1.8s/p95 2.7s；Support p50 1.77s/p95 2.65s；各 1 次 timeout 可重试。
 
-## 4. 下一步
+### 3.2 残余限制
+1. 真实 LLM 各 1 次 `LLM_TIMEOUT`（QA q013、Support q003），UI 可重试；不虚构成功。
+2. 支持率为 Lead 以答案/证据人工复核（AI 辅助），非独立第三方；建议独立 judge 复核。
+3. TLS mock 覆盖整包 SSE；真实 chunked 逐块/中途断流、首 token SLO 未做专项。
+4. ChatEvidence 的 documentId/sourceId 因契约 Long 与数据层 String 用 hash 占位（引用/持久化只用 chunkId）；来源范围/模式 UI 已实现，历史会话 scope 展示未专门视觉验收。
+5. 未做多轮/工具/B12 图谱，符合范围。
 
-1. 连接 K40（或给 PJZ110 配置 key）后运行 `B11QaEvalTest` 20 条真实问答并计分；再抽 50 条支持率（人工/LLM judge），补 B11 报告。
-2. 独立 Standards/Spec 审查 findings 修复。
-3. B11 UI 设置/隐私端到端与真实网络错误路径复核。
-4. ROADMAP/PRD 更新为 B11 完成（仅当主门禁通过）。
+## 4. 后续
+
+1. 可选：独立 judge 对 50 条支持率复核（当前 Lead 复核已过门）。
+2. 观察真实网络超时率，必要时增加重试/超时档位 UI 解释。
+3. 进入 B12（图谱/设置完善/备份与真机验收）。

@@ -1,0 +1,700 @@
+{
+  "generatedAt": 1792339371750,
+  "total": 20,
+  "gate": {
+    "providerConfigured": true,
+    "answerEnabled": true,
+    "networkAllowed": true,
+    "answerNetworkConsent": true,
+    "gateOpen": true,
+    "model": "deepseek-v4-flash"
+  },
+  "records": [
+    {
+      "qid": "noev-01",
+      "question": "爱因斯坦的相对论首次实验验证是在哪一年？",
+      "hops": 0,
+      "isNoEvidence": true,
+      "expectedEvidenceChunkIds": [],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "refused": true,
+      "code": "NO_EVIDENCE",
+      "model": null,
+      "elapsedMs": 2
+    },
+    {
+      "qid": "noev-02",
+      "question": "珠穆朗玛峰的海拔是多少米？",
+      "hops": 0,
+      "isNoEvidence": true,
+      "expectedEvidenceChunkIds": [],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "refused": true,
+      "code": "NO_EVIDENCE",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "noev-03",
+      "question": "《三体》的作者是谁？",
+      "hops": 0,
+      "isNoEvidence": true,
+      "expectedEvidenceChunkIds": [],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "refused": true,
+      "code": "NO_EVIDENCE",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "noev-04",
+      "question": "Python 语言最初由谁设计？",
+      "hops": 0,
+      "isNoEvidence": true,
+      "expectedEvidenceChunkIds": [],
+      "evidenceIds": [],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "refused": true,
+      "code": "NO_EVIDENCE",
+      "model": null,
+      "elapsedMs": 0
+    },
+    {
+      "qid": "q001",
+      "question": "张三所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        1,
+        2
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2"
+      ],
+      "answer": "张三所在的星河科技总部位于深圳市 [S1][S2]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 1,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 2,
+          "rank": 1
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 2274
+    },
+    {
+      "qid": "q007",
+      "question": "李四所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        5,
+        6
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2"
+      ],
+      "answer": "李四所在的组织是云帆数据 [S1]，云帆数据总部位于杭州市 [S2]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 5,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 6,
+          "rank": 1
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1633
+    },
+    {
+      "qid": "q013",
+      "question": "王五所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        9,
+        10
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2"
+      ],
+      "answer": "",
+      "citations": [],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": false,
+      "refused": true,
+      "code": "LLM_TIMEOUT",
+      "model": null,
+      "elapsedMs": 1201660
+    },
+    {
+      "qid": "q019",
+      "question": "赵敏所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        13,
+        14
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2"
+      ],
+      "answer": "赵敏所在的远航教育总部位于北京市 [S1][S2]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 13,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 14,
+          "rank": 1
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 2708
+    },
+    {
+      "qid": "q025",
+      "question": "刘洋所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        17,
+        18
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2"
+      ],
+      "answer": "刘洋所在的组织是青山能源 [S1]，青山能源总部位于南京市 [S2]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 17,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 18,
+          "rank": 1
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1819
+    },
+    {
+      "qid": "q031",
+      "question": "陈明所在组织总部位于哪座城市？",
+      "hops": 2,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        21,
+        22
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2"
+      ],
+      "answer": "蓝海物流总部位于广州市 [S2]。",
+      "citations": [
+        {
+          "evidenceId": "S2",
+          "chunkId": 22,
+          "rank": 1
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1547
+    },
+    {
+      "qid": "q003",
+      "question": "张三所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        1,
+        2,
+        3
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "answer": "张三所在的星河科技总部位于深圳市 [S1][S2]，深圳市以特产智能音箱闻名 [S3]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 1,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 2,
+          "rank": 1
+        },
+        {
+          "evidenceId": "S3",
+          "chunkId": 3,
+          "rank": 2
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1961
+    },
+    {
+      "qid": "q009",
+      "question": "李四所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        5,
+        6,
+        7
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "answer": "李四所在的云帆数据总部位于杭州市 [S1][S2]，杭州市以特产数据平台闻名 [S3]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 5,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 6,
+          "rank": 1
+        },
+        {
+          "evidenceId": "S3",
+          "chunkId": 7,
+          "rank": 2
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1734
+    },
+    {
+      "qid": "q015",
+      "question": "王五所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        9,
+        10,
+        11
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "answer": "上海市以特产康复设备闻名 [S3]。",
+      "citations": [
+        {
+          "evidenceId": "S3",
+          "chunkId": 11,
+          "rank": 2
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1603
+    },
+    {
+      "qid": "q021",
+      "question": "赵敏所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        13,
+        14,
+        15
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "answer": "赵敏所在的远航教育总部位于北京市 [S1][S2]，北京市以特产在线课程闻名 [S3]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 13,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 14,
+          "rank": 1
+        },
+        {
+          "evidenceId": "S3",
+          "chunkId": 15,
+          "rank": 2
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1827
+    },
+    {
+      "qid": "q027",
+      "question": "刘洋所在组织总部所在城市以什么特产闻名？",
+      "hops": 3,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        17,
+        18,
+        19
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "answer": "刘洋所在的组织是青山能源 [S1]，其总部位于南京市 [S2]，南京市以特产储能电池闻名 [S3]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 17,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 18,
+          "rank": 1
+        },
+        {
+          "evidenceId": "S3",
+          "chunkId": 19,
+          "rank": 2
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1800
+    },
+    {
+      "qid": "q005",
+      "question": "张三所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "answer": "张三所在的星河科技总部位于深圳市，该城市的特产智能音箱由星云电子制造生产。[S1][S2][S3]",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 1,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 2,
+          "rank": 1
+        },
+        {
+          "evidenceId": "S3",
+          "chunkId": 3,
+          "rank": 2
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 1,
+      "fullyCited": false,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 2071
+    },
+    {
+      "qid": "q011",
+      "question": "李四所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "answer": "李四所在组织云帆数据的总部位于杭州市 [S1][S2]；杭州市的特产数据平台由云帆智造装备生产 [S3]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 5,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 6,
+          "rank": 1
+        },
+        {
+          "evidenceId": "S3",
+          "chunkId": 7,
+          "rank": 2
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1699
+    },
+    {
+      "qid": "q017",
+      "question": "王五所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "answer": "王五所在的组织是华信医疗 [S1]，华信医疗总部位于上海市 [S2]；上海市的特产康复设备由仁和医疗器械生产 [S3]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 9,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 10,
+          "rank": 1
+        },
+        {
+          "evidenceId": "S3",
+          "chunkId": 11,
+          "rank": 2
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1794
+    },
+    {
+      "qid": "q023",
+      "question": "赵敏所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        13,
+        14,
+        15,
+        16
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "answer": "知远教育服务 [S1][S2][S3]",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 13,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 14,
+          "rank": 1
+        },
+        {
+          "evidenceId": "S3",
+          "chunkId": 15,
+          "rank": 2
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 2440
+    },
+    {
+      "qid": "q029",
+      "question": "刘洋所在组织总部所在城市的特产由哪家公司生产？",
+      "hops": 4,
+      "isNoEvidence": false,
+      "expectedEvidenceChunkIds": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "evidenceIds": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "answer": "刘洋所在组织是青山能源 [S1]，其总部位于南京市 [S2]；南京市的特产储能电池由青山储能设备生产 [S3]。",
+      "citations": [
+        {
+          "evidenceId": "S1",
+          "chunkId": 17,
+          "rank": 0
+        },
+        {
+          "evidenceId": "S2",
+          "chunkId": 18,
+          "rank": 1
+        },
+        {
+          "evidenceId": "S3",
+          "chunkId": 19,
+          "rank": 2
+        }
+      ],
+      "invalid": [],
+      "unverified": false,
+      "unreferencedSentenceCount": 0,
+      "fullyCited": true,
+      "refused": false,
+      "code": null,
+      "model": "deepseek-v4-flash",
+      "elapsedMs": 1692
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "answersFile": "/tmp/b11-support-real-answers.json",
+  "generatedAt": 1792341845980,
+  "gate": {
+    "providerConfigured": true,
+    "answerEnabled": true,
+    "networkAllowed": true,
+    "answerNetworkConsent": true,
+    "gateOpen": true,
+    "model": "deepseek-v4-flash"
+  },
+  "runGated": false,
+  "counts": {
+    "total": 50,
+    "withEvidence": 50,
+    "noEvidence": 0,
+    "answered": 49,
+    "refused": 1
+  },
+  "qa": {
+    "successRate": 0.98,
+    "citationValidRate": 1.0,
+    "citationInvalidCases": 0,
+    "citationInvalidQids": [],
+    "unverifiedCases": 0,
+    "unverifiedQids": [],
+    "noCitationCases": 0,
+    "noCitationQids": [],
+    "unreferencedCases": 0,
+    "unreferencedQids": [],
+    "fullyCitedRate": 1.0,
+    "avgCitationsPerAnswer": 2.571,
+    "noEvidenceRefusalAccuracy": null,
+    "noEvidenceWrongQids": [],
+    "latencyP50Ms": 1766,
+    "latencyP95Ms": 2647
+  },
+  "refusedByCode": {
+    "LLM_TIMEOUT": 1
+  },
+  "support": {
+    "available": true,
+    "rate": 0.98,
+    "counts": {
+      "judged": 50,
+      "supported": 49
+    },
+    "note": null
+  },
+  "harness": "B11SupportEvalTest",
+  "manifest": "/Users/pauldeman/Documents/ai_workspace/ZhiBox/scripts/eval/b11_support_manifest.json"
+}

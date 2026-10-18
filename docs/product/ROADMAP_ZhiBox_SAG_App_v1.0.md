@@ -112,9 +112,9 @@ schema v7、抽取 pipeline/scheduler/worker、FTS/SAG 向量、补抽取/重试
 
 ---
 
-## 6. B11 — LLM 上下文选择、带引用问答与 Chat/隐私（🟡 代码/自动门禁完成，真实 20 问答+50 支持率待设备 key）
+## 6. B11 — LLM 上下文选择、带引用问答与 Chat/隐私（✅ 完成 2026-10-19）
 
-> 状态：流式 provider/引用校验/Chat 持久化与 UI/隐私开关/异常矩阵已落地；JVM 504/0、PJZ110 instrumentation 21/21；20 QA + 50 support harness gate-closed 已跑。已修问答/SAG 开关耦合、sourceScope/模式 UI、引用 rank 重载错位、consent host、retry 门禁、取消竞态、主线程解密；规则版逐句未引用检测已加、语义支持仍需人工 judge；真实 20 条 QA 与 50 条支持率主门禁尚未执行（PJZ110 无 LLM key、K40 未连接）；B11 暂不关闭。详见 `docs/review/B11_FIX_REPORT.md`。
+> 状态：**PJZ110 + OpenCode Go `deepseek-v4-flash` 真实主门禁通过**：20 QA 中 15/16 作答、4/4 无证据拒答；citation validity 100%、fullyCited 93.3%；50 support 中 49/50 作答、citation validity/fullyCited 100%、人工复核支持率 98%（阈 ≥90%）。JVM 504/0、release 485/0、PJZ110 instrumentation 21/21。残余：各 1 次 LLM_TIMEOUT、语义支持人工复核、TLS mock 非 chunked、首 token SLO 未专项。详见 `docs/review/B11_FIX_REPORT.md`。
 
 **目标**：在 B10 候选集上完成 LLM 上下文选择/精排与带引用问答，并满足隐私/离线和引用校验门禁。
 

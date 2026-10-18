@@ -1,0 +1,50 @@
+{
+  "answersFile": "/tmp/b11-qa-real-answers.json",
+  "generatedAt": 1792339371750,
+  "gate": {
+    "providerConfigured": true,
+    "answerEnabled": true,
+    "networkAllowed": true,
+    "answerNetworkConsent": true,
+    "gateOpen": true,
+    "model": "deepseek-v4-flash"
+  },
+  "runGated": false,
+  "counts": {
+    "total": 20,
+    "withEvidence": 16,
+    "noEvidence": 4,
+    "answered": 15,
+    "refused": 5
+  },
+  "qa": {
+    "successRate": 0.9375,
+    "citationValidRate": 1.0,
+    "citationInvalidCases": 0,
+    "citationInvalidQids": [],
+    "unverifiedCases": 0,
+    "unverifiedQids": [],
+    "noCitationCases": 0,
+    "noCitationQids": [],
+    "unreferencedCases": 1,
+    "unreferencedQids": [
+      "q005"
+    ],
+    "fullyCitedRate": 0.9333,
+    "avgCitationsPerAnswer": 2.467,
+    "noEvidenceRefusalAccuracy": 1.0,
+    "noEvidenceWrongQids": [],
+    "latencyP50Ms": 1800,
+    "latencyP95Ms": 2708
+  },
+  "refusedByCode": {
+    "NO_EVIDENCE": 4,
+    "LLM_TIMEOUT": 1
+  },
+  "support": {
+    "available": false,
+    "rate": null,
+    "counts": {},
+    "note": "未提供 --support-manual（人工/LLM judge 支持率未评）"
+  }
+}
