@@ -29,7 +29,7 @@
 | backup v3 UI/依赖提示/旧包补抽取提示/隐私说明 | UI 审计补缺完成；编译通过；未做专项设备视觉 | Settings task-61 |
 | trace 诊断导出（最近 50/脱敏/无正文/errorCode） | Settings 新增计数+导出；QA timingJson 增 errorCode/errorStage | task-61 + 本轮 |
 | JVM/lint/assemble | debug 513/0、release 494/0、lint 0/37、assembleDebug/Release 成功 | `/tmp/b12-gate1.log` |
-| release candidate | **通过（构建/验签）**：release keystore 签名，apksigner verify PASS；未覆盖安装 debug 包；三档安装矩阵仍缺 | `dist/zhibox-0.1.0-mvp-1aeea59-b12-release.apk`，SHA-256 `b9f41cc3a217369fd4e268c18c39242ebeda9d9855d704578fbda225eb0c7f6b`；见 `evidence/B12-RELEASE_CANDIDATE.json` |
+| release candidate | **通过（构建/验签）**：release keystore 签名，apksigner verify PASS；未覆盖安装 debug 包；三档安装矩阵仍缺 | `dist/zhibox-0.1.0-mvp-0c08286-b12-release.apk`，SHA-256 `3abd4d2ca321993188b5c94ab68ea17238ca7d2591bcd1389cba33da2de5f036`；见 `evidence/B12-RELEASE_CANDIDATE.json` |
 
 ## 3. 未完成项
 
