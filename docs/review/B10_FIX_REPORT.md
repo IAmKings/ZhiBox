@@ -102,6 +102,14 @@ B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected
 | R7 | Chat/UI Compose 未真机、multi mock | **保留披露**：B10 UI 已编译；K40 显示栈无法跑 Compose；multi 真实 LLM 留 B11 |
 | R8 | 报告尾行仍写“未通过”矛盾 | **已修**：统一为“fast 子门禁通过、multi 主门禁未验、B10 部分完成” |
 
+## 3.2 发布前事故与修复：LLM 配置被测试清空（2026-10-18）
+
+- **现象**：运行 `KeystoreLlmConfigStoreTest` 后，K40 上用户已保存的 OpenCode Go 配置（`llm_config.xml`）被测试 `clear()` 清空，导致真实 multi 评测 `SagAvailability=false` 全部 refused。
+- **根因**：B9 instrumentation 测试直接操作生产 `llm_config` prefs/Keystore alias，`setUp/tearDown` clear 后未恢复。
+- **修复**：测试在 clear 前 `load()` 保留用户配置，tearDown 恢复；已落盘（需重新构建/运行验证）。
+- **影响**：用户 API key 已从本机清除，**无法由代码恢复**；需用户在设置页重新保存 key 后才能跑真实 multi 主门禁/继续 B11。B10 的 fast/262 门禁不受影响。
+- **后续**：真实 multi 评测需用户重新配置后再跑；本次不把 mock multi 当主门禁通过。
+
 ## 4. 已知限制
 
 | # | 事项 | 说明 |

@@ -27,6 +27,9 @@ class KeystoreLlmConfigStoreTest {
     private lateinit var store: KeystoreLlmConfigStore
     private val prefs get() = context.getSharedPreferences("llm_config", Context.MODE_PRIVATE)
 
+    /** 测试前设备上用户已保存的真实配置（测试结束恢复，避免 instrumentation 清掉用户 key）。 */
+    private var preservedConfig: LlmConfig? = null
+
     private val config = LlmConfig(
         baseUrl = "https://api.example.com/v1",
         model = "gpt-4o-mini",
@@ -39,6 +42,9 @@ class KeystoreLlmConfigStoreTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         store = KeystoreLlmConfigStore(context)
+        // B10 事故修复：此 instrumentation 测试会 clear() 生产 prefs/Keystore alias。
+        // 先抓取设备上用户配置，测试结束再 save 回去（无配置时 preserved=null）。
+        preservedConfig = runCatching { store.load() }.getOrNull()
         runCatching { store.clear() }
         prefs.edit().clear().commit()
     }
@@ -47,6 +53,10 @@ class KeystoreLlmConfigStoreTest {
     fun tearDown() {
         runCatching { store.clear() }
         prefs.edit().clear().commit()
+        // 恢复用户真实配置；失败也不让测试失败（但会记录在测试输出中）
+        preservedConfig?.let { cfg ->
+            runCatching { store.save(cfg) }
+        }
     }
 
     @Test

@@ -6,8 +6,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.zhibox.memory.core.embedding.EmbeddingRuntime
 import com.zhibox.memory.core.extraction.EmbeddingSagGateway
-import com.zhibox.memory.core.llm.MockLlmQueryEntityExtractor
-import com.zhibox.memory.core.llm.MockSagContextSelector
+import com.zhibox.memory.core.extraction.SagAvailability
+import com.zhibox.memory.core.llm.KeystoreLlmConfigStore
+import com.zhibox.memory.core.llm.LlmQueryEntityExtractor
+import com.zhibox.memory.core.llm.LlmSagContextSelector
+import com.zhibox.memory.core.llm.OpenAiCompatibleLlmProvider
 import com.zhibox.memory.core.text.BigramTokenizer
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.ChunkEmbeddingEntity
@@ -167,10 +170,14 @@ class B10MultiHopEvalTest {
         println("B10_EVAL_SEED chunks=${chunkArr.length()} events=${db.eventDao().count()} entities=${db.entityDao().count()}")
 
         val retriever = SagRetriever(ctx, db)
+        // B10 主门禁：multi 用真实 LLM 查询理解/上下文选择（需要设备已配置 OpenCode Go）。
+        val llmProvider = OpenAiCompatibleLlmProvider.from(ctx)
+        val llmStore = KeystoreLlmConfigStore(ctx)
         val multiRetriever = SagRetriever(
-            ctx, db, llmAvailable = { true },
-            llmExtractor = MockLlmQueryEntityExtractor(emptyList()),
-            llmSelector = MockSagContextSelector(),
+            ctx, db,
+            llmAvailable = { SagAvailability.isAvailable(ctx) },
+            llmExtractor = LlmQueryEntityExtractor(llmProvider, llmStore),
+            llmSelector = LlmSagContextSelector(llmProvider, llmStore),
         )
         val out = JSONArray()
         val requestedMode = InstrumentationRegistry.getArguments().getString("b10Mode")
