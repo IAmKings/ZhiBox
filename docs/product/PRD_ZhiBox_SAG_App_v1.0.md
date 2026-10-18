@@ -345,7 +345,7 @@ P0 成功定义：用户可在离线模式完成 chunk 检索；在配置 LLM �
 | 批次 | 主题 | 关键交付 | 门禁 |
 |---|---|---|---|
 | B8 | 数据/基础 | ✅ schema v6、LLM provider/密钥、抽取接口/prompt、备份 v3 骨架（见 `docs/review/B8_FIX_REPORT.md`） | 迁移/备份/单测 |
-| B9 | 抽取/索引 | 🟡 导入联动抽取、event/entity 向量/FTS、状态/重试/补抽取已落地；真实 LLM 质量抽检待执行（见 `docs/review/B9_FIX_REPORT.md`） | 抽取成功率/质量抽检 |
+| B9 | 抽取/索引 | ✅ 导入联动抽取、event/entity 向量/FTS、状态/重试/补抽取已落地；真实 LLM 100 chunk 成功率 99%、50 chunk 抽检三项达标（见 `docs/review/B9_EXTRACTION_EVAL_RESULT.md`；自建语料/AI 辅助标注） | 抽取成功率/质量抽检 |
 | B10 | 结构化检索 | 三模式、seed/扩展/排序/trace、多跳评测集 | 多跳 R@5/延迟门禁 |
 | B11 | 精排+问答 | contextual selector、answer+citation、Chat/隐私 | 引用/证据/禁网门禁 |
 | B12 | 图谱/发布 | 图谱/详情、设置/诊断、备份 v3、真机验收 | P0 全验收 |

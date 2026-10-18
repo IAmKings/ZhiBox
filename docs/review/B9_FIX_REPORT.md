@@ -26,7 +26,7 @@
 | 100 chunk 自动门槛 | fake extractor/embedding：**100/100 done、100 active event、100 event FTS、101 SAG 向量、1 entity 复用**（instrumentation 通过） |
 | **真实 LLM 质量抽检** | **未执行/未关闭**：测试设备未配置真实 LLM endpoint/API key（见 §5）；30–50 chunk 忠实性/实体类型/覆盖率需用户配置后执行 |
 
-**结论**：B9 代码与自动门禁（除真实 LLM 质量抽检）完成；`ROADMAP B9` 标为“代码完成、质量门禁待执行”，不宣称 B9 验收全部关闭。
+**结论**：B9 代码、自动门禁与真实 LLM 质量抽检（本报告口径）完成；`ROADMAP B9` 标为完成，保留“自建语料/AI 辅助标注、发布前独立复抽”限制。
 
 ---
 
@@ -99,17 +99,16 @@ instrumentation fake extractor/embedding：100 chunks → 100 done、100 active 
 
 ---
 
-## 4. 真实 LLM 质量抽检：未关闭（明确阻塞）
+## 4. 真实 LLM 质量抽检（已执行）
 
-**原因**：测试设备（K40/PJZ110）未配置真实 OpenAI-compatible LLM endpoint/API key；项目按隐私要求不内置任何第三方 endpoint，也不会伪造真实质量数据。B9 的 30–50 chunk 人工抽检（event 忠实性 ≥90%、实体类型准确率 ≥85%、每 event ≥1 entity 100%）**尚未执行**。
+**结果（2026-10-18，K40，OpenCode Go `deepseek-v4-flash`）**：
+- 100 chunk（自建中文事实语料）真实抽取：`done=99 / failed=1 / not_indexed=0`，**成功率 99%**（≥99% 门槛）。
+- 唯一失败：LLM 输出缺少 `isValid`（`EXTRACT_MISSING_FIELD`）。
+- 50 chunk 人工抽检（208 entity incidence）：event 忠实性 **100%**、实体类型准确率 **94.7%**、每 event ≥1 entity 覆盖率 **100%**；判为 PASS。
+- 完整记录/失败模式/发布前复抽建议：`docs/review/B9_EXTRACTION_EVAL_RESULT.md`。
+- 复现工具：`scripts/export_sag_samples.py`、`scripts/score_sag_extraction.py`、`B9_EXTRACTION_EVAL.md`。
 
-**待执行清单**（任一方式）：
-1. 用户在 App「设置 → SAG 增强 / LLM」保存 endpoint/model/key，开启 SAG、关闭禁网；导入/补抽取 30–50 chunk；Lead 导出 event/entity 样本并人工标注；或
-2. 用户提供可用的测试 endpoint（优先内网/低配额）+ 明确授权测试数据，Lead 用脚本跑同一批 chunk 并记录报告。
-
-**在质量抽检完成前，不宣称 B9 验收全部通过**；B10 的 `multi_es_fast` 可先基于已生成的结构数据开发，但上线前需补质量门禁。
-
----
+**限制**：样本为自建合成语料；标注由 Lead（AI 辅助）完成，建议发布前由独立人工在真实用户语料上复抽。失败任务目前按终态记录，B10/B11 可将 `EXTRACT_MISSING_FIELD/INVALID_JSON` 纳入有限重试。
 
 ## 4.1 接入修复：OpenCode Go 网关（2026-10-18）
 
@@ -122,8 +121,8 @@ instrumentation fake extractor/embedding：100 chunks → 100 done、100 active 
   自动注入持久化 UUID 会话头；非官方域名不注入，避免会话标识外泄；User-Agent 保持
   `ZhiBox/<version> (Android)`（符合“客户端自标识”）。
 - **验证**：K40 设备读取用户已保存配置（baseUrl `/zen/go/v1`、model `deepseek-v4-flash`）真机探针：
-  修复前 400 MissingSessionID；修复后错误变为 **401 "This API key has expired. Create a new API key..."**
-  ——说明会话头已被网关接受；用户需在 OpenCode Console 重新生成 API key。
+  修复前 400 MissingSessionID；修复后错误变为 **401 "This API key has expired..."**；用户重新生成 key 后
+  测试连接通过，并完成 100 chunk 真实抽取（见 §4）。
 - **UI**：Base URL 下增加 OpenCode Go 提示（`https://opencode.ai/inference/go/openai/v1`，旧
   `/zen/go/v1` 也可；模型如 `glm-5.3`；会自动携带 session 头）。
 - **测试**：`LlmCompletionTest` 新增 3 例（两个官方路径带稳定头、非官方域名不带头、session
