@@ -60,6 +60,7 @@ fun GraphScreen(
             detail = detail,
             onBack = viewModel::closeEvent,
             embedded = true,
+            onOpenRelated = viewModel::openRelatedEvent,
         )
         return
     }
@@ -222,6 +223,7 @@ fun GraphDetailScreen(
     detail: GraphEventDetailUi,
     onBack: () -> Unit,
     embedded: Boolean = false,
+    onOpenRelated: (Long) -> Unit = {},
 ) {
     if (embedded) {
         // B12：SourcesScreen 已有 Scaffold；详情作为内容层渲染，避免双层 TopBar。
@@ -234,7 +236,11 @@ fun GraphDetailScreen(
                     Text(stringResource(R.string.action_back))
                 }
             }
-            GraphDetailBody(detail = detail, modifier = Modifier.weight(1f))
+            GraphDetailBody(
+                detail = detail,
+                modifier = Modifier.weight(1f),
+                onOpenRelated = onOpenRelated,
+            )
         }
         return
     }
@@ -247,12 +253,17 @@ fun GraphDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
+            onOpenRelated = onOpenRelated,
         )
     }
 }
 
 @Composable
-private fun GraphDetailBody(detail: GraphEventDetailUi, modifier: Modifier = Modifier) {
+private fun GraphDetailBody(
+    detail: GraphEventDetailUi,
+    modifier: Modifier = Modifier,
+    onOpenRelated: (Long) -> Unit = {},
+) {
         Column(
             modifier = modifier
                 .padding(16.dp)
@@ -312,6 +323,51 @@ private fun GraphDetailBody(detail: GraphEventDetailUi, modifier: Modifier = Mod
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
+                        }
+                    }
+                }
+            }
+
+            // B12：entity 共享连接 —— 相关事件（点击可跳转详情）
+            HorizontalDivider()
+            Text(
+                stringResource(
+                    R.string.graph_detail_related_events,
+                    detail.relatedEvents.size,
+                ),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            if (detail.relatedEvents.isEmpty()) {
+                Text(
+                    stringResource(R.string.graph_detail_no_related),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                detail.relatedEvents.forEach { related ->
+                    Card(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenRelated(related.id) },
+                    ) {
+                        Column(
+                            Modifier.padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(
+                                related.title,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.graph_detail_shared_entity,
+                                    related.sharedEntityName,
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }
@@ -424,6 +480,18 @@ private fun GraphDetailPreview() {
                 chunkOrdinal = 2,
                 charStart = 300,
                 charEnd = 420,
+                relatedEvents = listOf(
+                    GraphRelatedEventUi(
+                        id = 2,
+                        title = "省电策略导致蓝牙断连",
+                        sharedEntityName = "蓝牙耳机",
+                    ),
+                    GraphRelatedEventUi(
+                        id = 3,
+                        title = "协议栈重置排查",
+                        sharedEntityName = "协议栈",
+                    ),
+                ),
             ),
             onBack = {},
         )

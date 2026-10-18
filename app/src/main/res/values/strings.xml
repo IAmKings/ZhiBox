@@ -413,4 +413,9 @@
     <string name="settings_budget_current">当前预算：候选池 %1$d · 种子 %2$d · 扩展 %3$d · 候选 %4$d · 事件 %5$d · 输出 %6$d</string>
     <string name="settings_budget_hint">切换后对下一次检索/问答生效；低档位减少候选与实体扩展，适合低端设备。</string>
     <string name="settings_budget_save_failed">保存预算档位失败：%1$s</string>
+
+    <!-- ==== B12：entity 共享连接相关事件 ==== -->
+    <string name="graph_detail_related_events">相关事件（共享实体，%1$d）</string>
+    <string name="graph_detail_shared_entity">共享实体：%1$s</string>
+    <string name="graph_detail_no_related">暂无共享实体的相关事件</string>
 </resources>

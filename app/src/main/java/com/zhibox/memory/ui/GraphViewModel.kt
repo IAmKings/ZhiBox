@@ -41,7 +41,15 @@ data class GraphEntityUi(
     val description: String,
 )
 
-/** B12：事件详情（entities 全量 + chunk 原文）。 */
+/** B12：事件详情中的"共享实体串联事件"（entity 连接视图）。 */
+data class GraphRelatedEventUi(
+    val id: Long,
+    val title: String,
+    /** 与当前事件共享的实体显示名（首个命中实体）。 */
+    val sharedEntityName: String,
+)
+
+/** B12：事件详情（entities 全量 + chunk 原文 + 相关事件）。 */
 data class GraphEventDetailUi(
     val event: GraphEventUi,
     val entities: List<GraphEntityUi>,
@@ -49,6 +57,8 @@ data class GraphEventDetailUi(
     val chunkOrdinal: Int?,
     val charStart: Int?,
     val charEnd: Int?,
+    /** 与当前事件共享实体的其它 active 事件（最多 [GraphViewModel.RELATED_EVENTS_LIMIT] 个） */
+    val relatedEvents: List<GraphRelatedEventUi> = emptyList(),
 )
 
 /** B12 图谱 UiState：分页（每页 ≤50，总渲染上限 [GraphViewModel.MAX_RENDERED_EVENTS]=200）。 */
@@ -299,6 +309,11 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun loadDetail(event: GraphEventUi): GraphEventDetailUi {
+        val base = loadDetailBase(event)
+        return base.copy(relatedEvents = loadRelatedEvents(event.id, base.entities))
+    }
+
+    private suspend fun loadDetailBase(event: GraphEventUi): GraphEventDetailUi {
         val chunk = db.chunkDao().chunksByIds(listOf(event.chunkId)).firstOrNull()
         val relations = db.eventEntityDao().byEvents(listOf(event.id))
         val entities = db.entityDao().byIds(relations.map { it.entityId }.distinct())
@@ -321,6 +336,86 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    /**
+     * B12 entity 共享连接：对每个实体取 active event ids（limit=20），排除当前 event、
+     * 按 eventId 去重（保留第一个 sharedEntityName），批量 byIds 后最多返回 20 个。
+     */
+    private suspend fun loadRelatedEvents(
+        currentEventId: Long,
+        entities: List<GraphEntityUi>,
+    ): List<GraphRelatedEventUi> {
+        if (entities.isEmpty()) return emptyList()
+        val dao = db.eventEntityDao()
+        val shared = LinkedHashMap<Long, String>()
+        for (entity in entities) {
+            val ids = dao.activeEventIdsByEntityIds(listOf(entity.id), RELATED_QUERY_LIMIT)
+            for (id in ids) {
+                if (id == currentEventId) continue
+                shared.putIfAbsent(id, entity.name)
+            }
+        }
+        if (shared.isEmpty()) return emptyList()
+        val events = db.eventDao().byIds(shared.keys.toList()).associateBy { it.id }
+        return shared.entries
+            .mapNotNull { (id, sharedEntityName) ->
+                val event = events[id] ?: return@mapNotNull null
+                GraphRelatedEventUi(
+                    id = id,
+                    title = event.title.takeIf { it.isNotBlank() }
+                        ?: event.canonicalText.take(60).ifBlank {
+                            str(R.string.graph_event_untitled)
+                        },
+                    sharedEntityName = sharedEntityName,
+                )
+            }
+            .take(RELATED_EVENTS_LIMIT)
+    }
+
+    /** 按 eventId 打开相关事件详情（复用 enrich + loadDetail；详情加载中防重入）。 */
+    fun openRelatedEvent(eventId: Long) {
+        if (_state.value.detailLoading) return
+        update { it.copy(detailLoading = true, error = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        detailLoading = false,
+                        error = str(R.string.graph_detail_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            try {
+                val detail = withContext(Dispatchers.IO) {
+                    val entity = db.eventDao().byId(eventId)
+                        ?: return@withContext null
+                    val graphEvent = enrich(listOf(entity)).firstOrNull()
+                        ?: return@withContext null
+                    loadDetail(graphEvent)
+                }
+                if (detail == null) {
+                    update {
+                        it.copy(
+                            detailLoading = false,
+                            error = str(R.string.graph_detail_failed, "事件不存在"),
+                        )
+                    }
+                } else {
+                    update { it.copy(detailLoading = false, selectedEvent = detail) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                update {
+                    it.copy(
+                        detailLoading = false,
+                        error = str(R.string.graph_detail_failed, t.readableMessage()),
+                    )
+                }
+            }
+        }
+    }
+
     companion object {
         /** 每页事件数（task 要求 ≤50）。 */
         const val PAGE_SIZE = 50
@@ -330,5 +425,11 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
 
         /** 卡片实体 chips 展示上限（超出显示 +N）。 */
         const val ENTITY_CHIP_LIMIT = 8
+
+        /** 每个实体查询相关 active event 的每实体上限（task 契约 limit=20）。 */
+        const val RELATED_QUERY_LIMIT = 20
+
+        /** 详情中"相关事件"展示上限。 */
+        const val RELATED_EVENTS_LIMIT = 20
     }
 }

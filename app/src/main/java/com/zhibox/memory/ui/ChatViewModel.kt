@@ -482,7 +482,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         effectiveMode = retrieved.effectiveMode.wire,
                     )
                 }
-                writeTrace(query, retrieved, retrieveMs, 0L, 0)
+                writeTrace(
+                    query = query,
+                    result = retrieved,
+                    retrieveMs = retrieveMs,
+                    generateMs = 0L,
+                    evidenceCount = 0,
+                    errorCode = "NO_EVIDENCE",
+                    errorStage = "retrieve",
+                )
                 return
             }
 
@@ -595,6 +603,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         it.unreferencedSentenceCount == 0
                 },
                 invalidCitations = completed?.invalidCitationTokens?.size ?: 0,
+                errorCode = failed?.code,
+                errorStage = if (failed != null) "generate" else null,
             )
         } catch (e: CancellationException) {
             // 用户停止：保留部分文本仅展示（不落库、不作为最终答案）
@@ -660,6 +670,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         evidenceCount: Int,
         citationValid: Boolean? = null,
         invalidCitations: Int = 0,
+        errorCode: String? = null,
+        errorStage: String? = null,
     ) {
         withContext(Dispatchers.IO) {
             try {
@@ -669,6 +681,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     .put("evidence", evidenceCount)
                     .put("citationValid", citationValid ?: JSONObject.NULL)
                     .put("invalidCitations", invalidCitations)
+                    .put("errorCode", errorCode ?: JSONObject.NULL)
+                    .put("errorStage", errorStage ?: JSONObject.NULL)
                     .toString()
                 val dao = db.queryTraceDao()
                 dao.insert(
