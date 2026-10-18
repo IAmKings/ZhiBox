@@ -22,8 +22,8 @@
     <string name="search_submit">检索</string>
     <string name="search_refused_title">无法检索</string>
     <string name="search_refused_hint">→ 前往 设置 → 模型商店 可下载/启用对应模型，或切回已有空间的模型</string>
-    <string name="search_summary">Top %1$d · %2$dms · 候选 向量%3$d/关键词%4$d · 空间 %5$s</string>
-    <string name="search_hit_meta">块#%1$d · 字符 %2$d-%3$d · RRF %4$s</string>
+    <string name="search_summary">命中 %1$d · 耗时 %2$d ms · 候选 %3$d</string>
+    <string name="search_hit_meta">块#%1$d · 字符 %2$d-%3$d · 分数 %4$s</string>
     <string name="search_failed">检索失败：%1$s</string>
 
     <!-- ==== 导入（ImportScreen） ==== -->
@@ -294,4 +294,25 @@
 
     <string name="import_sag_summary">SAG 抽取：完成 %1$d · 队列 %2$d · 进行中 %3$d · 失败 %4$d · 未索引 %5$d</string>
     <string name="import_sag_failed_hint">抽取失败与导入状态无关：文档已 ready，可离线检索；可到设置页「重试失败」。</string>
+
+    <!-- ==== B10：SAG 三模式检索 / 降级提示 / trace ==== -->
+    <string name="search_mode_section">检索模式</string>
+    <string name="search_mode_vector">混合</string>
+    <string name="search_mode_multi_es_fast">SAG 快速</string>
+    <string name="search_mode_multi">SAG 精排</string>
+    <string name="search_mode_vector_hint">向量+关键词融合检索（离线、零 LLM 依赖），结果稳定可解释。</string>
+    <string name="search_mode_multi_es_fast_hint">SAG 快速（离线）：事件/实体 seed + 扩展召回 + 语义补位；事件层无数据或模型空间缺失时自动降级为混合。</string>
+    <string name="search_mode_multi_hint">SAG 精排：在 SAG 快速候选上用 LLM 选择上下文（需配置 LLM 并允许联网）；条件不满足时会被拒绝。</string>
+    <string name="search_effective_mode">生效模式：%1$s</string>
+    <string name="search_degraded_reason">已降级：%1$s</string>
+    <string name="search_multi_refused_hint">→ multi（SAG 精排）需要配置并允许联网的 LLM；可切换到「SAG 快速」或「混合」后重试。</string>
+    <string name="search_trace_title">检索 trace（脱敏诊断）</string>
+    <string name="search_trace_counts">种子事件 %1$d · 种子实体 %2$d · 展开事件 %3$d · 候选 %4$d · 选中 %5$d · 耗时 %6$d ms</string>
+    <string name="search_trace_stage">· %1$s：%2$d（%3$d ms）</string>
+    <string name="search_trace_export">导出 trace JSON</string>
+    <string name="search_trace_exporting">导出中…</string>
+    <string name="search_trace_export_done">已导出最近 %1$d 条 trace：%2$s</string>
+    <string name="search_trace_export_empty">暂无可导出的 trace（先执行一次检索）</string>
+    <string name="search_trace_export_failed">导出 trace 失败：%1$s</string>
+    <string name="search_hit_event_tag">事件 #%1$d</string>
 </resources>

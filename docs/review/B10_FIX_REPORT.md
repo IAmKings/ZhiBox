@@ -1,0 +1,116 @@
+# B10 实施报告（SAG 结构化检索与多跳评测）
+
+- **日期**：2026-10-18
+- **依据**：`docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` §5（B10）、PRD FR-03/04/05、论文 §3.3/§3.4
+- **性质**：检索侧实现 + 多跳评测；B11 生成问答、B12 图谱未实现。
+- **结论**：**代码与自动门禁完成；多跳质量门禁未通过**。`multi_es_fast` R@5 0.26（门槛 ≥0.70），`multi` 本次为 mock selector 未验证真实 LLM 精排；B10 标记为**部分完成/实验**，不宣称验收通过。
+
+---
+
+## 1. 交付
+
+### 1.1 核心检索
+- `core/sag/**`：
+  - `SagModels/Contracts`：三模式（vector / multi_es_fast / multi）、预算 Kpool/Kseed/frontier/Kcand/Kevent/Kout、QueryEntity、SagHit、SagTrace/SagResult、channels 稳定值。
+  - `SagRetriever`：
+    - `vector`：复用 SearchService（chunk 向量+FTS+RRF），支持 `sourceIds` 过滤；
+    - `multi_es_fast`（离线零网络）：query 向量 → event_content 向量 seed（τ=0.4）→ 事件 seed 实体 + query 实体 → `event_entity` 1 跳 SQL 扩展（含桥接事件）→ 0.7 向量/0.3 incidence 融合 → event→chunk 去重 → 确定性选择 → chunk 语义补位 Kout=10；
+    - `multi`：LLM query entity/selector 接口；无 LLM/禁网 → refused；可用时 LLM 失败回退确定性；
+    - 降级：事件层缺失/无空间 → vector + degraded；frontier 超预算 → 截断标注；每次 retrieve 同步写 query_trace（hash/计数/耗时/降级，无正文，keepRecent 50）。
+  - `LexicalQueryEntityExtractor`（零网络 exact+FTS）、`DeterministicSagSelector`、`SagSupport`。
+- `core/llm`：`LlmQueryEntityExtractor` / `LlmSagContextSelector` + mocks（B10 multi 可用；本次评测用 mock）。
+- `data/db`：`EventDao.byIds`、`EventEntityDao.activeEventIdsByEntityIds`（JOIN active event、GROUP BY 去重、weight 排序）。
+- `SearchService`：`sourceIds` 范围过滤 + SearchHit.sourceId；旧调用兼容。
+
+### 1.2 UI
+- Search：三模式选择（混合 / SAG 快速 / SAG 精排）、effectiveMode/降级原因、refused 提示、trace 摘要（seed/expand/candidates/selected/耗时）、trace 导出（脱敏最近 50）、SagHit→Evidence 映射；settings 未新增 B10 页面。
+- multi LLM：SearchViewModel 已注入 provider/store 的 `LlmQueryEntityExtractor/LlmSagContextSelector`。
+
+### 1.3 评测工具
+- `scripts/eval/gen_multihop_eval.py`：受控合成 KB **80 chunk（20 链×4）** + **120 条查询**（每链 2/3/4 跳各 2 条，多证据 chunk）。
+- `B10MultiHopEvalTest`（`-e b10Eval 1` 手动开启）：真实 440M embedding 播种 chunk/event/entity/SAG 向量，跑 120×3 模式并导出结果。
+- `scripts/eval/score_multihop.py`：R@5/R@10/MRR、分跳数、延迟。
+
+---
+
+## 2. 验证证据
+
+### 2.1 自动门禁
+```text
+JVM debug = 418 / 0 failed；release unit = 399 / 0 failed
+compileDebug/Release/AndroidTest = SUCCESS
+lint = 0 errors / 34 warnings
+K40 非 UI instrumentation（含 B10 新增测试；手动 eval 用例 default skip）= OK (102 tests)
+```
+B10 新增测试：
+- JVM：`SagModelsTest` 9、`SagSupportTest` 12；
+- instrumentation：`LexicalQueryEntityExtractorTest` 8、`SagRetrieverTest` 13（三模式/空/单/多文档/sourceIds/事件层降级/预算截断/multi refused 零调用/mock selector/去重补位/trace 每次写+keepRecent50+无正文）、`SagRetriever10kBaselineTest` 1；
+- UI Compose smoke 适配（5 例）已编译，K40 运行仍受显示栈限制（见 §4）。
+
+### 2.2 10k 基线（K40，原始数）
+```text
+B10_10K_SQL hop_limit51_ms=11 byIds50_ms=5 events=10000 links=10000
+B10_10K_RETRIEVE seedEvents=50 seedEntities=1 expanded=51 candidates=50 selected=5
+  cold_ms=82 warm_p50_ms=130 warm_p95_ms=156 (rounds=10)
+```
+未设性能阈值门禁；事件向量扫描上限 5000（MVP 保护）。
+
+### 2.3 多跳评测（120 查询，真实 440M embedding；K40）
+
+| 模式 | R@5 | R@10 | MRR | p50/p95 ms |
+|---|---|---|---|---|
+| vector（混合基线） | **0.1840** | 0.3056 | 0.3284 | 203 / 230 |
+| multi_es_fast（离线） | **0.2597** | 0.3840 | 0.5642 | 436 / 503 |
+| multi（mock selector） | 0.2597 | 0.3840 | 0.5642 | 415 / 441 |
+
+| 跳数 | vector R@5 | fast R@5 | multi R@5 |
+|---|---|---|---|
+| 2 跳（40） | 0.3125 | 0.4125 | 0.4125 |
+| 3 跳（40） | 0.1833 | 0.2167 | 0.2167 |
+| 4 跳（40） | 0.0563 | 0.1500 | 0.1500 |
+
+**门禁判定**：
+- fast 相比 vector **+7.57pp**（>5pp 改善项通过）；
+- 但 fast R@5 **0.2597 < 0.70**，**绝对门槛未通过**；multi 本次 mock selector，未验证真实 LLM 精排，不能作为通过依据。
+- 264/单跳 262 集回归：本轮设备无 50 卡 262 语料，未执行，需 B10 修复后补测（回退 ≤0.5pp 门禁未验证）。
+
+---
+
+## 3. 根因与 B10 后续（未完成项）
+
+1. **1 跳扩展 vs 2–4 跳证据**：当前 fast 是 1 跳 event→entity→event；评测 3/4 跳的中间证据 chunk 仍常缺（2 跳 R@5 0.41，4 跳 0.15）。
+2. **候选选择挤压桥接证据**：确定性 selector 按 0.7 向量 + 0.3 incidence；桥接事件仅 incidence，容易被高余弦无关事件挤出 top-kEvent=5（曾尝试 floor boost，反而更差，已回滚）。
+3. **multi 未接真实 LLM**：本评测 mock selector；真实 query entity + LLM selector 的收益未验证；无 LLM 时按契约 refused。
+4. **事件抽取质量联动**：fast 依赖 B9 event/entity；真实用户库的实体别名/覆盖不足会进一步影响召回。
+5. **待补**：
+   - 2 跳/多跳扩展或证据多样性选择（可实验多跳长度、frontier/kEvent 档位）；
+   - 真实 `LlmQueryEntityExtractor + LlmSagContextSelector` 的 multi 评测（使用已配置 OpenCode Go，注意费用）；
+   - 262 单跳回归与 source scope UI；
+   - Compose UI 在 PJZ110 复跑（K40 显示栈挂起）；
+   - 多跳集扩充/人工校验（当前为受控合成语料，非用户真实语料）。
+
+---
+
+## 4. 已知限制
+
+| # | 事项 | 说明 |
+|---|---|---|
+| 1 | 多跳 R@5 未达标 | 见 §2.3/§3；B10 不关闭 |
+| 2 | multi 精排未验证 | 评测注入 mock selector；UI 已接真实 LLM extractor/selector，但未跑真实 multi 评测 |
+| 3 | Compose B10 未真机跑 | K40 仍卡 Activity 启动（设备显示栈）；PJZ110 本轮未连接；B8/B9 基线 PJZ110 5/5 |
+| 4 | 10k 阈值 | 只有原始数，无 PRD 延迟门禁；事件向量扫描 5000 上限 |
+| 5 | 262 回归 | 未执行（设备无语料） |
+| 6 | 评测集 | 受控合成 80 chunk/120 query；发布前需人工校验/真实语料复跑 |
+| 7 | trace 导出 | 落 app 私有 filesDir；未接 SAF 分享 |
+
+---
+
+## 5. 文件清单（B10 增量）
+
+**核心**：`core/sag/{SagModels,SagContracts,SagRetriever,LexicalQueryEntityExtractor,DeterministicSagSelector,SagSupport}.kt`、`core/search/SearchService.kt`
+**LLM**：`core/llm/{LlmQueryEntityExtractor,LlmSagContextSelector,MockLlmQueryUnderstanding,LlmPromptJson}.kt`
+**数据/UI**：`data/db/Daos.kt`、`ui/{SearchViewModel,SearchScreen,SagUi}.kt`、`strings.xml`
+**评测**：`scripts/eval/gen_multihop_eval.py`、`scripts/eval/score_multihop.py`、`app/src/androidTest/assets/b10/{kb,queries}.json`、`app/src/androidTest/.../B10MultiHopEvalTest.kt`（`-e b10Eval 1` 手动）
+**测试**：`core/sag/SagModelsTest`、`SagSupportTest`、`SagRetrieverTest`、`LexicalQueryEntityExtractorTest`、`SagRetriever10kBaselineTest`、Compose 适配
+
+*报告生成：2026-10-18 · B10 部分完成（质量门禁未通过）；不提交 release 行为变更。*

@@ -35,6 +35,9 @@ import kotlin.math.sqrt
  * **扩展性（P1-5）**：`(embeddingSpaceId, role)` 索引 + [VectorMatrixCache] 进程内矩阵缓存
  * + 证据回填批量查询（消除 N+1）+ 查询/IN 参数上限防护。
  *
+ * **B10（SAG 检索）**：[search] 增加 `sourceIds` 可选过滤（默认空=全库，旧调用零改动），
+ * [SearchHit] 增加 `sourceId`（document.sourceId），供 `core/sag` 映射 SagHit 与范围过滤。
+ *
  * **检索质量/健壮性（B2）**：
  * - B2-1 关键词通道不再按 rowid 截断：取回全部 FTS 命中（安全上限 [KEYWORD_FULL_HIT_LIMIT]），
  *   Kotlin 侧按 bigram 覆盖分排序后再截候选（此前高频 bigram 的长尾 chunk 永远进不了候选）；
@@ -62,6 +65,8 @@ class SearchService(
         val keywordRank: Int?,     // 关键词通道名次
         val fusedScore: Double,    // RRF 融合分
         val channels: String,      // "向量+关键词" / "向量" / "关键词"
+        /** B10：来源 id（document.sourceId）；供 SAG 检索按 sourceIds 过滤/回填 SagHit，默认空串兼容旧构造 */
+        val sourceId: String = "",
     )
 
     data class SearchResult(
@@ -77,11 +82,25 @@ class SearchService(
         val refused: String?,
     )
 
-    suspend fun search(query: String, topK: Int = 10): SearchResult = withContext(Dispatchers.Default) {
-        searchInternal(query, topK)
+    /**
+     * 检索（向量 + 关键词 + RRF 融合）。
+     *
+     * @param sourceIds B10：来源范围过滤（空=全库）。在候选融合后按 document.sourceId 过滤；
+     *   默认空列表保持旧行为（B9/UI/benchmark 调用点零改动）。
+     */
+    suspend fun search(
+        query: String,
+        topK: Int = 10,
+        sourceIds: List<String> = emptyList(),
+    ): SearchResult = withContext(Dispatchers.Default) {
+        searchInternal(query, topK, sourceIds)
     }
 
-    private suspend fun searchInternal(query: String, topK: Int): SearchResult {
+    private suspend fun searchInternal(
+        query: String,
+        topK: Int,
+        sourceIds: List<String>,
+    ): SearchResult {
         val startedAt = System.currentTimeMillis()
         // B2-3：与入库一致的 query 规范化（NFC/CRLF→LF）；P2-2 防护：空查询早退 + 超长截断
         //（embedding 与 FTS 共用同一上界）
@@ -119,7 +138,14 @@ class SearchService(
             val keywordRanked = ranking.keywordChunks
 
             // ---- 证据回溯（chunk → document → source，批量回填）----
-            val hits = buildHits(ranking.fused)
+            val allHits = buildHits(ranking.fused)
+            // B10：来源范围过滤（buildHits 后过滤，保持 candidate 生成逻辑不变）
+            val hits = if (sourceIds.isEmpty()) {
+                allHits
+            } else {
+                val allowed = sourceIds.toHashSet()
+                allHits.filter { it.sourceId in allowed }
+            }
             SearchResult(
                 query = queryBounded,
                 spaceId = spaceId,
@@ -157,6 +183,7 @@ class SearchService(
                 docTitle = d?.title ?: c.documentId,
                 sourceTitle = s?.title ?: "",
                 sourceUri = s?.uri ?: "",
+                sourceId = s?.id ?: d?.sourceId ?: "",
                 vectorRank = f.vectorRank,
                 keywordRank = f.keywordRank,
                 fusedScore = f.score,

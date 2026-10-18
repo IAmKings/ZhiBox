@@ -91,7 +91,9 @@ B8 数据/基础 ──► B9 抽取/索引 ──► B10 结构化检索 ──
 **代码、自动门禁与真实 LLM 质量抽检已完成**（详见 `docs/review/B9_FIX_REPORT.md`、`docs/review/B9_EXTRACTION_EVAL_RESULT.md`）：
 schema v7、抽取 pipeline/scheduler/worker、FTS/SAG 向量、补抽取/重试、UI 两阶段状态、备份导入 FTS 重建、LLM completion/Remote extractor 已落地；JVM 377/0、K40 非 UI instrumentation 79/79、v3→v7 真机迁移通过。真实 LLM：100 chunk 成功率 99/100=99%、50 chunk 抽检忠实性 100%/实体类型 94.7%/覆盖率 100%，质量门禁通过（自建语料 + AI 辅助标注，发布前建议独立复抽）；B10 可继续。
 
-## 5. B10 — SAG 结构化检索与多跳评测
+## 5. B10 — SAG 结构化检索与多跳评测（🟡 部分完成 2026-10-18，见 `docs/review/B10_FIX_REPORT.md`）
+
+> 状态：三模式/预算/source scope/降级/trace/UI/测试已落地；真机多跳评测 fast R@5 **0.2597**（vector 0.1840，+7.57pp 改善，但未达 ≥0.70 绝对门槛），multi 本次为 mock selector，262 单跳回归未跑。B10 **质量门禁未通过**，标记实验/继续修复；详见报告。
 
 **目标**：三模式落地，`multi_es_fast` 在离线可用；`multi` 具备 LLM 选择能力；建立可回归的中文多跳评测。
 

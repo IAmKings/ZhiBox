@@ -10,6 +10,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.zhibox.memory.MainActivity
 import com.zhibox.memory.R
+import com.zhibox.memory.core.sag.RetrievalMode
+import com.zhibox.memory.core.sag.SagChannels
+import com.zhibox.memory.core.sag.SagHit
+import com.zhibox.memory.core.sag.SagResult
+import com.zhibox.memory.core.sag.SagTrace
+import com.zhibox.memory.core.sag.SagTraceStage
 import com.zhibox.memory.core.search.SearchService
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
 import java.util.concurrent.atomic.AtomicBoolean
@@ -49,18 +55,24 @@ class ComposeUiSmokeTest {
 
     @Test
     fun searchContent_渲染两条命中_点击命中卡片触发回调() {
-        val clicked = AtomicReference<SearchService.SearchHit?>()
+        val clicked = AtomicReference<SagHit?>()
         composeRule.setContent {
             ZhiBoxTheme {
                 SearchContent(
                     query = FAKE_QUERY,
                     running = false,
                     loadingModel = false,
-                    result = fakeSearchResult(),
+                    mode = RetrievalMode.MULTI_ES_FAST,
+                    result = fakeSagResult(),
+                    errorMessage = null,
+                    exportingTrace = false,
+                    traceExportMessage = null,
                     onQueryChange = {},
                     onSearch = {},
+                    onModeChange = {},
                     onBack = {},
                     onHitClick = { clicked.set(it) },
+                    onExportTrace = {},
                     onDismissError = {},
                 )
             }
@@ -89,11 +101,17 @@ class ComposeUiSmokeTest {
                     query = FAKE_QUERY,
                     running = false,
                     loadingModel = false,
-                    result = fakeRefusedResult(refusal),
+                    mode = RetrievalMode.MULTI,
+                    result = fakeRefusedSagResult(refusal),
+                    errorMessage = null,
+                    exportingTrace = false,
+                    traceExportMessage = null,
                     onQueryChange = {},
                     onSearch = {},
+                    onModeChange = {},
                     onBack = {},
                     onHitClick = {},
+                    onExportTrace = {},
                     onDismissError = { dismissed.set(true) },
                 )
             }
@@ -210,31 +228,62 @@ private fun fakeHit(index: Int, title: String = DOC_TITLE_A): SearchService.Sear
         channels = "向量+关键词",
     )
 
-private fun fakeSearchResult(): SearchService.SearchResult =
-    SearchService.SearchResult(
-        query = FAKE_QUERY,
-        spaceId = "mp-universal/egemma2-440m/app-prefix-v1@test",
-        providerId = "mp-universal",
-        modelId = "egemma2-440m",
-        vectorCandidates = 2,
-        keywordCandidates = 2,
-        elapsedMs = 12,
-        hits = listOf(
-            fakeHit(index = 0, title = DOC_TITLE_A),
-            fakeHit(index = 1, title = DOC_TITLE_B),
-        ),
-        refused = null,
+private fun fakeSagHit(index: Int, title: String = DOC_TITLE_A): SagHit =
+    SagHit(
+        chunkId = 1000L + index,
+        documentId = if (index == 0) "doc-a" else "doc-b",
+        sourceId = "src-${index + 1}",
+        ordinal = index,
+        content = "第 ${index + 1} 条命中片段：测试用假数据，仅用于验证命中卡片与证据详情渲染，不读取知识库。",
+        charStart = index * 100,
+        charEnd = index * 100 + 48,
+        docTitle = title,
+        sourceTitle = "示例来源",
+        sourceUri = "content://com.zhibox.memory.test/source-${index + 1}",
+        eventId = 2000L + index,
+        entityIds = listOf(3000L + index),
+        channels = setOf(SagChannels.EVENT_VECTOR, SagChannels.EVENT_ENTITY),
+        score = 0.9 - index * 0.1,
+        fusedScore = 0.9 - index * 0.1,
+        eventTitle = "示例事件 ${index + 1}",
     )
 
-private fun fakeRefusedResult(message: String): SearchService.SearchResult =
-    SearchService.SearchResult(
-        query = FAKE_QUERY,
-        spaceId = null,
-        providerId = null,
-        modelId = null,
-        vectorCandidates = 0,
-        keywordCandidates = 0,
-        elapsedMs = 0,
-        hits = emptyList(),
-        refused = message,
-    )
+private fun fakeTrace(): SagTrace = SagTrace(
+    mode = RetrievalMode.MULTI_ES_FAST.wire,
+    queryHash = "a".repeat(64),
+    stages = listOf(
+        SagTraceStage("normalize", 1, 0),
+        SagTraceStage("supplement", 2, 1),
+        SagTraceStage("trace", 1, 0),
+    ),
+    seedEvents = 1,
+    seedEntities = 1,
+    expandedEvents = 1,
+    candidates = 2,
+    selected = 2,
+    degradedReason = null,
+    elapsedMs = 12,
+)
+
+private fun fakeSagResult(): SagResult = SagResult(
+    query = FAKE_QUERY,
+    mode = RetrievalMode.MULTI_ES_FAST,
+    hits = listOf(
+        fakeSagHit(index = 0, title = DOC_TITLE_A),
+        fakeSagHit(index = 1, title = DOC_TITLE_B),
+    ),
+    trace = fakeTrace(),
+    refused = null,
+    degraded = false,
+    effectiveMode = RetrievalMode.MULTI_ES_FAST,
+)
+
+private fun fakeRefusedSagResult(message: String): SagResult = SagResult(
+    query = FAKE_QUERY,
+    mode = RetrievalMode.MULTI,
+    hits = emptyList(),
+    trace = fakeTrace().copy(mode = RetrievalMode.MULTI.wire, degradedReason = null),
+    refused = message,
+    degraded = true,
+    effectiveMode = RetrievalMode.VECTOR,
+)

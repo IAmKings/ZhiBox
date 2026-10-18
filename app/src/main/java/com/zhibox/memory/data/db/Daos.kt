@@ -540,6 +540,10 @@ interface EventDao {
     @Query("SELECT * FROM event WHERE id = :id")
     suspend fun byId(id: Long): EventEntity?
 
+    /** B10：按 id 批量取 event（active/状态过滤由调用方按需做，避免 DAO 里猜语义） */
+    @Query("SELECT * FROM event WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<EventEntity>
+
     /** 同 chunk 全部 event（含被替代的历史行；排序新→旧） */
     @Query("SELECT * FROM event WHERE chunkId = :chunkId ORDER BY id DESC")
     suspend fun byChunk(chunkId: Long): List<EventEntity>
@@ -732,6 +736,24 @@ interface EventEntityDao {
 
     @Query("SELECT * FROM event_entity WHERE entityId = :entityId ORDER BY id")
     suspend fun byEntity(entityId: Long): List<EventEntityRel>
+
+    /**
+     * B10（SAG 检索）：给定实体 ids，返回与之关联的**当前有效** event ids（去重）。
+     *
+     * - JOIN event 且 `active = 1`：被替代/丢弃的历史 event 不参与实体扩展召回；
+     * - 同一 event 可能关联多个命中实体 → `GROUP BY eventId` 去重；
+     * - 排序按关联强度：`MAX(weight) DESC, eventId`（同权重按 event id 稳定）；
+     * - limit 由调用方按检索预算传入（避免实体扩展通路无限放大候选）。
+     */
+    @Query(
+        "SELECT ee.eventId FROM event_entity ee " +
+            "JOIN event e ON e.id = ee.eventId " +
+            "WHERE ee.entityId IN (:entityIds) AND e.active = 1 " +
+            "GROUP BY ee.eventId " +
+            "ORDER BY MAX(ee.weight) DESC, ee.eventId " +
+            "LIMIT :limit"
+    )
+    suspend fun activeEventIdsByEntityIds(entityIds: List<Long>, limit: Int): List<Long>
 
     @Query("SELECT * FROM event_entity ORDER BY id")
     suspend fun all(): List<EventEntityRel>

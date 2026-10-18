@@ -1,0 +1,2426 @@
+{
+  "documents": [
+    {
+      "id": "doc-b10-0",
+      "title": "张三与星河科技"
+    },
+    {
+      "id": "doc-b10-1",
+      "title": "李四与云帆数据"
+    },
+    {
+      "id": "doc-b10-2",
+      "title": "王五与华信医疗"
+    },
+    {
+      "id": "doc-b10-3",
+      "title": "赵敏与远航教育"
+    },
+    {
+      "id": "doc-b10-4",
+      "title": "刘洋与青山能源"
+    },
+    {
+      "id": "doc-b10-5",
+      "title": "陈明与蓝海物流"
+    },
+    {
+      "id": "doc-b10-6",
+      "title": "周航与启明电子"
+    },
+    {
+      "id": "doc-b10-7",
+      "title": "孙悦与天工制造"
+    },
+    {
+      "id": "doc-b10-8",
+      "title": "王丽与绿洲食品"
+    },
+    {
+      "id": "doc-b10-9",
+      "title": "张伟与恒达金融"
+    },
+    {
+      "id": "doc-b10-10",
+      "title": "李强与光远传媒"
+    },
+    {
+      "id": "doc-b10-11",
+      "title": "赵磊与海纳咨询"
+    },
+    {
+      "id": "doc-b10-12",
+      "title": "钱峰与锐思软件"
+    },
+    {
+      "id": "doc-b10-13",
+      "title": "孙敏与博雅文化"
+    },
+    {
+      "id": "doc-b10-14",
+      "title": "周杰与中科材料"
+    },
+    {
+      "id": "doc-b10-15",
+      "title": "吴迪与东篱农业"
+    },
+    {
+      "id": "doc-b10-16",
+      "title": "郑爽与新元电气"
+    },
+    {
+      "id": "doc-b10-17",
+      "title": "冯涛与瑞康药业"
+    },
+    {
+      "id": "doc-b10-18",
+      "title": "陈静与天成建筑"
+    },
+    {
+      "id": "doc-b10-19",
+      "title": "褚岩与云图智能"
+    }
+  ],
+  "chunks": [
+    {
+      "id": 1,
+      "documentId": "doc-b10-0",
+      "ordinal": 0,
+      "content": "张三在星河科技担任技术总监，负责智能语音项目。",
+      "event": {
+        "title": "张三在星河科技任职",
+        "summary": "张三在星河科技担任技术总监",
+        "content": "张三在星河科技担任技术总监，负责智能语音项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "张三",
+          "description": "星河科技的技术总监"
+        },
+        {
+          "type": "organization",
+          "name": "星河科技",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "技术总监",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "智能语音项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "documentId": "doc-b10-0",
+      "ordinal": 1,
+      "content": "星河科技总部位于深圳市，成立于2001年。",
+      "event": {
+        "title": "星河科技总部与成立时间",
+        "summary": "星河科技位于深圳市",
+        "content": "星河科技总部位于深圳市，成立于2001年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "星河科技",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "深圳市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2001年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "documentId": "doc-b10-0",
+      "ordinal": 2,
+      "content": "深圳市以特产智能音箱闻名，智能音箱由星云电子生产。",
+      "event": {
+        "title": "深圳市的特产与生产企业",
+        "summary": "深圳市以智能音箱闻名",
+        "content": "深圳市以特产智能音箱闻名，智能音箱由星云电子生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "深圳市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "智能音箱",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "星云电子",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "documentId": "doc-b10-0",
+      "ordinal": 3,
+      "content": "星云电子位于中国，是智能音箱的主要生产商。",
+      "event": {
+        "title": "星云电子与智能音箱",
+        "summary": "星云电子位于中国",
+        "content": "星云电子位于中国，是智能音箱的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "星云电子",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "智能音箱",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "documentId": "doc-b10-1",
+      "ordinal": 0,
+      "content": "李四在云帆数据担任数据架构师，负责数据治理平台。",
+      "event": {
+        "title": "李四在云帆数据任职",
+        "summary": "李四在云帆数据担任数据架构师",
+        "content": "李四在云帆数据担任数据架构师，负责数据治理平台。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "李四",
+          "description": "云帆数据的数据架构师"
+        },
+        {
+          "type": "organization",
+          "name": "云帆数据",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "数据架构师",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "数据治理平台",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "documentId": "doc-b10-1",
+      "ordinal": 1,
+      "content": "云帆数据总部位于杭州市，成立于2002年。",
+      "event": {
+        "title": "云帆数据总部与成立时间",
+        "summary": "云帆数据位于杭州市",
+        "content": "云帆数据总部位于杭州市，成立于2002年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "云帆数据",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "杭州市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2002年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "documentId": "doc-b10-1",
+      "ordinal": 2,
+      "content": "杭州市以特产数据平台闻名，数据平台由云帆智造生产。",
+      "event": {
+        "title": "杭州市的特产与生产企业",
+        "summary": "杭州市以数据平台闻名",
+        "content": "杭州市以特产数据平台闻名，数据平台由云帆智造生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "杭州市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "数据平台",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "云帆智造",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "documentId": "doc-b10-1",
+      "ordinal": 3,
+      "content": "云帆智造位于中国，是数据平台的主要生产商。",
+      "event": {
+        "title": "云帆智造与数据平台",
+        "summary": "云帆智造位于中国",
+        "content": "云帆智造位于中国，是数据平台的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "云帆智造",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "数据平台",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "documentId": "doc-b10-2",
+      "ordinal": 0,
+      "content": "王五在华信医疗担任心内科主任，负责心脏康复项目。",
+      "event": {
+        "title": "王五在华信医疗任职",
+        "summary": "王五在华信医疗担任心内科主任",
+        "content": "王五在华信医疗担任心内科主任，负责心脏康复项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "王五",
+          "description": "华信医疗的心内科主任"
+        },
+        {
+          "type": "organization",
+          "name": "华信医疗",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "心内科主任",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "心脏康复项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "documentId": "doc-b10-2",
+      "ordinal": 1,
+      "content": "华信医疗总部位于上海市，成立于2003年。",
+      "event": {
+        "title": "华信医疗总部与成立时间",
+        "summary": "华信医疗位于上海市",
+        "content": "华信医疗总部位于上海市，成立于2003年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "华信医疗",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "上海市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2003年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "documentId": "doc-b10-2",
+      "ordinal": 2,
+      "content": "上海市以特产康复设备闻名，康复设备由仁和医疗生产。",
+      "event": {
+        "title": "上海市的特产与生产企业",
+        "summary": "上海市以康复设备闻名",
+        "content": "上海市以特产康复设备闻名，康复设备由仁和医疗生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "上海市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "康复设备",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "仁和医疗",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "documentId": "doc-b10-2",
+      "ordinal": 3,
+      "content": "仁和医疗位于中国，是康复设备的主要生产商。",
+      "event": {
+        "title": "仁和医疗与康复设备",
+        "summary": "仁和医疗位于中国",
+        "content": "仁和医疗位于中国，是康复设备的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "仁和医疗",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "康复设备",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "documentId": "doc-b10-3",
+      "ordinal": 0,
+      "content": "赵敏在远航教育担任课程主管，负责AI 课程体系。",
+      "event": {
+        "title": "赵敏在远航教育任职",
+        "summary": "赵敏在远航教育担任课程主管",
+        "content": "赵敏在远航教育担任课程主管，负责AI 课程体系。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "赵敏",
+          "description": "远航教育的课程主管"
+        },
+        {
+          "type": "organization",
+          "name": "远航教育",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "课程主管",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "AI 课程体系",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "documentId": "doc-b10-3",
+      "ordinal": 1,
+      "content": "远航教育总部位于北京市，成立于2004年。",
+      "event": {
+        "title": "远航教育总部与成立时间",
+        "summary": "远航教育位于北京市",
+        "content": "远航教育总部位于北京市，成立于2004年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "远航教育",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "北京市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2004年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "documentId": "doc-b10-3",
+      "ordinal": 2,
+      "content": "北京市以特产在线课程闻名，在线课程由知远教育生产。",
+      "event": {
+        "title": "北京市的特产与生产企业",
+        "summary": "北京市以在线课程闻名",
+        "content": "北京市以特产在线课程闻名，在线课程由知远教育生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "北京市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "在线课程",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "知远教育",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "documentId": "doc-b10-3",
+      "ordinal": 3,
+      "content": "知远教育位于中国，是在线课程的主要生产商。",
+      "event": {
+        "title": "知远教育与在线课程",
+        "summary": "知远教育位于中国",
+        "content": "知远教育位于中国，是在线课程的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "知远教育",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "在线课程",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "documentId": "doc-b10-4",
+      "ordinal": 0,
+      "content": "刘洋在青山能源担任储能工程师，负责储能安全项目。",
+      "event": {
+        "title": "刘洋在青山能源任职",
+        "summary": "刘洋在青山能源担任储能工程师",
+        "content": "刘洋在青山能源担任储能工程师，负责储能安全项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "刘洋",
+          "description": "青山能源的储能工程师"
+        },
+        {
+          "type": "organization",
+          "name": "青山能源",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "储能工程师",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "储能安全项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "documentId": "doc-b10-4",
+      "ordinal": 1,
+      "content": "青山能源总部位于南京市，成立于2005年。",
+      "event": {
+        "title": "青山能源总部与成立时间",
+        "summary": "青山能源位于南京市",
+        "content": "青山能源总部位于南京市，成立于2005年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "青山能源",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "南京市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2005年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "documentId": "doc-b10-4",
+      "ordinal": 2,
+      "content": "南京市以特产储能电池闻名，储能电池由青山储能生产。",
+      "event": {
+        "title": "南京市的特产与生产企业",
+        "summary": "南京市以储能电池闻名",
+        "content": "南京市以特产储能电池闻名，储能电池由青山储能生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "南京市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "储能电池",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "青山储能",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "documentId": "doc-b10-4",
+      "ordinal": 3,
+      "content": "青山储能位于中国，是储能电池的主要生产商。",
+      "event": {
+        "title": "青山储能与储能电池",
+        "summary": "青山储能位于中国",
+        "content": "青山储能位于中国，是储能电池的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "青山储能",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "储能电池",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "documentId": "doc-b10-5",
+      "ordinal": 0,
+      "content": "陈明在蓝海物流担任物流经理，负责冷链优化项目。",
+      "event": {
+        "title": "陈明在蓝海物流任职",
+        "summary": "陈明在蓝海物流担任物流经理",
+        "content": "陈明在蓝海物流担任物流经理，负责冷链优化项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "陈明",
+          "description": "蓝海物流的物流经理"
+        },
+        {
+          "type": "organization",
+          "name": "蓝海物流",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "物流经理",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "冷链优化项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "documentId": "doc-b10-5",
+      "ordinal": 1,
+      "content": "蓝海物流总部位于广州市，成立于2006年。",
+      "event": {
+        "title": "蓝海物流总部与成立时间",
+        "summary": "蓝海物流位于广州市",
+        "content": "蓝海物流总部位于广州市，成立于2006年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "蓝海物流",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "广州市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2006年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "documentId": "doc-b10-5",
+      "ordinal": 2,
+      "content": "广州市以特产冷链系统闻名，冷链系统由蓝海物流生产。",
+      "event": {
+        "title": "广州市的特产与生产企业",
+        "summary": "广州市以冷链系统闻名",
+        "content": "广州市以特产冷链系统闻名，冷链系统由蓝海物流生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "广州市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "冷链系统",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "蓝海物流",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "documentId": "doc-b10-5",
+      "ordinal": 3,
+      "content": "蓝海物流位于中国，是冷链系统的主要生产商。",
+      "event": {
+        "title": "蓝海物流与冷链系统",
+        "summary": "蓝海物流位于中国",
+        "content": "蓝海物流位于中国，是冷链系统的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "蓝海物流",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "冷链系统",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "documentId": "doc-b10-6",
+      "ordinal": 0,
+      "content": "周航在启明电子担任显示技术专家，负责新型显示项目。",
+      "event": {
+        "title": "周航在启明电子任职",
+        "summary": "周航在启明电子担任显示技术专家",
+        "content": "周航在启明电子担任显示技术专家，负责新型显示项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "周航",
+          "description": "启明电子的显示技术专家"
+        },
+        {
+          "type": "organization",
+          "name": "启明电子",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "显示技术专家",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "新型显示项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "documentId": "doc-b10-6",
+      "ordinal": 1,
+      "content": "启明电子总部位于成都市，成立于2007年。",
+      "event": {
+        "title": "启明电子总部与成立时间",
+        "summary": "启明电子位于成都市",
+        "content": "启明电子总部位于成都市，成立于2007年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "启明电子",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "成都市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2007年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "documentId": "doc-b10-6",
+      "ordinal": 2,
+      "content": "成都市以特产显示屏闻名，显示屏由启明显示生产。",
+      "event": {
+        "title": "成都市的特产与生产企业",
+        "summary": "成都市以显示屏闻名",
+        "content": "成都市以特产显示屏闻名，显示屏由启明显示生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "成都市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "显示屏",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "启明显示",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "documentId": "doc-b10-6",
+      "ordinal": 3,
+      "content": "启明显示位于中国，是显示屏的主要生产商。",
+      "event": {
+        "title": "启明显示与显示屏",
+        "summary": "启明显示位于中国",
+        "content": "启明显示位于中国，是显示屏的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "启明显示",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "显示屏",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "documentId": "doc-b10-7",
+      "ordinal": 0,
+      "content": "孙悦在天工制造担任工艺工程师，负责精密加工项目。",
+      "event": {
+        "title": "孙悦在天工制造任职",
+        "summary": "孙悦在天工制造担任工艺工程师",
+        "content": "孙悦在天工制造担任工艺工程师，负责精密加工项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "孙悦",
+          "description": "天工制造的工艺工程师"
+        },
+        {
+          "type": "organization",
+          "name": "天工制造",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "工艺工程师",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "精密加工项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "documentId": "doc-b10-7",
+      "ordinal": 1,
+      "content": "天工制造总部位于武汉市，成立于2008年。",
+      "event": {
+        "title": "天工制造总部与成立时间",
+        "summary": "天工制造位于武汉市",
+        "content": "天工制造总部位于武汉市，成立于2008年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "天工制造",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "武汉市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2008年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "documentId": "doc-b10-7",
+      "ordinal": 2,
+      "content": "武汉市以特产精密零件闻名，精密零件由天工精密生产。",
+      "event": {
+        "title": "武汉市的特产与生产企业",
+        "summary": "武汉市以精密零件闻名",
+        "content": "武汉市以特产精密零件闻名，精密零件由天工精密生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "武汉市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "精密零件",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "天工精密",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "documentId": "doc-b10-7",
+      "ordinal": 3,
+      "content": "天工精密位于中国，是精密零件的主要生产商。",
+      "event": {
+        "title": "天工精密与精密零件",
+        "summary": "天工精密位于中国",
+        "content": "天工精密位于中国，是精密零件的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "天工精密",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "精密零件",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "documentId": "doc-b10-8",
+      "ordinal": 0,
+      "content": "王丽在绿洲食品担任产品经理，负责茶叶品牌项目。",
+      "event": {
+        "title": "王丽在绿洲食品任职",
+        "summary": "王丽在绿洲食品担任产品经理",
+        "content": "王丽在绿洲食品担任产品经理，负责茶叶品牌项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "王丽",
+          "description": "绿洲食品的产品经理"
+        },
+        {
+          "type": "organization",
+          "name": "绿洲食品",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "产品经理",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "茶叶品牌项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "documentId": "doc-b10-8",
+      "ordinal": 1,
+      "content": "绿洲食品总部位于西安市，成立于2009年。",
+      "event": {
+        "title": "绿洲食品总部与成立时间",
+        "summary": "绿洲食品位于西安市",
+        "content": "绿洲食品总部位于西安市，成立于2009年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "绿洲食品",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "西安市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2009年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "documentId": "doc-b10-8",
+      "ordinal": 2,
+      "content": "西安市以特产有机茶叶闻名，有机茶叶由绿洲茶业生产。",
+      "event": {
+        "title": "西安市的特产与生产企业",
+        "summary": "西安市以有机茶叶闻名",
+        "content": "西安市以特产有机茶叶闻名，有机茶叶由绿洲茶业生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "西安市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "有机茶叶",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "绿洲茶业",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "documentId": "doc-b10-8",
+      "ordinal": 3,
+      "content": "绿洲茶业位于中国，是有机茶叶的主要生产商。",
+      "event": {
+        "title": "绿洲茶业与有机茶叶",
+        "summary": "绿洲茶业位于中国",
+        "content": "绿洲茶业位于中国，是有机茶叶的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "绿洲茶业",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "有机茶叶",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "documentId": "doc-b10-9",
+      "ordinal": 0,
+      "content": "张伟在恒达金融担任投资顾问，负责财富管理平台。",
+      "event": {
+        "title": "张伟在恒达金融任职",
+        "summary": "张伟在恒达金融担任投资顾问",
+        "content": "张伟在恒达金融担任投资顾问，负责财富管理平台。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "张伟",
+          "description": "恒达金融的投资顾问"
+        },
+        {
+          "type": "organization",
+          "name": "恒达金融",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "投资顾问",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "财富管理平台",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "documentId": "doc-b10-9",
+      "ordinal": 1,
+      "content": "恒达金融总部位于苏州市，成立于2010年。",
+      "event": {
+        "title": "恒达金融总部与成立时间",
+        "summary": "恒达金融位于苏州市",
+        "content": "恒达金融总部位于苏州市，成立于2010年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "恒达金融",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "苏州市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2010年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "documentId": "doc-b10-9",
+      "ordinal": 2,
+      "content": "苏州市以特产理财产品闻名，理财产品由恒达财富生产。",
+      "event": {
+        "title": "苏州市的特产与生产企业",
+        "summary": "苏州市以理财产品闻名",
+        "content": "苏州市以特产理财产品闻名，理财产品由恒达财富生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "苏州市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "理财产品",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "恒达财富",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "documentId": "doc-b10-9",
+      "ordinal": 3,
+      "content": "恒达财富位于中国，是理财产品的主要生产商。",
+      "event": {
+        "title": "恒达财富与理财产品",
+        "summary": "恒达财富位于中国",
+        "content": "恒达财富位于中国，是理财产品的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "恒达财富",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "理财产品",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "documentId": "doc-b10-10",
+      "ordinal": 0,
+      "content": "李强在光远传媒担任纪录片导演，负责文化纪录项目。",
+      "event": {
+        "title": "李强在光远传媒任职",
+        "summary": "李强在光远传媒担任纪录片导演",
+        "content": "李强在光远传媒担任纪录片导演，负责文化纪录项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "李强",
+          "description": "光远传媒的纪录片导演"
+        },
+        {
+          "type": "organization",
+          "name": "光远传媒",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "纪录片导演",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "文化纪录项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "documentId": "doc-b10-10",
+      "ordinal": 1,
+      "content": "光远传媒总部位于重庆市，成立于2011年。",
+      "event": {
+        "title": "光远传媒总部与成立时间",
+        "summary": "光远传媒位于重庆市",
+        "content": "光远传媒总部位于重庆市，成立于2011年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "光远传媒",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "重庆市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2011年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "documentId": "doc-b10-10",
+      "ordinal": 2,
+      "content": "重庆市以特产纪录片闻名，纪录片由光远影业生产。",
+      "event": {
+        "title": "重庆市的特产与生产企业",
+        "summary": "重庆市以纪录片闻名",
+        "content": "重庆市以特产纪录片闻名，纪录片由光远影业生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "重庆市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "纪录片",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "光远影业",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "documentId": "doc-b10-10",
+      "ordinal": 3,
+      "content": "光远影业位于中国，是纪录片的主要生产商。",
+      "event": {
+        "title": "光远影业与纪录片",
+        "summary": "光远影业位于中国",
+        "content": "光远影业位于中国，是纪录片的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "光远影业",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "纪录片",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "documentId": "doc-b10-11",
+      "ordinal": 0,
+      "content": "赵磊在海纳咨询担任咨询顾问，负责战略咨询项目。",
+      "event": {
+        "title": "赵磊在海纳咨询任职",
+        "summary": "赵磊在海纳咨询担任咨询顾问",
+        "content": "赵磊在海纳咨询担任咨询顾问，负责战略咨询项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "赵磊",
+          "description": "海纳咨询的咨询顾问"
+        },
+        {
+          "type": "organization",
+          "name": "海纳咨询",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "咨询顾问",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "战略咨询项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "documentId": "doc-b10-11",
+      "ordinal": 1,
+      "content": "海纳咨询总部位于天津市，成立于2012年。",
+      "event": {
+        "title": "海纳咨询总部与成立时间",
+        "summary": "海纳咨询位于天津市",
+        "content": "海纳咨询总部位于天津市，成立于2012年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "海纳咨询",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "天津市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2012年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "documentId": "doc-b10-11",
+      "ordinal": 2,
+      "content": "天津市以特产管理咨询闻名，管理咨询由海纳咨询生产。",
+      "event": {
+        "title": "天津市的特产与生产企业",
+        "summary": "天津市以管理咨询闻名",
+        "content": "天津市以特产管理咨询闻名，管理咨询由海纳咨询生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "天津市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "管理咨询",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "海纳咨询",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "documentId": "doc-b10-11",
+      "ordinal": 3,
+      "content": "海纳咨询位于中国，是管理咨询的主要生产商。",
+      "event": {
+        "title": "海纳咨询与管理咨询",
+        "summary": "海纳咨询位于中国",
+        "content": "海纳咨询位于中国，是管理咨询的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "海纳咨询",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "管理咨询",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "documentId": "doc-b10-12",
+      "ordinal": 0,
+      "content": "钱峰在锐思软件担任数据库管理员，负责数据库迁移项目。",
+      "event": {
+        "title": "钱峰在锐思软件任职",
+        "summary": "钱峰在锐思软件担任数据库管理员",
+        "content": "钱峰在锐思软件担任数据库管理员，负责数据库迁移项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "钱峰",
+          "description": "锐思软件的数据库管理员"
+        },
+        {
+          "type": "organization",
+          "name": "锐思软件",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "数据库管理员",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "数据库迁移项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "documentId": "doc-b10-12",
+      "ordinal": 1,
+      "content": "锐思软件总部位于青岛市，成立于2013年。",
+      "event": {
+        "title": "锐思软件总部与成立时间",
+        "summary": "锐思软件位于青岛市",
+        "content": "锐思软件总部位于青岛市，成立于2013年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "锐思软件",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "青岛市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2013年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "documentId": "doc-b10-12",
+      "ordinal": 2,
+      "content": "青岛市以特产数据库闻名，数据库由锐思数据生产。",
+      "event": {
+        "title": "青岛市的特产与生产企业",
+        "summary": "青岛市以数据库闻名",
+        "content": "青岛市以特产数据库闻名，数据库由锐思数据生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "青岛市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "数据库",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "锐思数据",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "documentId": "doc-b10-12",
+      "ordinal": 3,
+      "content": "锐思数据位于中国，是数据库的主要生产商。",
+      "event": {
+        "title": "锐思数据与数据库",
+        "summary": "锐思数据位于中国",
+        "content": "锐思数据位于中国，是数据库的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "锐思数据",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "数据库",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "documentId": "doc-b10-13",
+      "ordinal": 0,
+      "content": "孙敏在博雅文化担任设计师，负责文创设计项目。",
+      "event": {
+        "title": "孙敏在博雅文化任职",
+        "summary": "孙敏在博雅文化担任设计师",
+        "content": "孙敏在博雅文化担任设计师，负责文创设计项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "孙敏",
+          "description": "博雅文化的设计师"
+        },
+        {
+          "type": "organization",
+          "name": "博雅文化",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "设计师",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "文创设计项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "documentId": "doc-b10-13",
+      "ordinal": 1,
+      "content": "博雅文化总部位于长沙市，成立于2014年。",
+      "event": {
+        "title": "博雅文化总部与成立时间",
+        "summary": "博雅文化位于长沙市",
+        "content": "博雅文化总部位于长沙市，成立于2014年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "博雅文化",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "长沙市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2014年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "documentId": "doc-b10-13",
+      "ordinal": 2,
+      "content": "长沙市以特产文创产品闻名，文创产品由博雅文创生产。",
+      "event": {
+        "title": "长沙市的特产与生产企业",
+        "summary": "长沙市以文创产品闻名",
+        "content": "长沙市以特产文创产品闻名，文创产品由博雅文创生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "长沙市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "文创产品",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "博雅文创",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "documentId": "doc-b10-13",
+      "ordinal": 3,
+      "content": "博雅文创位于中国，是文创产品的主要生产商。",
+      "event": {
+        "title": "博雅文创与文创产品",
+        "summary": "博雅文创位于中国",
+        "content": "博雅文创位于中国，是文创产品的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "博雅文创",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "文创产品",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "documentId": "doc-b10-14",
+      "ordinal": 0,
+      "content": "周杰在中科材料担任材料研究员，负责新材料研发项目。",
+      "event": {
+        "title": "周杰在中科材料任职",
+        "summary": "周杰在中科材料担任材料研究员",
+        "content": "周杰在中科材料担任材料研究员，负责新材料研发项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "周杰",
+          "description": "中科材料的材料研究员"
+        },
+        {
+          "type": "organization",
+          "name": "中科材料",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "材料研究员",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "新材料研发项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "documentId": "doc-b10-14",
+      "ordinal": 1,
+      "content": "中科材料总部位于厦门市，成立于2015年。",
+      "event": {
+        "title": "中科材料总部与成立时间",
+        "summary": "中科材料位于厦门市",
+        "content": "中科材料总部位于厦门市，成立于2015年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "中科材料",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "厦门市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2015年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 59,
+      "documentId": "doc-b10-14",
+      "ordinal": 2,
+      "content": "厦门市以特产新型材料闻名，新型材料由中科新材生产。",
+      "event": {
+        "title": "厦门市的特产与生产企业",
+        "summary": "厦门市以新型材料闻名",
+        "content": "厦门市以特产新型材料闻名，新型材料由中科新材生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "厦门市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "新型材料",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "中科新材",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "documentId": "doc-b10-14",
+      "ordinal": 3,
+      "content": "中科新材位于中国，是新型材料的主要生产商。",
+      "event": {
+        "title": "中科新材与新型材料",
+        "summary": "中科新材位于中国",
+        "content": "中科新材位于中国，是新型材料的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "中科新材",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "新型材料",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "documentId": "doc-b10-15",
+      "ordinal": 0,
+      "content": "吴迪在东篱农业担任农业专家，负责有机农业项目。",
+      "event": {
+        "title": "吴迪在东篱农业任职",
+        "summary": "吴迪在东篱农业担任农业专家",
+        "content": "吴迪在东篱农业担任农业专家，负责有机农业项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "吴迪",
+          "description": "东篱农业的农业专家"
+        },
+        {
+          "type": "organization",
+          "name": "东篱农业",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "农业专家",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "有机农业项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "documentId": "doc-b10-15",
+      "ordinal": 1,
+      "content": "东篱农业总部位于合肥市，成立于2016年。",
+      "event": {
+        "title": "东篱农业总部与成立时间",
+        "summary": "东篱农业位于合肥市",
+        "content": "东篱农业总部位于合肥市，成立于2016年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "东篱农业",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "合肥市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2016年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "documentId": "doc-b10-15",
+      "ordinal": 2,
+      "content": "合肥市以特产有机大米闻名，有机大米由东篱农业生产。",
+      "event": {
+        "title": "合肥市的特产与生产企业",
+        "summary": "合肥市以有机大米闻名",
+        "content": "合肥市以特产有机大米闻名，有机大米由东篱农业生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "合肥市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "有机大米",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "东篱农业",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "documentId": "doc-b10-15",
+      "ordinal": 3,
+      "content": "东篱农业位于中国，是有机大米的主要生产商。",
+      "event": {
+        "title": "东篱农业与有机大米",
+        "summary": "东篱农业位于中国",
+        "content": "东篱农业位于中国，是有机大米的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "东篱农业",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "有机大米",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "documentId": "doc-b10-16",
+      "ordinal": 0,
+      "content": "郑爽在新元电气担任电气工程师，负责智能电网项目。",
+      "event": {
+        "title": "郑爽在新元电气任职",
+        "summary": "郑爽在新元电气担任电气工程师",
+        "content": "郑爽在新元电气担任电气工程师，负责智能电网项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "郑爽",
+          "description": "新元电气的电气工程师"
+        },
+        {
+          "type": "organization",
+          "name": "新元电气",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "电气工程师",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "智能电网项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "documentId": "doc-b10-16",
+      "ordinal": 1,
+      "content": "新元电气总部位于宁波市，成立于2017年。",
+      "event": {
+        "title": "新元电气总部与成立时间",
+        "summary": "新元电气位于宁波市",
+        "content": "新元电气总部位于宁波市，成立于2017年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "新元电气",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "宁波市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2017年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 67,
+      "documentId": "doc-b10-16",
+      "ordinal": 2,
+      "content": "宁波市以特产变压器闻名，变压器由新元电气生产。",
+      "event": {
+        "title": "宁波市的特产与生产企业",
+        "summary": "宁波市以变压器闻名",
+        "content": "宁波市以特产变压器闻名，变压器由新元电气生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "宁波市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "变压器",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "新元电气",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 68,
+      "documentId": "doc-b10-16",
+      "ordinal": 3,
+      "content": "新元电气位于中国，是变压器的主要生产商。",
+      "event": {
+        "title": "新元电气与变压器",
+        "summary": "新元电气位于中国",
+        "content": "新元电气位于中国，是变压器的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "新元电气",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "变压器",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 69,
+      "documentId": "doc-b10-17",
+      "ordinal": 0,
+      "content": "冯涛在瑞康药业担任药物研发主管，负责新药临床项目。",
+      "event": {
+        "title": "冯涛在瑞康药业任职",
+        "summary": "冯涛在瑞康药业担任药物研发主管",
+        "content": "冯涛在瑞康药业担任药物研发主管，负责新药临床项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "冯涛",
+          "description": "瑞康药业的药物研发主管"
+        },
+        {
+          "type": "organization",
+          "name": "瑞康药业",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "药物研发主管",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "新药临床项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "documentId": "doc-b10-17",
+      "ordinal": 1,
+      "content": "瑞康药业总部位于无锡市，成立于2018年。",
+      "event": {
+        "title": "瑞康药业总部与成立时间",
+        "summary": "瑞康药业位于无锡市",
+        "content": "瑞康药业总部位于无锡市，成立于2018年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "瑞康药业",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "无锡市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2018年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 71,
+      "documentId": "doc-b10-17",
+      "ordinal": 2,
+      "content": "无锡市以特产仿制药闻名，仿制药由瑞康制药生产。",
+      "event": {
+        "title": "无锡市的特产与生产企业",
+        "summary": "无锡市以仿制药闻名",
+        "content": "无锡市以特产仿制药闻名，仿制药由瑞康制药生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "无锡市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "仿制药",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "瑞康制药",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 72,
+      "documentId": "doc-b10-17",
+      "ordinal": 3,
+      "content": "瑞康制药位于中国，是仿制药的主要生产商。",
+      "event": {
+        "title": "瑞康制药与仿制药",
+        "summary": "瑞康制药位于中国",
+        "content": "瑞康制药位于中国，是仿制药的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "瑞康制药",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "仿制药",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 73,
+      "documentId": "doc-b10-18",
+      "ordinal": 0,
+      "content": "陈静在天成建筑担任建筑设计师，负责绿色建筑项目。",
+      "event": {
+        "title": "陈静在天成建筑任职",
+        "summary": "陈静在天成建筑担任建筑设计师",
+        "content": "陈静在天成建筑担任建筑设计师，负责绿色建筑项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "陈静",
+          "description": "天成建筑的建筑设计师"
+        },
+        {
+          "type": "organization",
+          "name": "天成建筑",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "建筑设计师",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "绿色建筑项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 74,
+      "documentId": "doc-b10-18",
+      "ordinal": 1,
+      "content": "天成建筑总部位于济南市，成立于2019年。",
+      "event": {
+        "title": "天成建筑总部与成立时间",
+        "summary": "天成建筑位于济南市",
+        "content": "天成建筑总部位于济南市，成立于2019年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "天成建筑",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "济南市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2019年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 75,
+      "documentId": "doc-b10-18",
+      "ordinal": 2,
+      "content": "济南市以特产装配式建筑闻名，装配式建筑由天成建设生产。",
+      "event": {
+        "title": "济南市的特产与生产企业",
+        "summary": "济南市以装配式建筑闻名",
+        "content": "济南市以特产装配式建筑闻名，装配式建筑由天成建设生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "济南市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "装配式建筑",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "天成建设",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 76,
+      "documentId": "doc-b10-18",
+      "ordinal": 3,
+      "content": "天成建设位于中国，是装配式建筑的主要生产商。",
+      "event": {
+        "title": "天成建设与装配式建筑",
+        "summary": "天成建设位于中国",
+        "content": "天成建设位于中国，是装配式建筑的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "天成建设",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "装配式建筑",
+          "description": "产品"
+        }
+      ]
+    },
+    {
+      "id": 77,
+      "documentId": "doc-b10-19",
+      "ordinal": 0,
+      "content": "褚岩在云图智能担任算法工程师，负责图像识别项目。",
+      "event": {
+        "title": "褚岩在云图智能任职",
+        "summary": "褚岩在云图智能担任算法工程师",
+        "content": "褚岩在云图智能担任算法工程师，负责图像识别项目。"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "name": "褚岩",
+          "description": "云图智能的算法工程师"
+        },
+        {
+          "type": "organization",
+          "name": "云图智能",
+          "description": "企业"
+        },
+        {
+          "type": "action",
+          "name": "算法工程师",
+          "description": "职务/动作"
+        },
+        {
+          "type": "subject",
+          "name": "图像识别项目",
+          "description": "项目"
+        }
+      ]
+    },
+    {
+      "id": 78,
+      "documentId": "doc-b10-19",
+      "ordinal": 1,
+      "content": "云图智能总部位于福州市，成立于2020年。",
+      "event": {
+        "title": "云图智能总部与成立时间",
+        "summary": "云图智能位于福州市",
+        "content": "云图智能总部位于福州市，成立于2020年。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "云图智能",
+          "description": "企业"
+        },
+        {
+          "type": "location",
+          "name": "福州市",
+          "description": "城市"
+        },
+        {
+          "type": "time",
+          "name": "2020年",
+          "description": "成立年份"
+        }
+      ]
+    },
+    {
+      "id": 79,
+      "documentId": "doc-b10-19",
+      "ordinal": 2,
+      "content": "福州市以特产图像识别软件闻名，图像识别软件由云图科技生产。",
+      "event": {
+        "title": "福州市的特产与生产企业",
+        "summary": "福州市以图像识别软件闻名",
+        "content": "福州市以特产图像识别软件闻名，图像识别软件由云图科技生产。"
+      },
+      "entities": [
+        {
+          "type": "location",
+          "name": "福州市",
+          "description": "城市"
+        },
+        {
+          "type": "product",
+          "name": "图像识别软件",
+          "description": "特产/产品"
+        },
+        {
+          "type": "organization",
+          "name": "云图科技",
+          "description": "生产企业"
+        }
+      ]
+    },
+    {
+      "id": 80,
+      "documentId": "doc-b10-19",
+      "ordinal": 3,
+      "content": "云图科技位于中国，是图像识别软件的主要生产商。",
+      "event": {
+        "title": "云图科技与图像识别软件",
+        "summary": "云图科技位于中国",
+        "content": "云图科技位于中国，是图像识别软件的主要生产商。"
+      },
+      "entities": [
+        {
+          "type": "organization",
+          "name": "云图科技",
+          "description": "生产企业"
+        },
+        {
+          "type": "location",
+          "name": "中国",
+          "description": "国家"
+        },
+        {
+          "type": "product",
+          "name": "图像识别软件",
+          "description": "产品"
+        }
+      ]
+    }
+  ]
+}
