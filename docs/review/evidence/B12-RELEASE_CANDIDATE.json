@@ -1,0 +1,11 @@
+{
+  "name": "zhibox-b12-internal-3e966da-unsigned.apk",
+  "path": "dist/zhibox-b12-internal-3e966da-unsigned.apk",
+  "sha256": "8bebb25b79f8d245eacb4536dcf8011c48433e9d95528ce3f6330f13bb014adb",
+  "sizeBytes": 49354756,
+  "signed": false,
+  "isReleaseCandidate": false,
+  "note": "Unsigned internal build only. No ZHIBOX_* signing material configured; not installable/distributable as release candidate. Rebuild+sign with scripts/release.sh when keystore provided.",
+  "gitHeadAtBuild": "3e966da",
+  "builtAt": "2026-10-19T01:51+08:00"
+}
