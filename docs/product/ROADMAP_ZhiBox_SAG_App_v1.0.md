@@ -48,7 +48,7 @@ B8 数据/基础 ──► B9 抽取/索引 ──► B10 结构化检索 ──
 
 ## 3. B8 — 数据模型、LLM 基础与迁移（✅ 已完成 2026-10-18，见 `docs/review/B8_FIX_REPORT.md`）
 
-> 状态：schema v6/6.json、7 DAO、抽取契约、SAG role/space 契约、LLM 安全基础、设置骨架、备份 v3 骨架已落地；JVM 326/0、非 UI instrumentation 57/57；Compose UI 在 K40 显示栈挂起（B5 于 PJZ110 通过，B12 复跑）。
+> 状态：schema v6/6.json、7 DAO、抽取契约、SAG role/space 契约、LLM 安全基础、设置骨架、备份 v3 骨架已落地；JVM 328/0、K40 非 UI instrumentation 57/57、**PJZ110 Compose UI 5/5**；K40 Compose 因显示栈挂起，UI 门禁以 PJZ110 为准。
 > B9 交接：event/entity FTS 重建、document 级 NOT_INDEXED 标记/补抽取 job、event_entity/job 唯一约束与 active 索引（schema v7 或事务保证）、query_trace 写入。
 
 **目标**：落地 schema v6 与可替换的 LLM/抽取骨架，保证不配置 LLM 时现有产品零回归。

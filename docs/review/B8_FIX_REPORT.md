@@ -18,7 +18,7 @@
 | 设置页 | 「SAG 增强 / LLM」骨架：baseUrl/model/password(掩码)/timeout 1–120s、保存/测试/清除（二次确认）、SAG/问答/禁网三开关、隐私说明、无配置提示；明文 key 不进 UiState/日志/saved state |
 | 备份 | **v3**：新增 events/entities/event_entities/sag_vectors(base64)/extraction_jobs 五个 entry；v1/v2 可读；导出闭包 + 导入写库前校验 + 单事务写库；**不含 chat/query_trace/event_fts/entity_fts** |
 | JVM 测试 | **328 tests / 0 failed**（debug；既有 249 + 新增 79）；release unit **309 / 0** |
-| 真机 instrumentation | **57 / 57 PASS**（非 UI 全量：迁移/DAO/备份 v3/Keystore/抽取/既有测试）；Compose UI 2 类在 K40 上挂起（见 §5，B5 曾在 PJZ110 通过，B8 未改其业务） |
+| 真机 instrumentation | K40：**57 / 57 PASS**（非 UI 全量）；PJZ110：**Compose UI 5 / 5 PASS**（16.9s，含 recreate）。两机合计覆盖 B8 instrumentation 62 例；K40 Compose 挂起为设备显示栈问题（见 §5） |
 | Lint / 构建 | lint **0 errors / 31 warnings**；assembleDebug/Release 绿；release APK **49,152,276 B**（+83.8KB vs B7，serialization-json+新代码） |
 | 真机迁移 | K40 真机 v3→v6 链式迁移成功：user_version=6、8 新表齐全、foreign_key_check 空（详见 §4） |
 | strict 依赖校验 | verification-metadata 重新生成（616 components，新增 serialization-json），strict 门禁通过 |
@@ -87,7 +87,8 @@ schema 6.json = version 6 / identityHash 5bd38b67... / 21 entities
 ### 3.2 真机（K40，`6D8H6TXSDYXC85PZ`，Android 16）
 - **非 UI 全量**：`am instrument -e notClass ComposeUiSmokeTest,ComposeRecreateSmokeTest` → **OK (57 tests)**（26.6s）。
 - **迁移**：真实 v3 DB → 安装 v6 debug → 启动后 `user_version=6`，8 张新表全部创建，`foreign_key_check` 空；instrumentation `MigrationV5ToV6Test` 2 例通过（v5→v6 数据保留/默认值/索引/FK/唯一索引）。
-- **Compose UI**：`ComposeUiSmokeTest`/`ComposeRecreateSmokeTest` 在 K40 上卡在 Activity 启动（WindowManager/BLASTSyncEngine；device 锁屏/显示栈问题）；B5 已在 PJZ110 通过，B8 未改其业务。已保留测试代码（未 @Ignore），B12 真机矩阵需在 PJZ110/解锁设备复跑。
+- **Compose UI（PJZ110）**：`ComposeUiSmokeTest` + `ComposeRecreateSmokeTest` 定向运行 → **OK (5 tests)**（16.9s，2026-10-18 11:50）。
+- **Compose UI（K40）**：同 5 例卡在 Activity 启动（WindowManager/BLASTSyncEngine；K40 显示/锁屏栈问题），非 B8 业务代码；B5 曾在 PJZ110 通过，本次已在 PJZ110 复验。B12 真机矩阵保留 PJZ110 作为 UI 门禁设备。
 - **设备恢复**：debug APK + 原 K40 DB（v3，待下次启动迁移）+ 440M 模型；未留测试数据。
 
 ### 3.3 未配置 LLM 零回归
@@ -102,14 +103,14 @@ schema 6.json = version 6 / identityHash 5bd38b67... / 21 entities
 | # | 事项 | 说明/处置 |
 |---|---|---|
 | 1 | B8 备份 v3 为“骨架” | 新表导出/导入 + v2 兼容已实现；**event/entity FTS 不导出/导入后为空**（B9 重建）；`chunk_entity` 不在范围；chat/query_trace 明确排除 |
-| 2 | Compose UI 测试 | K40 显示/锁屏栈导致 Activity 启动挂起；非 UI 57/57 通过；B5 在 PJZ110 已通过。建议 B12 在 PJZ110 复跑；本报告如实标注，不宣称全量 instrumentation 绿 |
+| 2 | Compose UI 测试 | **已在 PJZ110 补跑通过（5/5）**；K40 仍因显示/锁屏栈卡在 Activity 启动，属设备问题。UI 门禁以 PJZ110 为准；K40 仅跑非 UI 57/57 |
 | 3 | chat 引用悬空风险 | 备份导入不清理已有 chat/query_trace；旧 citation 可能指向新库同号 chunk。B8 无 chat 数据，风险实际为 0；B11/B12 需“导入时失效/清理 chat” |
 | 4 | 导入内存 | v3 JSONL 全量解析 + base64；B8 量级 OK，B9 大数据后建议落盘临时文件两遍扫描 |
 | 8 | 老文档 NOT_INDEXED | B8 只落 `extraction_job` 状态枚举/表，**未给 v5 老文档回填 document 级 NOT_INDEXED**（v5 无 event 数据，无实际遗留用户影响）；B9 导入/补抽取时创建 job 并显式标记，B8 报告如实披露 |
 | 9 | 约束缺口 | event 无 `(chunkId,active)` 查询索引、event_entity 无 `(eventId,entityId)` 唯一、extraction_job 无每 chunk 唯一约束；B8 不写业务数据，B9 落地抽取写入时需补 schema v7 或应用层事务保证（已列入 B9 交接） |
 | 10 | B8-4 范围 | LLM Provider 仅实现 `testConnection`（最小请求）；流式/重试/限流/生成留 B11，报告不再宣称完整 LLM 客户端 |
 | 11 | query_trace/备份体积 | `query_trace` 仅建表+DAO，trace 写入在 B9/B10；备份 v3 体积/分卷上限未定（B9 后按真实数据评估） |
-| 12 | Compose harness | B8 将 recreate 测试从 createEmptyComposeRule 改为 createAndroidComposeRule；K40 仍挂起（B5 于 PJZ110 通过），B12 需在 PJZ110/解锁设备复跑 UI 门禁 |
+| 12 | Compose harness | B8 将 recreate 测试从 createEmptyComposeRule 改为 createAndroidComposeRule；PJZ110 5/5 通过，K40 仍挂起（设备显示栈），B12 以 PJZ110 为 UI 门禁设备 |
 | 5 | 事件语言 | Prompt v1 用中文指令；event/entity 输出源语言（PRD §6.2）；B9 抽检时验证中文质量 |
 | 6 | LLM 配置测试连接 | B8 只做连通性（最小 chat 请求）；生成/流式在 B11；禁网默认，UI 测试连接需先保存配置并打开联网开关 |
 | 7 | UI 明文 key | 使用 `remember` 不落 saved state；旋转后需重输（安全优先）；B11 可评估更友好的安全输入方案 |
@@ -125,7 +126,7 @@ schema 6.json = version 6 / identityHash 5bd38b67... / 21 entities
 | S2 | 硬性 | B8 空间/角色契约缺失（role 自由字符串；无 spaceId 指纹/查询校验），Roadmap B8 交付未落地且报告未披露 | **已修**：新增 `core/sag/SagVectorContract.kt`（2 role + spaceIdFor/requireMatches）并接入备份 role 校验；B9/B10 交接明确；报告 §2.1 记录 |
 | S3 | 判断性 | `maskSecret` 对 9–12 字符 key 仍露 7 位 | **已修**：`length < 16` 全遮（`****`） |
 | S4 | 判断性 | 备份导入未校验 `entityType` 属 11 类 | **已修**：`KnowledgeBackup` 用 `EntityType.fromWire` 严格校验 |
-| S5 | 判断性 | Compose recreate 测试在 K40 仍挂起；建议 waitUntil/Timeout/独立 shard/PJZ110 复跑 | **已记录**：测试已改用 createAndroidComposeRule；K40 显示栈问题非 B8 逻辑，B12 在 PJZ110/解锁设备复跑；非 UI 57/57 |
+| S5 | 判断性 | Compose recreate 测试在 K40 仍挂起；建议 waitUntil/Timeout/独立 shard/PJZ110 复跑 | **已复跑**：PJZ110 `ComposeUiSmokeTest`+`ComposeRecreateSmokeTest` **5/5 PASS**（16.9s）；K40 显示栈问题非 B8 逻辑，UI 门禁以 PJZ110 为准 |
 | S6 | — | 6.json/MIGRATION、Keystore、禁网、备份 v3、抽取契约、401 修复等未发现问题 | 保留 |
 
 ### 5.2 Spec 轴
