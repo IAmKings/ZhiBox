@@ -1,0 +1,15 @@
+B12 signed RC clean install on PJZ110 (1fc6056b) — 2026-10-19
+- App uninstalled by user prior to install.
+- APK: dist/zhibox-0.1.0-mvp-0c08286-b12-release.apk (49,385,689 bytes)
+- adb install: Success
+- dumpsys package:
+  versionCode=1 versionName=0.1.0-mvp
+  signatures=[5120bbe5] (release cert SHA-256 b1d136badcc7e032a39d8504fb050f98f444017aeb5f5cfce66256afec1db1d1)
+  pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ] (not debuggable)
+- cold launch: LaunchState COLD, MainActivity, TotalTime 170ms
+- process alive; logcat no FATAL/AndroidRuntime process crash
+- home/sources/graph empty/settings UI dumps captured
+  docs/review/evidence/B12-rc-home.png
+  docs/review/evidence/B12-rc-graph.png
+  docs/review/evidence/B12-rc-settings.png
+- Graph tab empty state verified; Settings budget/extraction concurrency/privacy/backup texts verified.
