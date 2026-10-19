@@ -1,0 +1,14 @@
+{
+  "name": "zhibox-0.1.2-b887d11-release-signed.apk",
+  "path": "dist/zhibox-0.1.2-b887d11-release-signed.apk",
+  "versionName": "0.1.2",
+  "versionCode": 3,
+  "sizeBytes": 55479692,
+  "sha256": "3647df0f7a5d2ca2d3007b6710d3ca82c8dfeafe557a0396e87db669d77ae966",
+  "signed": true,
+  "signing": "release keystore (same as v0.1.1; apksigner PASS)",
+  "signerCertSha256": "b1d136badcc7e032a39d8504fb050f98f444017aeb5f5cfce66256afec1db1d1",
+  "status": "release candidate; not published/tagged; device install smoke pending (K60U/K40 hold debug; PJZ110 offline)",
+  "gitHeadAtBuild": "b887d11",
+  "builtAt": "2026-10-20T02:09+08:00"
+}

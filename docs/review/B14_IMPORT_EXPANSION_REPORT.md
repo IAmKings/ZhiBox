@@ -35,7 +35,7 @@
 | `core.text` 测试 | Office 14、HTML 6、WebFetcher 11、PDF Robolectric 8、DocumentParser 分派等全绿 |
 | K60U 非 UI instrumentation | **31/31** |
 | K60U PDF Android runtime instrumented | **2/2**（真实 PDFBox AAR 资源 + DocumentParser Context/File + 损坏 PDF 可读错误） |
-| release 构建 | `assembleRelease` 成功；APK ≈55.44MB（v0.1.1 49.39MB，PDFBox assets/BC 增量约 +6MB） |
+| release 构建 | **signed RC**：`dist/zhibox-0.1.2-b887d11-release-signed.apk`（55,479,692 bytes，SHA-256 `3647df0f7a5d2ca2d3007b6710d3ca82c8dfeafe557a0396e87db669d77ae966`；apksigner PASS）；v0.1.1 49.39MB → v0.1.2 约 55.48MB（PDFBox assets/BC 增量约 +6MB） |
 
 ## 4. 限制/未做
 
@@ -44,7 +44,7 @@
 - URL 导入不保留原始 URL 到 source/document（仅标题入正文/文件名）；不做 URL 去重/网页信源管理；网页仅 HTML/纯文本，不做 JS 渲染。
 - HTML/Office 输出超 200 万字符截断（非静默日志，按预算）。
 - SAF/DocumentsUI 真机 e2e 未完成：K40 当前锁屏（需图案密码）、K60U HyperOS 禁止 adb 输入注入；解析与 UI 编译/单测已覆盖，待可用设备窗口做导入全链路 smoke。
-- 未自动发布；v0.1.2 版本号已 bump，但未 tag/发布。
+- **签名 RC 已生成但未 tag/发布**；K60U/K40 当前为 debug 包，PJZ110 离线，因此 signed RC 的 SAF/网页真机安装 smoke 仍未执行。
 
 ## 5. 后续
 
