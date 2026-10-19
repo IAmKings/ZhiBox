@@ -8,8 +8,9 @@
 
 | 档位 | 设备 | 状态 | 证据/备注 |
 |---|---|---|---|
-| 高端 | PJZ110 `1fc6056b` | 可用 | Compose/instrumentation 串行 31/31；真实 LLM QA/Support（B11）通过 |
-| 中端 | K40 `6D8H6TXSDYXC85PZ` | 本轮未连接 | B10/B11 期间有 440M/102 测试基线；B12 未复跑 |
+| 高端 | PJZ110 `1fc6056b` | 可用（RC） | signed RC clean install/cold launch/UI 走查；B11 real QA/support 通过 |
+| 高端 | K60U `6D8H6TXSDYXC85PZ`（Dimensity 9200+，15.7GB，Android 14） | 可用（debug；MIUI 输入/后台启动受限） | B12 非 UI instrumentation 18/18；Graph 10k in-memory p95≤17ms、持久盘 p95≤21ms；debug app 可从桌面启动（home 已截图）；Compose instrumentation 被 HyperOS 拒绝后台启动/输入注入 |
+| 中端 | 未提供（K60U 为 16GB 高端，不是 8GB 中端） | 缺失 | 需 8GB 档设备 |
 | 低端 | 未提供 | 缺失 | 需 4–6GB 设备；不能伪造通过 |
 
 ## 2. P0 门禁清单（截至本轮）
