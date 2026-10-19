@@ -172,6 +172,12 @@ object SagChannels {
 
     /** LLM selector 选中标记（multi 模式） */
     const val LLM_SELECTED: String = "llm_selected"
+
+    /**
+     * R2 复审修复（P2-2）：桥接救援标记——命中分数被提升到 `BRIDGE_RESCUE_SCORE` 的候选
+     * 携带本通道值，UI/trace/评测可区分"真实融合分"与"救援提升分"（不再仅靠分数不可解释地偏高）。
+     */
+    const val BRIDGE_RESCUE: String = "bridge_rescue"
 }
 
 /** 轨迹阶段（name/count/ms 即可；不记录正文/实体名以外敏感信息） */

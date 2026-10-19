@@ -334,15 +334,16 @@ class SagRetriever(
             stages += stage(STAGE_VECTOR_SEEDS, 0, seedStart)
             return EventLayer.Unavailable("事件层不可用：未找到可用嵌入模型或查询向量计算失败")
         }
-        val rawVectors = safeSuspend {
-            db.sagVectorDao().bySpace(
-                spaceId = queryVector.eventSpaceId,
-                role = SagVectorRole.EVENT_CONTENT.wire,
-                ownerType = SagOwnerType.EVENT.value,
-                limit = SagSupport.EVENT_VECTOR_SCAN_LIMIT,
-            )
-        }.orEmpty()
-        val vectorSeeds = rankEventVectors(rawVectors, queryVector, budget.kSeed)
+        // R3 复审修复：扫描中途失败不得静默降级——旧 safeSuspend→orEmpty 会把"读取异常"误判为
+        // "空页=扫完"，返回部分种子且无任何标注；这里让异常传出，由本方法外层转为事件层不可用。
+        val vectorSeeds = try {
+            scanEventVectors(queryVector, budget.kSeed)
+        } catch (c: CancellationException) {
+            throw c
+        } catch (_: Exception) {
+            stages += stage(STAGE_VECTOR_SEEDS, 0, seedStart)
+            return EventLayer.Unavailable("事件层不可用：事件向量扫描失败（数据库读取中断）")
+        }
         stages += stage(STAGE_VECTOR_SEEDS, vectorSeeds.size, seedStart)
         if (vectorSeeds.isEmpty()) {
             return EventLayer.Unavailable(
@@ -374,10 +375,10 @@ class SagRetriever(
             primaryAnchorEventIds
         }
         val bridgeAnchorEventIds = queryAnchorEventIds.ifEmpty { vectorSeeds.map { it.first } }
-        val seedEventEntityIds = bridgeAnchorEventIds
-            .take(maxOf(1, budget.kSeed))
-            .flatMap { eventId -> loadEventEntityIds(listOf(eventId))[eventId].orEmpty() }
-            .distinct()
+        // R2 复审修复（P2-1）：锚点关联实体一次性批量查询——旧实现逐锚点一条 SQL（≤kSeed 次 N+1），
+        // 桥接救援的锚点实体集也直接复用同一批结果（锚点 = bridgeAnchorEventIds 首元素）。
+        val anchorRelMap = loadEventEntityIds(bridgeAnchorEventIds.take(maxOf(1, budget.kSeed)))
+        val seedEventEntityIds = anchorRelMap.values.flatten().distinct()
         // 只取高辨识度类型，避免动作/时间/tags 等泛实体灌满 frontier。
         val bridgeEntityIds = loadEntities(seedEventEntityIds)
             .values
@@ -474,11 +475,9 @@ class SagRetriever(
         // 事件挤出 kEvent；只提升“与锚点共享实体最多、且非锚点自身”的一个桥接事件。
         val anchorEventIdSet = queryAnchorEventIds.toHashSet()
         val anchorEventId = queryAnchorEventIds.firstOrNull() ?: vectorSeeds.firstOrNull()?.first
-        val anchorEntityIds = if (anchorEventId != null) {
-            loadEventEntityIds(listOf(anchorEventId)).values.flatten().toSet()
-        } else {
-            emptySet()
-        }
+        // P2-1：复用 anchorRelMap（锚点必为 bridgeAnchorEventIds 首元素，已在批量结果内）
+        val anchorEntityIds = anchorEventId?.let { anchorRelMap[it].orEmpty().toSet() }
+            ?: emptySet()
         val bridgeCandidates = candidates.filter {
             SagChannels.EVENT_ENTITY in it.channels && it.eventId !in anchorEventIdSet
         }
@@ -490,11 +489,14 @@ class SagRetriever(
         val rescueCandidates = if (bridgeRescue == null) {
             candidates
         } else {
+            // P2-2：分数提升仍是救援机制（把桥接事件带回结果区），但同时在 channels 打上
+            // bridge_rescue 标记——UI/trace/评测可区分"真实融合分"与"救援提升分"。
             candidates.map {
                 if (it.chunkId == bridgeRescue.chunkId) {
                     it.copy(
                         score = maxOf(it.score, BRIDGE_RESCUE_SCORE),
                         fusedScore = maxOf(it.fusedScore ?: it.score, BRIDGE_RESCUE_SCORE),
+                        channels = it.channels + SagChannels.BRIDGE_RESCUE,
                     )
                 } else it
             }
@@ -628,13 +630,14 @@ class SagRetriever(
 
     // ───────────────────────── 候选/回填辅助 ─────────────────────────
 
-    /** 事件向量余弦：blob float32 LE；优先使用入库记录的 vectorNorm（与 B9 写入一致），缺失则现场算。 */
-    private fun rankEventVectors(
-        rows: List<SagVectorEntity>,
-        queryVector: QueryVector,
-        kSeed: Int,
-    ): List<Pair<Long, Double>> {
-        if (rows.isEmpty()) return emptyList()
+    /**
+     * R2 复审修复（P1-R2-1）：分页全量扫描事件向量并维护有界 top-K（τ 阈值内）。
+     * 取代旧 `bySpace LIMIT 5000` 的按 id 截断——事件数（含 superseded 历史行）超限后
+     * 最新事件静默不可召回且无提示。内存 O(页 + 2×kSeed)；语义与旧实现一致
+     * （余弦 ≥ τ，分数降序、ownerId 升序）。性能口径与 SearchService 流式向量扫描相同。
+     */
+    private suspend fun scanEventVectors(queryVector: QueryVector, kSeed: Int): List<Pair<Long, Double>> {
+        if (kSeed <= 0) return emptyList()
         val dim = queryVector.dims
         if (dim <= 0) return emptyList()
         var qNorm = 0.0
@@ -642,27 +645,50 @@ class SagRetriever(
         qNorm = sqrt(qNorm)
         if (qNorm == 0.0) return emptyList()
 
-        val out = ArrayList<Pair<Long, Double>>(rows.size)
-        for (row in rows) {
-            if (row.vectorBlob.size != dim * 4) continue
-            val buffer = ByteBuffer.wrap(row.vectorBlob).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
-            var dot = 0.0
-            var squared = 0.0
-            for (k in 0 until dim) {
-                val value = buffer.get(k).toDouble()
-                dot += value * queryVector.vector[k].toDouble()
-                squared += value * value
+        val best = ArrayList<Pair<Double, Long>>(kSeed * 2)
+        var offset = 0
+        while (true) {
+            // 不用 safeSuspend：页读取失败必须上抛（见调用处 R3 注释），不能当空页终止扫描
+            val page = db.sagVectorDao().bySpacePage(
+                spaceId = queryVector.eventSpaceId,
+                role = SagVectorRole.EVENT_CONTENT.wire,
+                ownerType = SagOwnerType.EVENT.value,
+                limit = EVENT_VECTOR_PAGE,
+                offset = offset,
+            )
+            if (page.isEmpty()) break
+            for (row in page) {
+                val cosine = eventCosine(row, queryVector, qNorm) ?: continue
+                best += cosine to row.ownerId
             }
-            val norm = row.vectorNorm.takeIf { it > 0.0 } ?: sqrt(squared)
-            if (norm <= 0.0) continue
-            val cosine = SagSupport.clamp01(dot / (qNorm * norm))
-            if (cosine >= SagSupport.EVENT_VECTOR_TAU) {
-                out += row.ownerId to cosine
+            if (best.size > kSeed * 2) {
+                best.sortWith(compareByDescending<Pair<Double, Long>> { it.first }.thenBy { it.second })
+                while (best.size > kSeed) best.removeAt(best.size - 1)
             }
+            offset += page.size
         }
-        return out
-            .sortedWith(compareByDescending<Pair<Long, Double>> { it.second }.thenBy { it.first })
+        return best
+            .sortedWith(compareByDescending<Pair<Double, Long>> { it.first }.thenBy { it.second })
             .take(kSeed)
+            .map { it.second to it.first }
+    }
+
+    /** 单行事件向量余弦：blob float32 LE；优先使用入库记录的 vectorNorm（与 B9 写入一致），缺失则现场算。null=维度不符/零向量/低于 τ。 */
+    private fun eventCosine(row: SagVectorEntity, queryVector: QueryVector, qNorm: Double): Double? {
+        val dim = queryVector.dims
+        if (row.vectorBlob.size != dim * 4) return null
+        val buffer = ByteBuffer.wrap(row.vectorBlob).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+        var dot = 0.0
+        var squared = 0.0
+        for (k in 0 until dim) {
+            val value = buffer.get(k).toDouble()
+            dot += value * queryVector.vector[k].toDouble()
+            squared += value * value
+        }
+        val norm = row.vectorNorm.takeIf { it > 0.0 } ?: sqrt(squared)
+        if (norm <= 0.0) return null
+        val cosine = SagSupport.clamp01(dot / (qNorm * norm))
+        return if (cosine >= SagSupport.EVENT_VECTOR_TAU) cosine else null
     }
 
     /** 实体 seed → DB entity id（id>0 直接用；id<=0 用 normalizedName 回查；去重保序）。 */
@@ -871,6 +897,9 @@ class SagRetriever(
         internal val BRIDGE_ENTITY_TYPES: Set<String> = setOf(
             "person", "organization", "location", "product", "work", "group",
         )
+
+        /** P1-R2-1 流式扫描页大小（每页 ~1000×768×4B ≈ 3MB，可回收；与 SearchService 同口径） */
+        private const val EVENT_VECTOR_PAGE: Int = 1_000
 
         // ── 稳定文案/常量 ──
         internal const val MULTI_REFUSED_REASON: String =

@@ -29,8 +29,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -65,7 +65,13 @@ fun SettingsScreen(
     onBack: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel(),
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    // R2（P2-8）：进场刷新——VM 常驻 Activity，导入/删源/切模型后再进设置页不再展示陈旧计数
+    LaunchedEffect(Unit) {
+        viewModel.onScreenStarted()
+    }
+
     var pendingDeleteModel by remember { mutableStateOf<File?>(null) }
     var pendingClearAll by remember { mutableStateOf(false) }
     var importDropGpu by remember { mutableStateOf(true) }

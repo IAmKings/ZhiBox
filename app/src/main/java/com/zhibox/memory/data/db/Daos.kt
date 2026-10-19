@@ -215,6 +215,17 @@ interface ChunkDao {
     @Query("SELECT * FROM chunk WHERE documentId = :documentId ORDER BY ordinal")
     suspend fun byDocument(documentId: String): List<ChunkEntity>
 
+    /**
+     * R2 复审修复（P1-R2-2）：按 (documentId, ordinal) 取单行——抽取热路径只需要
+     * 上一 chunk 尾部 200 字，旧实现 byDocument 整篇加载（SELECT * 含正文）导致长文档 O(N²)。
+     */
+    @Query("SELECT * FROM chunk WHERE documentId = :documentId AND ordinal = :ordinal LIMIT 1")
+    suspend fun byDocumentAndOrdinal(documentId: String, ordinal: Int): ChunkEntity?
+
+    /** R2（P1-R2-2）：仅取 chunk id（调度建任务不需要正文等大列）。 */
+    @Query("SELECT id FROM chunk WHERE documentId = :documentId ORDER BY ordinal")
+    suspend fun idsByDocument(documentId: String): List<Long>
+
     @Query("SELECT * FROM chunk WHERE id IN (:ids)")
     suspend fun chunksByIds(ids: List<Long>): List<ChunkEntity>
 
@@ -828,11 +839,22 @@ interface SagVectorDao {
     )
     suspend fun byOwners(ownerType: String, ownerIds: List<Long>): List<SagVectorEntity>
 
+    /**
+     * R2 复审修复（P1-R2-1）：事件向量检索分页扫描（按 id 稳定排序）。
+     * 旧单查询 `LIMIT 5000` 按 id 截断——事件数超限后**最新**事件（id 最大）恰好被截掉，
+     * 且截断不写任何提示。改为分页全量扫描 + 调用侧有界 top-K（内存 O(页 + K)），不再丢召回。
+     */
     @Query(
         "SELECT * FROM sag_vector WHERE spaceId = :spaceId AND role = :role " +
-            "AND ownerType = :ownerType ORDER BY id LIMIT :limit"
+            "AND ownerType = :ownerType ORDER BY id LIMIT :limit OFFSET :offset"
     )
-    suspend fun bySpace(spaceId: String, role: String, ownerType: String, limit: Int): List<SagVectorEntity>
+    suspend fun bySpacePage(
+        spaceId: String,
+        role: String,
+        ownerType: String,
+        limit: Int,
+        offset: Int,
+    ): List<SagVectorEntity>
 
     /** 备份导出分页（避免一次加载全部向量 BLOB） */
     @Query("SELECT * FROM sag_vector ORDER BY id LIMIT :limit OFFSET :offset")
@@ -894,6 +916,10 @@ interface ExtractionJobDao {
 
     @Query("SELECT * FROM extraction_job WHERE documentId = :documentId ORDER BY chunkId")
     suspend fun byDocument(documentId: String): List<ExtractionJobEntity>
+
+    /** R2 复审修复（P2-12）：按文档批量取任务（来源页逐文档查询的 N+1 修复；按 chunkId 稳定排序）。 */
+    @Query("SELECT * FROM extraction_job WHERE documentId IN (:documentIds) ORDER BY chunkId")
+    suspend fun byDocumentIds(documentIds: List<String>): List<ExtractionJobEntity>
 
     @Query("SELECT * FROM extraction_job WHERE chunkId = :chunkId ORDER BY id")
     suspend fun byChunk(chunkId: Long): List<ExtractionJobEntity>
@@ -966,13 +992,19 @@ interface ExtractionJobDao {
     /**
      * B9：无 LLM/开关关闭/禁网时标记"未索引"（notIndexedStatus=not_indexed）——
      * 文档仍 ready，可离线检索原文；后续开启 LLM 后由 backfill 重置为 queued。
+     *
+     * R2 复审修复（P2-4）：WHERE 加 status 守卫——读取 QUEUED 与写入之间存在 TOCTOU 窗口，
+     * 另一协程已 claim 成 RUNNING 时不得把 RUNNING 踩回 not_indexed（会卡到 backfill 才恢复）。
+     * fromStatus 按调用时点传入：claim 前的可用性检查传 queued；claim 后的失败收尾传 running。
      */
     @Query(
         "UPDATE extraction_job SET status = :notIndexedStatus, errorCode = :errorCode, " +
-            "errorDetail = :errorDetail, updatedAt = :now WHERE id = :id"
+            "errorDetail = :errorDetail, updatedAt = :now " +
+            "WHERE id = :id AND status = :fromStatus"
     )
     suspend fun markNotIndexed(
         id: String,
+        fromStatus: String,
         notIndexedStatus: String,
         errorCode: String?,
         errorDetail: String?,
@@ -1027,6 +1059,13 @@ interface ChatDao {
 
     @Query("UPDATE chat_conversation SET title = :title, updatedAt = :now WHERE id = :id")
     suspend fun renameConversation(id: String, title: String, now: Long)
+
+    /**
+     * R2 复审修复（P2-7）：仅刷新会话活跃时间。旧实现借 renameConversation 回写
+     * "刚读出的旧 title"——与并发改名竞态会把用户的新标题还原；本方法不触碰 title。
+     */
+    @Query("UPDATE chat_conversation SET updatedAt = :now WHERE id = :id")
+    suspend fun touch(id: String, now: Long)
 
     @Query("DELETE FROM chat_conversation WHERE id = :id")
     suspend fun deleteConversation(id: String)

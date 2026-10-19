@@ -43,8 +43,9 @@ object SagExtractionScheduler {
      * @return 新建或重新入队的任务数（0=无需变更）
      */
     suspend fun onDocumentReady(context: Context, db: AppDatabase, documentId: String): Int {
-        val chunks = db.chunkDao().byDocument(documentId)
-        if (chunks.isEmpty()) return 0
+        // R2（P1-R2-2）：建任务只需要 chunk id——用 id-only 查询，不物化正文等大列
+        val chunkIds = db.chunkDao().idsByDocument(documentId)
+        if (chunkIds.isEmpty()) return 0
 
         val available = SagAvailability.isAvailable(context)
         val existingByChunk = db.extractionJobDao().byDocument(documentId).associateBy { it.chunkId }
@@ -52,16 +53,16 @@ object SagExtractionScheduler {
         var changed = 0
 
         db.withTransaction {
-            val insertRows = ArrayList<ExtractionJobEntity>(chunks.size)
+            val insertRows = ArrayList<ExtractionJobEntity>(chunkIds.size)
             val requeueIds = ArrayList<String>()
-            for (chunk in chunks) {
-                val existing = existingByChunk[chunk.id]
+            for (chunkId in chunkIds) {
+                val existing = existingByChunk[chunkId]
                 if (existing == null) {
                     insertRows += ExtractionJobEntity(
                         // job.id 同时是本次抽取的 extractionVersion（重抽取换 UUID）
                         id = UUID.randomUUID().toString(),
                         documentId = documentId,
-                        chunkId = chunk.id,
+                        chunkId = chunkId,
                         status = if (available) {
                             ExtractionJobStatus.QUEUED.value
                         } else {

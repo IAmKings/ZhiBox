@@ -24,8 +24,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,15 +58,15 @@ fun SearchScreen(
     onBack: () -> Unit = {},
     viewModel: SearchViewModel = viewModel(),
 ) {
-    val query by viewModel.query.collectAsState()
-    val running by viewModel.running.collectAsState()
-    val loadingModel by viewModel.loadingModel.collectAsState()
-    val mode by viewModel.mode.collectAsState()
-    val result by viewModel.result.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val exportingTrace by viewModel.exportingTrace.collectAsState()
-    val traceExportMessage by viewModel.traceExportMessage.collectAsState()
-    val selectedHit by viewModel.selectedHit.collectAsState()
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    val running by viewModel.running.collectAsStateWithLifecycle()
+    val loadingModel by viewModel.loadingModel.collectAsStateWithLifecycle()
+    val mode by viewModel.mode.collectAsStateWithLifecycle()
+    val result by viewModel.result.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val exportingTrace by viewModel.exportingTrace.collectAsStateWithLifecycle()
+    val traceExportMessage by viewModel.traceExportMessage.collectAsStateWithLifecycle()
+    val selectedHit by viewModel.selectedHit.collectAsStateWithLifecycle()
 
     // 证据详情覆盖层：系统返回键先关闭证据页（而不是退出检索屏）。
     // 选中项在 ViewModel 中：旋转/进程重建后仍停留在证据页（P1-8）。

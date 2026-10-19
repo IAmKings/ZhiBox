@@ -207,7 +207,7 @@ class B8DaoRoundTripTest {
         assertEquals(1, db.sagVectorDao().byOwner(SagOwnerType.EVENT.value, eventId).size)
         assertEquals(1, db.sagVectorDao().byOwner(SagOwnerType.ENTITY.value, entityId).size)
         assertEquals(1, db.sagVectorDao().byOwners(SagOwnerType.EVENT.value, listOf(eventId)).size)
-        assertEquals(1, db.sagVectorDao().bySpace(spaceId, SagVectorRole.EVENT_CONTENT.wire, SagOwnerType.EVENT.value, 10).size)
+        assertEquals(1, db.sagVectorDao().bySpacePage(spaceId, SagVectorRole.EVENT_CONTENT.wire, SagOwnerType.EVENT.value, 10, 0).size)
         assertEquals(2, db.sagVectorDao().countBySpace(spaceId))
         assertEquals(2, db.sagVectorDao().page(10, 0).size)
         assertEquals(1, db.sagVectorDao().page(2, 1).size)

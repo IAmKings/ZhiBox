@@ -326,7 +326,21 @@ class OpenAiCompatibleLlmProvider internal constructor(
         var totalChars = 0
         try {
             while (true) {
-                val line = reader.readLine() ?: break
+                // R2 复审修复（P2-6）：有界单行读取——BufferedReader.readLine 会把整行读入内存
+                // 后才返回，旧的行长度检查（parseSseLine 内）发生在内存已撑大之后；恶意/异常
+                // 服务端可用单条超大行先耗尽内存。超限即时终止并报可读错误。
+                val line = try {
+                    readSseLineBounded(reader, MAX_SSE_LINE_CHARS) ?: break
+                } catch (_: SseLineTooLongException) {
+                    currentCoroutineContext().ensureActive()
+                    emitEvent(
+                        LlmStreamEvent.Failed(
+                            LlmErrorCode.PARSE,
+                            "LLM 流式响应单行过大（超过 ${MAX_SSE_LINE_CHARS / 1024}KB），已终止",
+                        ),
+                    )
+                    return
+                }
                 currentCoroutineContext().ensureActive()
                 totalChars += line.length + 1
                 if (totalChars > MAX_STREAM_CHARS) {
@@ -758,6 +772,33 @@ internal const val MAX_STREAM_CHARS: Int = 256 * 1024
 
 /** 单条 SSE 行上限（防止单行超大 JSON）。 */
 internal const val MAX_SSE_LINE_CHARS: Int = 64 * 1024
+
+/** R2（P2-6）：单行超过 [MAX_SSE_LINE_CHARS] 时由 [readSseLineBounded] 抛出，调用方转 Failed。 */
+internal class SseLineTooLongException : Exception()
+
+/**
+ * R2 复审修复（P2-6）：有界单行读取（返回 null=流结束）。
+ * `BufferedReader.readLine` 必须读到换行/EOF 才返回——单行长度上限无法用它强制，
+ * 逐字符读取并在超限时立即抛 [SseLineTooLongException]，内存占用与上限同级而非与行长大级。
+ * 行终止符与 readLine 同语义：`\n`、`\r`、`\r\n`（R3 复审补：孤立 `\r` 也是行尾，
+ * 不能拼进下一行——CR-only 行尾的服务端会把多行拼成超长行误触上限）。
+ */
+internal fun readSseLineBounded(reader: BufferedReader, maxChars: Int): String? {
+    val sb = StringBuilder(256)
+    var c = reader.read()
+    if (c < 0) return null
+    while (c >= 0 && c != '\n'.code && c != '\r'.code) {
+        sb.append(c.toChar())
+        if (sb.length > maxChars) throw SseLineTooLongException()
+        c = reader.read()
+    }
+    if (c == '\r'.code) {
+        // \r\n 吞掉紧跟的 \n；孤立 \r 即行尾（readLine 同语义）
+        reader.mark(1)
+        if (reader.read() != '\n'.code) reader.reset()
+    }
+    return sb.toString()
+}
 
 /**
  * 构造流式 completion 请求（`stream=true`）：messages 为 system+user，字段与

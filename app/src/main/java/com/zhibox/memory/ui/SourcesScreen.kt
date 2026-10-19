@@ -20,10 +20,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -49,19 +50,20 @@ fun SourcesScreen(
     onOpenImport: () -> Unit = {},
     viewModel: SourcesViewModel = viewModel(),
 ) {
-    val sources by viewModel.sources.collectAsState()
-    val documents by viewModel.documents.collectAsState()
-    val extractionByDocument by viewModel.extractionByDocument.collectAsState()
+    val sources by viewModel.sources.collectAsStateWithLifecycle()
+    val documents by viewModel.documents.collectAsStateWithLifecycle()
+    val extractionByDocument by viewModel.extractionByDocument.collectAsStateWithLifecycle()
 
     // B9：进入页面时刷新一次逐文档抽取状态（后台任务变化时避免长期陈旧）
     LaunchedEffect(Unit) {
         viewModel.refreshExtractionStatuses()
     }
-    val loaded by viewModel.loaded.collectAsState()
-    val deleting by viewModel.deleting.collectAsState()
-    val deleteError by viewModel.deleteError.collectAsState()
+    val loaded by viewModel.loaded.collectAsStateWithLifecycle()
+    val deleting by viewModel.deleting.collectAsStateWithLifecycle()
+    val deleteError by viewModel.deleteError.collectAsStateWithLifecycle()
 
-    var pendingDelete by remember { mutableStateOf<Pair<String, String>?>(null) } // sourceId to title
+    // R2（P2-14）：确认对话框的 (sourceId, title) 存 Bundle（Pair 可序列化），旋转不丢待确认项
+    var pendingDelete by rememberSaveable { mutableStateOf<Pair<String, String>?>(null) } // sourceId to title
 
     val pendingDeleteValue = pendingDelete
     if (pendingDeleteValue != null) {
@@ -88,7 +90,8 @@ fun SourcesScreen(
     }
 
     // B12：来源 / 图谱切换（图谱数据/分页独立在 GraphViewModel）
-    var tab by remember { mutableStateOf(SOURCES_TAB_SOURCES) }
+    // R2（P2-14）：rememberSaveable——旋转/进程重建后保持在用户所选 tab（旧 remember 回退默认来源页）
+    var tab by rememberSaveable { mutableStateOf(SOURCES_TAB_SOURCES) }
     val graphViewModel: GraphViewModel = viewModel()
 
     ZhiBoxScreen(title = stringResource(R.string.sources_title), onBack = onBack) { padding ->

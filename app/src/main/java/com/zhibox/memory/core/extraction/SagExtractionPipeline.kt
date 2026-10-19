@@ -80,13 +80,20 @@ class SagExtractionPipeline(
 
     /**
      * 领取并处理一个排队任务。
-     * @return true=处理了一个任务（含失败/重排队/未索引）；false=队列为空或任务不可领取
+     *
+     * R2 复审修复（P2-3）：一次取一小批候选逐个尝试 claim——parallelism>1 时多个协程
+     * 不再全部竞争同一队首（N-1 次 claim 必败 + delay 重试的惊群）；每个协程在批内
+     * 大概率找到可领取任务，claim 原子性保证一个 job 只被一个协程处理。
+     *
+     * @return true=处理了一个任务（含失败/重排队/未索引）；false=队列无任务可领取
      */
     suspend fun processNext(): Boolean {
-        val next = db.extractionJobDao()
-            .nextQueued(ExtractionJobStatus.QUEUED.value, 1)
-            .firstOrNull() ?: return false
-        return processJob(next.id)
+        val candidates = db.extractionJobDao()
+            .nextQueued(ExtractionJobStatus.QUEUED.value, CLAIM_BATCH)
+        for (job in candidates) {
+            if (processJob(job.id)) return true
+        }
+        return false
     }
 
     /**
@@ -99,10 +106,12 @@ class SagExtractionPipeline(
         val job = db.extractionJobDao().get(jobId) ?: return false
         if (ExtractionJobStatus.fromValue(job.status) != ExtractionJobStatus.QUEUED) return false
 
-        // 可用性检查在 claim 之前：不可用时直接置 not_indexed（文档保持 ready，后续 backfill 恢复）
+        // 可用性检查在 claim 之前：不可用时直接置 not_indexed（文档保持 ready，后续 backfill 恢复）。
+        // P2-4：fromStatus=queued 守卫——与并发 claim 的 TOCTOU 窗口内不得把 RUNNING 踩回 not_indexed。
         if (!SagAvailability.isAvailable(appContext)) {
             db.extractionJobDao().markNotIndexed(
                 id = job.id,
+                fromStatus = ExtractionJobStatus.QUEUED.value,
                 notIndexedStatus = ExtractionJobStatus.NOT_INDEXED.value,
                 errorCode = ExtractionErrorCodes.NOT_CONFIGURED,
                 errorDetail = SagExtractionSupport.NOT_INDEXED_DETAIL,
@@ -446,6 +455,9 @@ class SagExtractionPipeline(
         if (SagErrorClassifier.isNotIndexed(failure.code)) {
             db.extractionJobDao().markNotIndexed(
                 id = jobId,
+                // P2-4：本路径发生在 claim 之后（job 已 RUNNING），守卫按 running——
+                // 与用户取消/其它协程的状态迁移并发时不得覆盖对方结果。
+                fromStatus = ExtractionJobStatus.RUNNING.value,
                 notIndexedStatus = ExtractionJobStatus.NOT_INDEXED.value,
                 errorCode = failure.code,
                 errorDetail = "远程 LLM 未配置或不可用（禁网/配置损坏），等待配置后补抽取（文档仍可离线检索）",
@@ -490,12 +502,12 @@ class SagExtractionPipeline(
 
     // ─────────────────────────── 辅助 ───────────────────────────
 
-    /** 上一 chunk 尾部 ≤200 字作为断句/代词消解上下文（不用于抽取事件内容本身） */
+    /** 上一 chunk 尾部 ≤200 字作为断句/代词消解上下文（不用于抽取事件内容本身）。
+     *  R2（P1-R2-2）：单行查询——旧实现 byDocument 整篇加载（含全部正文）再过滤 ordinal-1，
+     *  每 chunk 任务 O(N) 行物化、整篇 O(N²)。 */
     private suspend fun previousContext(documentId: String, chunk: ChunkEntity): String? {
         if (chunk.ordinal <= 0) return null
-        val previous = db.chunkDao().byDocument(documentId)
-            .firstOrNull { it.ordinal == chunk.ordinal - 1 }
-            ?: return null
+        val previous = db.chunkDao().byDocumentAndOrdinal(documentId, chunk.ordinal - 1) ?: return null
         return previous.content.takeLast(PREVIOUS_CONTEXT_CHARS).takeIf { it.isNotBlank() }
     }
 
@@ -522,5 +534,8 @@ class SagExtractionPipeline(
 
         /** event_entity 关联强度：LLM 每 chunk 只输出一个核心事件，关联实体按核心权重记 1.0 */
         const val ENTITY_WEIGHT: Double = 1.0
+
+        /** P2-3：单次领取候选批大小（略大于 parallelism 上限 4，批内逐个尝试 claim） */
+        const val CLAIM_BATCH: Int = 8
     }
 }

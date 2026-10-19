@@ -99,8 +99,6 @@ data class ChatUiState(
     /** LLM 问答是否就绪（开关 + 允许联网 + 已配置 Key）。 */
     val llmReady: Boolean get() = answerEnabled && networkAllowed && llmConfigured
 
-    /** 会话展示标题（空列表用「新对话」占位）。 */
-    val displayTitle: String get() = current?.title ?: "新对话"
 }
 
 data class ChatSourceOption(val id: String, val title: String)
@@ -263,7 +261,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 LoadedConversation(conversation, messages, citations)
             }
             if (loaded == null) {
-                update { it.copy(errorMessage = str(R.string.chat_failed, "会话不存在")) }
+                update { it.copy(errorMessage = str(R.string.chat_failed, str(R.string.chat_conversation_missing))) }
                 return@safeLaunch
             }
             update {
@@ -393,7 +391,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     vectorRank = null,
                     keywordRank = null,
                     fusedScore = 0.0,
-                    channels = "引用 ${citation.evidenceId}",
+                    channels = str(R.string.chat_citation_label, citation.evidenceId),
                 )
             }
             if (hit == null) {
@@ -584,7 +582,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         it.copy(
                             streaming = false,
                             streamingText = "",
-                            errorMessage = str(R.string.chat_failed, "未返回结果"),
+                            errorMessage = str(R.string.chat_failed, str(R.string.chat_no_result)),
                             canRetry = true,
                         )
                     }

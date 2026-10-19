@@ -162,8 +162,15 @@ object ExtractionJson {
             )
     }
 
-    /** 去掉 LLM 常见的 ```json 围栏；非围栏文本原样返回（strict 校验在后续步骤） */
-    private fun stripCodeFence(raw: String): String {
+    /**
+     * 去掉 LLM 常见的 ```json 围栏；非围栏文本原样返回（strict 校验在后续步骤）。
+     *
+     * R2 复审修复（P2-5）：改为 internal 并作为全仓库围栏剥离的**单一实现**——
+     * core/llm 的 `LlmPromptJson.stripJsonFence` 旧实现用 `substringAfter('\n')` 处理首行，
+     * 对单行围栏（```json {...}``` 无换行）会清成空串导致 B10 选择/实体抽取误降级。
+     * 本正则版对单行/多行围栏行为一致，两处口径合一。
+     */
+    internal fun stripCodeFence(raw: String): String {
         var text = raw.trim()
         if (text.startsWith("```")) {
             text = fenceStart.replace(text, "")

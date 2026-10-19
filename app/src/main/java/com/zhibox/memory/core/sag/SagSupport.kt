@@ -20,11 +20,8 @@ internal object SagSupport {
     /** 查询 bigram OR 串上限（与 SearchService 一致，避免 SQLite 表达式过深） */
     const val MAX_OR_GRAMS: Int = 64
 
-    /** 事件向量 seed 余弦阈值（τ=0.4，task-47 契约） */
+    /** 事件向量 seed 余弦阈值（τ=0.4，task-47 契约）。R2（P1-R2-1）：旧的 5000 条扫描上限常量已删除——事件向量 seed 现为分页全量扫描 + 有界 top-K（见 SagRetriever.scanEventVectors），无截断、内存有界。 */
     const val EVENT_VECTOR_TAU: Double = 0.4
-
-    /** 事件向量 seed 全量扫描上限（MVP 规模保护；超出按 id 截断并在注释/trace 说明） */
-    const val EVENT_VECTOR_SCAN_LIMIT: Int = 5_000
 
     /** 查询轨迹保留条数（query_trace keepRecent） */
     const val TRACE_KEEP: Int = 50

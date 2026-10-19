@@ -17,8 +17,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -49,14 +49,14 @@ fun ImportScreen(
     onOpenSettings: () -> Unit = {},
     viewModel: ImportViewModel = viewModel(),
 ) {
-    val stagingCount by viewModel.stagingCount.collectAsState()
-    val importing by viewModel.importing.collectAsState()
-    val cancelling by viewModel.cancelling.collectAsState()
-    val retrying by viewModel.retrying.collectAsState()
-    val message by viewModel.message.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val jobs by viewModel.jobs.collectAsState()
-    val extractionSummary by viewModel.extractionSummary.collectAsState()
+    val stagingCount by viewModel.stagingCount.collectAsStateWithLifecycle()
+    val importing by viewModel.importing.collectAsStateWithLifecycle()
+    val cancelling by viewModel.cancelling.collectAsStateWithLifecycle()
+    val retrying by viewModel.retrying.collectAsStateWithLifecycle()
+    val message by viewModel.message.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val jobs by viewModel.jobs.collectAsStateWithLifecycle()
+    val extractionSummary by viewModel.extractionSummary.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.onScreenStarted(autoStart, autoCancel)

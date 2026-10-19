@@ -221,6 +221,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     // P1-8（W4）：每屏 ViewModel（AndroidViewModel）+ Compose collectAsState 生命周期感知
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // R2（P2-9）：collectAsStateWithLifecycle（与 lifecycle 同版本锚点）
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)

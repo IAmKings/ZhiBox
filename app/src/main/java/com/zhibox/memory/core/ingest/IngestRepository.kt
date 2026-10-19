@@ -670,12 +670,6 @@ class IngestRepository(
     }
 
     /**
-     * B7 收敛后的模型路由（与 EmbeddingRuntime.createProvider 对应）：
-     * - 440M/740M + SM8750 NPU 变体 → 路径 A（MediaPipe UniversalEmbedder）；
-     * - 270M → 路径 B（litertlm EmbeddingEngine）。
-     * 显式名单匹配（[isPathABModel]/[isPathBModel]），不给字母序默认值留位置。
-     */
-    /**
      * 删除级联（§9.1-5）：五表单事务删除 + documents/ 原文文件清理；幂等。
      * 导入进行中拒绝（在途 worker 会在级联后写回数据造成半删复活）。
      */

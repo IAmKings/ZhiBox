@@ -64,9 +64,18 @@ class SourcesViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private suspend fun refreshExtractionFor(docs: List<DocumentEntity>) {
+        if (docs.isEmpty()) {
+            _extractionByDocument.value = emptyMap()
+            return
+        }
         val map = withContext(Dispatchers.IO) {
-            val dao = db.extractionJobDao()
-            docs.associate { doc -> doc.id to ExtractionDocUi.from(dao.byDocument(doc.id)) }
+            // R2 复审修复（P2-12）：一次（分批）IN 查询聚合——旧实现逐文档 byDocument，
+            // documents 每次发射都放大为 N 次查询。分批 ≤400 对齐 SQLite 变量上限。
+            val byDoc = docs.map { it.id }.distinct()
+                .chunked(SQL_BATCH)
+                .flatMap { ids -> db.extractionJobDao().byDocumentIds(ids) }
+                .groupBy { it.documentId }
+            docs.associate { doc -> doc.id to ExtractionDocUi.from(byDoc[doc.id].orEmpty()) }
         }
         _extractionByDocument.value = map
     }
@@ -109,5 +118,10 @@ class SourcesViewModel(application: Application) : AndroidViewModel(application)
                 _deleting.value = false
             }
         }
+    }
+
+    private companion object {
+        /** P2-12：byDocumentIds 的 IN 分批（SQLite 变量上限 999，留余量） */
+        const val SQL_BATCH = 400
     }
 }

@@ -83,8 +83,9 @@ class RoomChatRepository(private val dao: ChatDao) : ChatRepository {
             model = model,
         )
         dao.upsertMessage(entity)
-        // 更新会话 updatedAt（SQL 精确更新；不重写 title/scope）
-        dao.renameConversation(conversationId, dao.conversation(conversationId)?.title ?: "新对话", now)
+        // R2（P2-7）：专用 touch 只刷新活跃时间——旧实现借 renameConversation 回写
+        // "刚读出的旧 title"，与并发改名竞态会把用户刚改的标题还原。
+        dao.touch(conversationId, now)
         return entity.toDomain()
     }
 

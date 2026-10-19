@@ -11,17 +11,16 @@ import kotlinx.serialization.json.jsonObject
  * 字段非法一律返回 null/空结果（由调用方降级），不抛业务异常。
  */
 
-/** 去掉 LLM 偶尔包裹的 ```json / ``` fence；不改变 JSON 本体。 */
-internal fun stripJsonFence(raw: String): String {
-    var text = raw.trim()
-    if (!text.startsWith("```")) return text
-    // 去掉首行 ``` 或 ```json
-    text = text.substringAfter('\n', missingDelimiterValue = "").trim()
-    // 去掉末尾 ```
-    val closing = text.lastIndexOf("```")
-    if (closing >= 0) text = text.substring(0, closing).trim()
-    return text
-}
+/**
+ * 去掉 LLM 偶尔包裹的 ```json / ``` fence；不改变 JSON 本体。
+ *
+ * R2 复审修复（P2-5）：委托 [com.zhibox.memory.core.extract.ExtractionJson.stripCodeFence]
+ * 的正则实现（单一事实源）——旧实现 `substringAfter('\n')` 处理首行，对**单行**围栏
+ * （```json {...}``` 无换行）会清成空串，导致 B10 上下文选择/查询实体抽取误降级为
+ * "解析失败"。正则版对单行/多行围栏行为一致。
+ */
+internal fun stripJsonFence(raw: String): String =
+    com.zhibox.memory.core.extract.ExtractionJson.stripCodeFence(raw)
 
 /** fence 容错 + 解析为 JsonObject；失败返回 null（不抛异常、不打日志）。 */
 internal fun parseJsonObjectLoose(raw: String): JsonObject? = try {

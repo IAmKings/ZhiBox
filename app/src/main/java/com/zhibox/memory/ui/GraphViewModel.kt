@@ -397,7 +397,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
                     update {
                         it.copy(
                             detailLoading = false,
-                            error = str(R.string.graph_detail_failed, "事件不存在"),
+                            error = str(R.string.graph_detail_failed, str(R.string.graph_event_missing)),
                         )
                     }
                 } else {

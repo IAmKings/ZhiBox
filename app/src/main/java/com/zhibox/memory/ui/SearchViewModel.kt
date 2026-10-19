@@ -23,9 +23,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.File
 
 /**
  * 检索屏状态（B10）：包装 `SagRetriever` 的三模式检索（vector「混合」/ multi_es_fast / multi）。
@@ -147,8 +144,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * 导出最近 50 条检索 trace（脱敏诊断）：只写 queryHash/mode/timingJson/degradedReason/createdAt，
-     * 不含查询正文与文档内容；文件写应用私有 filesDir（可 adb pull），不参与备份。
+     * 导出最近 50 条检索 trace（脱敏诊断，实现见 [TraceExport]；R2/P2-10 与设置页共用单一实现）。
      */
     fun exportTrace() {
         if (_exportingTrace.value) return
@@ -163,31 +159,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             },
         ) {
             try {
-                val outcome = withContext(Dispatchers.IO) {
-                    val rows = db.queryTraceDao().recent(TRACE_EXPORT_LIMIT)
-                    if (rows.isEmpty()) {
-                        0 to null
-                    } else {
-                        val array = JSONArray()
-                        rows.forEach { row ->
-                            array.put(
-                                JSONObject()
-                                    .put("id", row.id)
-                                    .put("queryHash", row.queryHash)
-                                    .put("mode", row.mode)
-                                    .put("timingJson", row.timingJson)
-                                    .put("degradedReason", row.degradedReason ?: JSONObject.NULL)
-                                    .put("createdAt", row.createdAt),
-                            )
-                        }
-                        val dir = File(app.filesDir, TRACE_EXPORT_DIR).apply { mkdirs() }
-                        val file = File(dir, "query_trace_${System.currentTimeMillis()}.json")
-                        file.writeText(array.toString(2))
-                        rows.size to file.absolutePath
-                    }
-                }
-                val count = outcome.first
-                val path = outcome.second
+                val (count, path) = TraceExport.export(app, db)
                 _traceExportMessage.value = if (path == null) {
                     app.getString(R.string.search_trace_export_empty)
                 } else {
@@ -199,13 +171,5 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 _exportingTrace.value = false
             }
         }
-    }
-
-    companion object {
-        /** B10：trace 导出条数（DAO recent(limit)，最近 50 条）。 */
-        const val TRACE_EXPORT_LIMIT = 50
-
-        /** trace JSON 落盘目录（相对 filesDir；不参与备份）。 */
-        const val TRACE_EXPORT_DIR = "trace_exports"
     }
 }

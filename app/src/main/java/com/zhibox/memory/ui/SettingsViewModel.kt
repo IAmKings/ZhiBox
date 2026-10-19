@@ -30,8 +30,6 @@ import com.zhibox.memory.core.sag.SagBudgetTier
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.DocStatus
 import kotlinx.coroutines.CancellationException
-import org.json.JSONArray
-import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -174,6 +172,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         observeReembedProgress()
     }
 
+    /**
+     * R2 复审修复（P2-8）：屏幕进入时刷新快照。手动导航下 ViewModel 常驻 Activity，
+     * 仅 init 刷新会在"导入/删源/切换模型后再进设置页"时展示陈旧计数
+     * （Chat/Graph/Sources/Import 均已做同款进场刷新）。
+     */
+    fun onScreenStarted() {
+        refresh()
+    }
+
     private fun str(id: Int, vararg args: Any): String = app.getString(id, *args)
 
     private fun update(block: (SettingsUiState) -> SettingsUiState) {
@@ -213,20 +220,27 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val traceRecentModes: Map<String, Int>,
     )
 
+    /** R2（P2-13）：刷新代际——并发 refresh（进场刷新/操作收尾）时旧快照后到不得覆盖新状态。 */
+    private var refreshSeq: Int = 0
+
     fun refresh() {
+        val seq = ++refreshSeq
         safeLaunch(
             onError = { t ->
-                update {
-                    it.copy(
-                        loading = false,
-                        error = str(R.string.settings_refresh_failed, t.readableMessage()),
-                    )
+                if (seq == refreshSeq) {
+                    update {
+                        it.copy(
+                            loading = false,
+                            error = str(R.string.settings_refresh_failed, t.readableMessage()),
+                        )
+                    }
                 }
             },
         ) {
             update { it.copy(loading = true) }
             try {
                 val s = withContext(Dispatchers.IO) { loadSnapshot() }
+                if (seq != refreshSeq) return@safeLaunch // 过期快照：已有更新一轮 refresh 在途
                 update {
                     it.copy(
                         loading = false,
@@ -263,11 +277,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                update {
-                    it.copy(
-                        loading = false,
-                        error = str(R.string.settings_refresh_failed, t.readableMessage()),
-                    )
+                // R3（复审补）：内层 catch 同样受代际守卫——旧轮 refresh 的迟到错误
+                // 不得覆盖新一轮已写入的成功状态（与 onError 守卫对称）
+                if (seq == refreshSeq) {
+                    update {
+                        it.copy(
+                            loading = false,
+                            error = str(R.string.settings_refresh_failed, t.readableMessage()),
+                        )
+                    }
                 }
             }
         }
@@ -1029,8 +1047,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // ───────────────────────── B12：trace 诊断导出（脱敏，无正文） ─────────────────────────
 
     /**
-     * 导出最近 50 条检索/问答 trace（脱敏诊断）：只写 queryHash/mode/timingJson/degradedReason/
-     * createdAt；不含查询正文、文档内容与 key。写入应用私有 filesDir/trace_exports/。
+     * 导出最近 50 条检索/问答 trace（脱敏诊断，实现见 [TraceExport]；R2/P2-10 与搜索页共用单一实现）。
      */
     fun exportTraceJson() {
         if (_state.value.traceExporting) return
@@ -1046,31 +1063,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             },
         ) {
             try {
-                val outcome = withContext(Dispatchers.IO) {
-                    val rows = db.queryTraceDao().recent(TRACE_EXPORT_LIMIT)
-                    if (rows.isEmpty()) {
-                        0 to null
-                    } else {
-                        val array = JSONArray()
-                        rows.forEach { row ->
-                            array.put(
-                                JSONObject()
-                                    .put("id", row.id)
-                                    .put("queryHash", row.queryHash)
-                                    .put("mode", row.mode)
-                                    .put("timingJson", row.timingJson)
-                                    .put("degradedReason", row.degradedReason ?: JSONObject.NULL)
-                                    .put("createdAt", row.createdAt),
-                            )
-                        }
-                        val dir = File(app.filesDir, TRACE_EXPORT_DIR).apply { mkdirs() }
-                        val file = File(dir, "query_trace_${System.currentTimeMillis()}.json")
-                        file.writeText(array.toString(2))
-                        rows.size to file.absolutePath
-                    }
-                }
-                val count = outcome.first
-                val path = outcome.second
+                val (count, path) = TraceExport.export(app, db)
                 update {
                     it.copy(
                         traceExportMessage = if (path == null) {
@@ -1078,7 +1071,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         } else {
                             str(R.string.settings_trace_exported, count, path)
                         },
-                        traceTotalCount = _state.value.traceTotalCount,
                     )
                 }
             } catch (e: CancellationException) {
@@ -1114,10 +1106,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private companion object {
-        /** B12：trace 导出/展示条数（UI 只展示最近 50 条）。 */
-        const val TRACE_EXPORT_LIMIT = 50
+        /** B12：trace 展示条数（导出条数统一在 TraceExport.EXPORT_LIMIT）。 */
         const val TRACE_RECENT_LIMIT = 50
-        const val TRACE_EXPORT_DIR = "trace_exports"
     }
 
     private fun observeReembedProgress() {

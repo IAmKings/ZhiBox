@@ -24,8 +24,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -55,7 +55,7 @@ fun ChatScreen(
     onBack: () -> Unit = {},
     viewModel: ChatViewModel = viewModel(),
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.onScreenStarted()
@@ -77,7 +77,7 @@ fun ChatScreen(
                 Text(
                     stringResource(
                         R.string.chat_consent_message_host,
-                        state.llmHost.ifBlank { "configured LLM" },
+                        state.llmHost.ifBlank { stringResource(R.string.chat_configured_llm) },
                     ),
                 )
             },

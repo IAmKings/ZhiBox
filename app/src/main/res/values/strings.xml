@@ -343,6 +343,10 @@
     <string name="chat_stopped_partial">已停止生成；未完成的回答不会保存。</string>
     <string name="chat_no_evidence">资料不足，无法回答：本轮没有检索到可引用证据。</string>
     <string name="chat_failed">问答失败：%1$s</string>
+    <string name="chat_conversation_missing">会话不存在</string>
+    <string name="chat_no_result">未返回结果</string>
+    <string name="chat_citation_label">引用 %1$s</string>
+    <string name="chat_configured_llm" translatable="false">configured LLM</string>
     <string name="chat_unverified_warning">该回答未通过证据校验（未引用任何证据），请谨慎参考。</string>
     <string name="chat_invalid_citation_warning">回答包含无效引用 %1$s，已替换为「未通过证据校验」标记。</string>
     <string name="chat_unreferenced_warning">回答中有 %1$d 个句子未标注引用，已标记为未引用断言。</string>
@@ -401,6 +405,7 @@
     <string name="graph_detail_no_content">原文不存在（文档可能已删除）</string>
     <string name="graph_load_failed">图谱加载失败：%1$s</string>
     <string name="graph_detail_failed">事件详情加载失败：%1$s</string>
+    <string name="graph_event_missing">事件不存在</string>
     <string name="graph_retry">重试</string>
     <string name="graph_event_untitled">未命名事件</string>
     <string name="graph_detail_summary_empty">（无摘要）</string>

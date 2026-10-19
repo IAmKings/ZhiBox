@@ -140,6 +140,5 @@ class SagSupportTest {
     fun retrievalConstants() {
         assertEquals(0.4, SagSupport.EVENT_VECTOR_TAU, 1e-9)
         assertEquals(50, SagSupport.TRACE_KEEP)
-        assertEquals(5_000, SagSupport.EVENT_VECTOR_SCAN_LIMIT)
     }
 }
