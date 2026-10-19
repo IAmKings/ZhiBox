@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 高端 | PJZ110 `1fc6056b` | 可用（RC） | signed RC clean install/cold launch/UI 走查；B11 real QA/support 通过 |
 | 高端 | K60U `6D8H6TXSDYXC85PZ`（Dimensity 9200+，15.7GB，Android 14） | 可用（debug；MIUI 输入/后台启动受限） | B12 非 UI instrumentation 18/18；Graph 10k in-memory p95≤17ms、持久盘 p95≤21ms；debug app 可从桌面启动（home 已截图）；Compose instrumentation 被 HyperOS 拒绝后台启动/输入注入 |
-| 中端 | 未提供（K60U 为 16GB 高端，不是 8GB 中端） | 缺失 | 需 8GB 档设备 |
+| 中端 | K40 `eipzae799dkfpffq`（M2012K10C，Dimensity 1200，7.7GB，Android 13） | 可用（debug；RC 未覆盖安装以保留数据） | B12 非 UI instrumentation 18/18；Graph 10k in-memory p95≤62ms、持久盘 p95≤57ms；UI 手动走查 home/来源/图谱空态/Settings 预算·并发·隐私 |
 | 低端 | 未提供 | 缺失 | 需 4–6GB 设备；不能伪造通过 |
 
 ## 2. P0 门禁清单（截至本轮）
@@ -35,7 +35,7 @@
 ## 3. 未完成项
 
 1. **三档设备矩阵**：仅 PJZ110 完成 signed RC clean install/launch；K40 未连接、低端 4–6GB 设备未提供，不能宣称三档通过。
-2. **三档安装矩阵**：PJZ110 clean RC 安装/启动/UI 已验；K40/低端设备未安装。
+2. **三档安装矩阵**：PJZ110 clean RC 安装/启动/UI 已验；K60U/K40 以 debug 包完成非 UI+UI 走查（未覆盖安装 RC 以保留数据）；低端设备未提供。
 3. **备份 v3 UI 视觉/回环**：B8/B9 已有备份回环测试，但 B12 UI 变更后未再跑专项设备回环；旧包/空 SAG 提示需视觉确认。
 4. **独立 Standards/Spec 审查 B12 变更**：已执行；硬性 RC/竞态/嵌套/文案问题已修，剩余抽取并发、entity 聚合性能/持久盘、备份视觉等缺口。
 5. **K40/B12 回归**：未复跑 B10/B11 全量真机；需设备可用时补。
