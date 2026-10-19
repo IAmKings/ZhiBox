@@ -135,7 +135,7 @@ schema v7、抽取 pipeline/scheduler/worker、FTS/SAG 向量、补抽取/重试
 
 ---
 
-## 7. B12 — 图谱/事件详情、设置完善、备份与真机验收（🟡 代码/10k/entity 连接/签名 RC 完成；三档安装矩阵/抽取并发/备份 UI 视觉未闭合）
+## 7. B12 — 图谱/事件详情、设置完善、备份与真机验收（✅ 环境受限通过：高端+中端、缺低端；用户 2026-10-19 接受）
 
 **目标**：完成 P0 用户可见闭环与发布前验收；不改 release 自动化（签名/发布沿用 B4-6 流程）。
 
@@ -148,7 +148,7 @@ schema v7、抽取 pipeline/scheduler/worker、FTS/SAG 向量、补抽取/重试
 6. 文档/发布候选：README/RELEASE_NOTES/用户指南更新；准备 release candidate（不自动发布）。
 
 **写入范围**：`ui/Sources*`、`ui/Settings*`、`ui/**` 新图谱组件、`core/backup/**`、`core/sag/**` 诊断、`docs/**`、测试。
-**门禁/验收**：PRD §11 全项；三档设备矩阵通过；B1–B7 回归全绿；release candidate 可安装/验签（若走现有发布流程）；无新增 P0 缺陷。
+**门禁/验收**：PRD §11 全项；环境受限验收：PJZ110 高端 signed RC + K60U 高端 debug + K40 中端 debug，低端 4–6GB 未提供（用户 2026-10-19 明确接受，不伪造通过）；B1–B7 回归全绿；release candidate 可安装/验签（不自动发布）；无新增 P0 缺陷。
 **风险**：图谱大库卡顿 → 分页/上限/异步；验收周期 → 提前准备评测集/设备；范围蔓延 → P1/P2 不进入 B12。
 
 ---
