@@ -1,0 +1,9 @@
+v0.1.1 signed RC upgrade smoke on PJZ110 (1fc6056b) — 2026-10-20
+- Prior: com.zhibox.memory release 0.1.0-mvp / versionCode 1, release signature [5120bbe5]
+- Install: adb install -r dist/zhibox-0.1.1-462b09c-release-signed.apk -> Success
+- dumpsys package: versionCode=2 / versionName=0.1.1 / same release signature [5120bbe5]
+- Cold launch: MainActivity TotalTime=155ms; process alive; no `Process: com.zhibox` FATAL
+- Home/来源/图谱空态/Settings UI dumps captured:
+  docs/review/evidence/V0.1.1-pjz110-{home,sources,graph,settings}.xml/.png
+- Settings shows shared model dir still connected (3 models) after in-place upgrade; document data was empty (clean install), so graph empty state verified.
+- Room migration v5->v7 runs on DB open; migration chain is covered by Migration tests on K40 (41/41 suite) and previous B12 tests.

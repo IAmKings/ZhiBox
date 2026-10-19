@@ -42,7 +42,7 @@
 ### 0.5 验证与质量门禁
 
 - JVM：debug **520/520**、release **501/501**；lint **0 errors**（41 warnings，依赖版本提示）；`assembleDebug`/`assembleRelease`/androidTest 编译通过。
-- K40 中端真机：SagRetriever/Graph/备份/迁移/抽取并发等 **41/41** androidTest，另通过 debug 0.1.0→0.1.1 覆盖升级 smoke（数据保留/启动正常）；PJZ110 此前 B12 门禁 **36/36**（升级前）。
+- K40 中端真机：SagRetriever/Graph/备份/迁移/抽取并发等 **41/41** androidTest，另通过 debug 0.1.0→0.1.1 覆盖升级 smoke（数据保留/启动正常）；PJZ110 signed RC 覆盖升级 smoke 通过（versionCode 2、启动 155ms、无 FATAL）；PJZ110 此前 B12 门禁 **36/36**（升级前）。
 - 设备矩阵：PJZ110 高端（signed RC clean install/UI）、K60U 高端（debug 非 UI）、K40 中端（debug 非 UI+手动 UI）；**低端 4–6GB 未提供**，按用户接受的“环境受限”口径记录，不宣称完整三档。
 - 性能：Graph 10k p95 ≤12ms（PJZ110）、≤21ms（K60U）、≤62ms（K40），目标 1.5s。
 
