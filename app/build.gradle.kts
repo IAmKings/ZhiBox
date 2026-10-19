@@ -249,6 +249,10 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     // W4 模型商店：SAF 共享目录（DocumentFile）
     implementation(libs.androidx.documentfile)
+    // P1 导入扩展：PDF 文本抽取（com.tom-roush:pdfbox-android，Apache-2.0；传递 BouncyCastle 1.72）。
+    // 本任务只引入依赖；PDF 解析/抽取代码由 P1 导入任务实现。
+    // 版本、仓库 fallback（Aliyun，仅该 group）与 strict 校验元数据见 libs.versions.toml / settings.gradle.kts。
+    implementation(libs.pdfbox.android)
 
     testImplementation(libs.junit)
     // B3-10：JVM 单测需要可用 org.json（Android 的平台 org.json 在 JVM 是 stub）

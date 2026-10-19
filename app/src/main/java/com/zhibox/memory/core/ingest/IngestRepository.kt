@@ -217,7 +217,10 @@ class IngestRepository(
                     return@withContext ImportBatchResult(emptyList(), 0)
                 }
                 // 目录扫描/过滤在 IO 线程内完成（无参入口不把扫描放进默认参数，见方法注释）
-                val batchFiles = files ?: stagingFiles()
+                // P1：显式清单也走同一白名单（未知扩展名/点文件跳过，单文件失败不中断整批）
+                val batchFiles = (files ?: stagingFiles()).filter {
+                    it.isFile && !it.name.startsWith(".") && isImportableFileName(it.name)
+                }
                 val documentIds = ArrayList<String>(batchFiles.size)
                 var duplicateCount = 0
                 for (file in batchFiles) {
@@ -248,15 +251,26 @@ class IngestRepository(
             }
         }
 
-    /** staging 目录扫描（点开头过滤 + only md/txt + 按文件名排序）；必须在 IO 线程调用。 */
+    /** staging 目录扫描（点开头过滤 + 支持格式白名单 + 按文件名排序）；必须在 IO 线程调用。 */
     private fun stagingFiles(): List<File> {
         val staging = File(filesDir, "import-staging")
         return staging.listFiles { f ->
             // 点开头文件过滤（W1-K1 根因修复）：macOS AppleDouble(._*)/.DS_Store 等
             // 传输垃圾会伪装成 .txt/.md 进入知识库（实测 100 语料变 200 文档）
-            f.isFile && !f.name.startsWith(".") &&
-                (f.extension.equals("md", true) || f.extension.equals("txt", true))
+            f.isFile && !f.name.startsWith(".") && isImportableFileName(f.name)
         }?.sortedBy { it.name } ?: emptyList()
+    }
+
+    /**
+     * P1 导入扩展：暂存区/显式清单支持的扩展名白名单（小写、不含点）。
+     *
+     * 与 [DocumentParser] 的分派保持一致：txt/md/pdf/docx/pptx/xlsx/html/htm。
+     * 未知扩展名在批量导入时**跳过**（不建 job、不中断整批）；用户显式选择的文件
+     * 若格式不受支持，由 UI 在选择阶段按 MIME 过滤，此处兜底避免垃圾文件入库。
+     */
+    private fun isImportableFileName(name: String): Boolean {
+        val extension = name.substringAfterLast('.', "").lowercase()
+        return extension in IMPORTABLE_EXTENSIONS
     }
 
     /**
@@ -267,6 +281,11 @@ class IngestRepository(
      * @return [ImportResult.Enqueued] 新登记；[ImportResult.Duplicate] 同内容文档已存在（不重复登记）。
      */
     suspend fun importFile(staged: File): ImportResult = withContext(Dispatchers.IO) {
+        // P1 审查修复：单文件公开入口也必须复用与批量入口相同的白名单/隐藏文件过滤，
+        // 否则调用方可以把 .zip/.apk 等任意文件登记入库（processDocument 才失败）。
+        require(staged.isFile && !staged.name.startsWith(".") && isImportableFileName(staged.name)) {
+            "不支持的文件类型或文件不可读：仅支持 txt/md/pdf/docx/pptx/xlsx/html/htm"
+        }
         // ── B1-6：内容级去重（移动/写库前）──
         // 同 checksum 文档处于 pending/processing/ready ⇒ 内容已在库（或正在入库），跳过；
         // cancelled/failed 属"上次失败/被取消"，允许重导（用户重试意图）。
@@ -349,7 +368,8 @@ class IngestRepository(
             if (isCancelRequested(documentId)) return@withContext finishCancelled(documentId, jobId)
 
             // 1. 解析 + 规范化 + 回写真实 parserId/sizeBytes（P1-6；非状态列，不走状态机）
-            val parsed = DocumentParser.parse(raw.inputStream(), null, raw.name)
+            // P1：统一走 Context+File 入口（PDF 等需要 Android 上下文的解析器由 DocumentParser 内部按类型分派）
+            val parsed = DocumentParser.parse(context, raw, mimeType = null, fileName = raw.name)
             val normalized = TextNormalizer.normalize(parsed.text)
             docDao.updateParserAndSize(documentId, parsed.parserId, raw.length())
 
@@ -969,6 +989,11 @@ class IngestRepository(
                 modelId.contains(SUPPORTED_MODEL_MARKER, ignoreCase = true)
 
         const val ROLE_CONTENT = "content"
+
+        /** P1 导入扩展：staging 扫描/显式清单白名单（与 DocumentParser 分派一致） */
+        private val IMPORTABLE_EXTENSIONS: Set<String> = setOf(
+            "txt", "md", "pdf", "docx", "pptx", "xlsx", "html", "htm",
+        )
         const val EMBED_BATCH = 16
         const val INGEST_BATCH_WORK = "ingest-batch"
 

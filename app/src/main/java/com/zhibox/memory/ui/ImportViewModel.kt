@@ -1,16 +1,23 @@
 package com.zhibox.memory.ui
 
 import android.app.Application
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zhibox.memory.R
 import com.zhibox.memory.core.ingest.IngestRepository
+import com.zhibox.memory.core.llm.LlmPreferences
+import com.zhibox.memory.core.text.WebPageFetcher
+import com.zhibox.memory.core.text.WebPageResult
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.DocStatus
 import com.zhibox.memory.data.db.IngestJobEntity
 import com.zhibox.memory.data.db.JobStage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +28,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
+import java.util.Locale
 
 /**
  * 导入屏状态（P1-8 + B3-1/B3-9/B3-13）：
@@ -44,7 +53,7 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
      * 用 lazy + 只在 `Dispatchers.IO` 中首次解析，构造期不触碰磁盘。
      */
     private val stagingDir: File by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        File(app.filesDir, "import-staging")
+        File(app.filesDir, STAGING_DIR_NAME)
     }
 
     private val _stagingCount = MutableStateFlow(-1)
@@ -58,6 +67,14 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _retrying = MutableStateFlow(false)
     val retrying: StateFlow<Boolean> = _retrying.asStateFlow()
+
+    /** P1：SAF 多选文件复制到暂存目录进行中（UI 显示“复制中…”并禁用重复选择）。 */
+    private val _stagingFiles = MutableStateFlow(false)
+    val stagingFiles: StateFlow<Boolean> = _stagingFiles.asStateFlow()
+
+    /** P1：网页 URL 抓取进行中。 */
+    private val _urlFetching = MutableStateFlow(false)
+    val urlFetching: StateFlow<Boolean> = _urlFetching.asStateFlow()
 
     /** 一次性操作成功/信息（可读单行文案） */
     private val _message = MutableStateFlow<String?>(null)
@@ -119,7 +136,8 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun countStagedFiles(): Int =
         stagingDir.listFiles { f ->
-            f.isFile && (f.extension.equals("md", true) || f.extension.equals("txt", true))
+            f.isFile && !f.name.startsWith(".") &&
+                f.extension.lowercase(Locale.ROOT) in SUPPORTED_EXTENSIONS
         }?.size ?: 0
 
     fun clearError() {
@@ -131,7 +149,8 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun importAll() {
-        if (_importing.value) return
+        // P1 审查修复：暂存复制/URL 抓取与「全部导入」互斥，防止把半写文件移入 documents。
+        if (_importing.value || _stagingFiles.value || _urlFetching.value) return
         _importing.value = true
         safeLaunch(onError = { setError(R.string.import_failed, it) }) {
             try {
@@ -199,6 +218,274 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     }
+
+    // ───────────────────────── P1：SAF 多选暂存 ─────────────────────────
+
+    /**
+     * P1：把 SAF 选中的文件复制到 `filesDir/import-staging`（**不直接写 DB**）。
+     *
+     * 规则：
+     * - 通过 [OpenableColumns] 读取 displayName/size；保留扩展名；
+     * - 过滤路径穿越/隐藏文件（`../`、`\\`、点开头）与不支持扩展名；
+     * - 单文件超过 [MAX_STAGED_BYTES] 跳过（可读提示跳过数）；
+     * - 重名文件加时间戳前缀，避免覆盖；
+     * - 复制完成后刷新暂存计数，由既有「全部导入」调 `IngestRepository.importStaged()`。
+     */
+    fun stageUris(uris: List<Uri>) {
+        if (uris.isEmpty() || _stagingFiles.value || _urlFetching.value || _importing.value) return
+        _stagingFiles.value = true
+        _errorMessage.value = null
+        safeLaunch(
+            onError = { t ->
+                _stagingFiles.value = false
+                setError(R.string.import_staged_failed, t)
+            },
+        ) {
+            try {
+                val outcome = withContext(Dispatchers.IO) { copyUrisToStaging(uris) }
+                _message.value = when {
+                    outcome.staged == 0 && outcome.skipped > 0 ->
+                        str(R.string.import_staged_skipped)
+                    outcome.staged == 0 -> null
+                    outcome.skipped > 0 ->
+                        str(R.string.import_staged_partial, outcome.staged, outcome.skipped)
+                    else -> str(R.string.import_staged_done, outcome.staged)
+                }
+                refreshStaging()
+            } finally {
+                _stagingFiles.value = false
+            }
+        }
+    }
+
+    private data class StageOutcome(val staged: Int, val skipped: Int)
+
+    private suspend fun copyUrisToStaging(uris: List<Uri>): StageOutcome {
+        val dir = stagingDir.apply { mkdirs() }
+        var staged = 0
+        var skipped = 0
+        for (uri in uris) {
+            try {
+                val rawName = displayName(uri)
+                val safeName = rawName?.let { sanitizeStagedName(it) }
+                if (safeName == null) {
+                    skipped++
+                    continue
+                }
+                val size = openableSize(uri)
+                if (size != null && size > MAX_STAGED_BYTES) {
+                    skipped++
+                    continue
+                }
+                val target = uniqueStagingTarget(dir, safeName)
+                // P1 审查修复：先写隐藏 .part 临时文件，成功后 rename；失败/取消删除临时文件，
+                // 避免半截文件被 staging 扫描当作完整文档导入。
+                val temp = File(dir, ".${target.name}.${System.nanoTime()}.part")
+                val input = app.contentResolver.openInputStream(uri)
+                if (input == null) {
+                    skipped++
+                    continue
+                }
+                try {
+                    var copied = 0L
+                    input.use { source ->
+                        temp.outputStream().use { sink ->
+                            val buffer = ByteArray(8 * 1024)
+                            while (true) {
+                                currentCoroutineContext().ensureActive()
+                                val read = source.read(buffer)
+                                if (read < 0) break
+                                if (read == 0) continue
+                                copied += read
+                                if (copied > MAX_STAGED_BYTES) {
+                                    throw IOException("暂存文件超过上限")
+                                }
+                                sink.write(buffer, 0, read)
+                            }
+                        }
+                    }
+                    if (copied == 0L) {
+                        skipped++
+                    } else if (!temp.renameTo(target)) {
+                        skipped++
+                    } else {
+                        staged++
+                    }
+                } finally {
+                    temp.delete()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 单文件失败跳过，不静默丢整批；用户可从错误/跳过数感知
+                skipped++
+            }
+        }
+        return StageOutcome(staged = staged, skipped = skipped)
+    }
+
+    private fun displayName(uri: Uri): String? {
+        val cursor = try {
+            app.contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null,
+            )
+        } catch (e: Exception) {
+            null
+        }
+        cursor?.use { c ->
+            if (c.moveToFirst()) {
+                val index = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0) return c.getString(index)
+            }
+        }
+        return uri.lastPathSegment
+    }
+
+    private fun openableSize(uri: Uri): Long? {
+        val cursor = try {
+            app.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)
+        } catch (e: Exception) {
+            null
+        }
+        cursor?.use { c ->
+            if (c.moveToFirst()) {
+                val index = c.getColumnIndex(OpenableColumns.SIZE)
+                if (index >= 0 && !c.isNull(index)) return c.getLong(index)
+            }
+        }
+        return null
+    }
+
+    /** 只保留安全文件名：去路径段、拒绝隐藏文件/不支持扩展名；非法字符替换为下划线。 */
+    private fun sanitizeStagedName(raw: String): String? {
+        val base = raw.substringAfterLast('/').substringAfterLast('\\').trim()
+        if (base.isEmpty() || base.startsWith(".")) return null
+        val extension = base.substringAfterLast('.', "").lowercase(Locale.ROOT)
+        if (extension !in SUPPORTED_EXTENSIONS) return null
+        val stem = base.substringBeforeLast('.')
+            .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
+            .trim()
+            .take(MAX_STEM_CHARS)
+        if (stem.isEmpty()) return null
+        return "$stem.$extension"
+    }
+
+    private fun uniqueStagingTarget(dir: File, safeName: String): File {
+        val candidate = File(dir, safeName)
+        if (!candidate.exists()) return candidate
+        val stem = safeName.substringBeforeLast('.')
+        val extension = safeName.substringAfterLast('.')
+        val stamp = System.currentTimeMillis()
+        var index = 0
+        while (true) {
+            val suffix = if (index == 0) "" else "-$index"
+            val next = File(dir, "$stamp-$stem$suffix.$extension")
+            if (!next.exists()) return next
+            index++
+        }
+    }
+
+    // ───────────────────────── P1：网页 URL 导入 ─────────────────────────
+
+    /**
+     * P1：网页 URL → 抓取正文 → 写入 staging `.txt`（来源标题=文件名）。
+     *
+     * UI 侧前置校验：仅 HTTPS；`LlmPreferences.networkAllowed == false` 直接给可读提示，
+     * 不发起任何请求。正文抓取/超时/大小上限由 core `WebPageFetcher` 负责（core-fixer 契约）。
+     */
+    fun importUrl(rawUrl: String) {
+        if (_urlFetching.value || _stagingFiles.value || _importing.value) return
+        val url = rawUrl.trim()
+        if (url.isEmpty()) {
+            _errorMessage.value = str(R.string.import_url_invalid)
+            return
+        }
+        if (!url.startsWith("https://", ignoreCase = true)) {
+            _errorMessage.value = str(R.string.import_url_invalid)
+            return
+        }
+        if (!LlmPreferences.networkAllowed(app)) {
+            _errorMessage.value = str(R.string.import_url_network_blocked)
+            return
+        }
+        _urlFetching.value = true
+        _errorMessage.value = null
+        safeLaunch(
+            onError = { t ->
+                _urlFetching.value = false
+                setError(R.string.import_url_failed, t)
+            },
+        ) {
+            try {
+                val fetched = try {
+                    withContext(Dispatchers.IO) { fetchWebPage(url) }
+                } catch (e: WebPageFetchException) {
+                    _errorMessage.value = str(R.string.import_url_failed, e.message)
+                    return@safeLaunch
+                }
+                val title = fetched.title.ifBlank { "web-${System.currentTimeMillis()}" }
+                val safeName = sanitizeStagedName(fetched.suggestedFileName)
+                    ?: sanitizeStagedName("$title.txt")
+                if (safeName == null) {
+                    _errorMessage.value = str(R.string.import_url_failed, "标题无法生成合法文件名")
+                } else {
+                    withContext(Dispatchers.IO) {
+                        stagingDir.mkdirs()
+                        val target = uniqueStagingTarget(stagingDir, safeName)
+                        val temp = File(stagingDir, ".${target.name}.${System.nanoTime()}.part")
+                        try {
+                            temp.writeText(fetched.content)
+                            if (!temp.renameTo(target)) {
+                                throw IOException("暂存网页正文失败")
+                            }
+                        } finally {
+                            temp.delete()
+                        }
+                    }
+                    _message.value = str(R.string.import_url_done, title)
+                    refreshStaging()
+                }
+            } finally {
+                _urlFetching.value = false
+            }
+        }
+    }
+
+    private data class FetchedWebPage(
+        val title: String,
+        val content: String,
+        val suggestedFileName: String,
+    )
+
+    /** UI 侧可读抓取失败（携带 core 稳定错误码，message 可直接展示）。 */
+    private class WebPageFetchException(
+        val code: String,
+        override val message: String,
+    ) : Exception(message)
+
+    /**
+     * 网页抓取：调用 core [WebPageFetcher]（HTTPS-only / 15s 超时 / 2MB 上限 / 标题+正文）。
+     * networkAllowed 实时读取设置（UI 已在 importUrl 前置校验，这里作为第二道防线零请求失败）。
+     */
+    private suspend fun fetchWebPage(url: String): FetchedWebPage =
+        when (
+            val result = WebPageFetcher.fetch(
+                url = url,
+                networkAllowed = LlmPreferences.networkAllowed(app),
+            )
+        ) {
+            is WebPageResult.Success -> FetchedWebPage(
+                title = result.page.title,
+                // 保留标题 provenance（正文纯文本前加标题行；文件名用 suggestedFileName）
+                content = result.page.title.trim() + "\n\n" + result.page.text,
+                suggestedFileName = result.page.suggestedFileName,
+            )
+            is WebPageResult.Failure -> throw WebPageFetchException(result.code, result.message)
+        }
 
     /**
      * B3-9：最近 50 条任务列表。
@@ -279,5 +566,18 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
     companion object {
         /** B3-9：任务列表只渲染最近 50 条（此前 101 行全量渲染）。 */
         const val RECENT_JOB_LIMIT = 50
+
+        /** P1：暂存目录名（与 core IngestRepository 约定一致）。 */
+        const val STAGING_DIR_NAME = "import-staging"
+
+        /** P1：支持导入的扩展名（SAF MIME 与之对应；核心解析器由 core-fixer 扩展）。 */
+        val SUPPORTED_EXTENSIONS: Set<String> =
+            setOf("txt", "md", "pdf", "docx", "pptx", "xlsx", "html", "htm")
+
+        /** P1：单文件暂存大小上限（超出跳过并提示）。 */
+        const val MAX_STAGED_BYTES = 50L * 1024 * 1024
+
+        /** P1：staging 文件名主干最大长度（避免 ext4/SAF 长名失败）。 */
+        const val MAX_STEM_CHARS = 100
     }
 }

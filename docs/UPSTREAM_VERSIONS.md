@@ -37,6 +37,7 @@
 | Kotlin | **2.4.21** | **升级原因**：`tasks-retrieval:1.1.1` 传递依赖 `litertlm-android:0.17.0-alpha1`（Kotlin 2.4.0 元数据），Kotlin 2.1 无法读取其符号；B4 保持不升（KSP 无配对版本） |
 | KSP | **2.3.12** | 与 Kotlin 2.4.21 配对的 Room/Compose 注解处理版本 |
 | MediaPipe tasks-retrieval | 1.1.1 | 2026-10-14 发布；含 UniversalEmbedder（`universalembedder` 子包）、TextChunker、SqliteVectorStore |
+| PDFBox-Android | **2.0.27.0** | P1 导入扩展 PDF 文本抽取（Apache-2.0）；AAR 3,254,019 B（classes.jar 1,756,101 B + assets 4.7MB 未压缩/约 1.6MB 压缩）+ 传递 BouncyCastle 1.72（bcprov 9,342,484 B / bcpkix 1,022,720 B / bcutil 677,620 B，Bouncy Castle Licence）。本机 Maven Central 对该 group 403，`settings.gradle.kts` 配 Aliyun central 限定 fallback（Central 优先，CI 可解析）；strict 校验元数据已含全部 artifact |
 | LiteRT-LM (litertlm-android) | **0.18.0（constraints 固定）** | tasks-retrieval 1.1.1 POM 传递依赖 0.17.0-alpha1 缺 `ActivationDataType`（运行时崩溃）；0.18.0 经核验包含该类，改用 `dependencies { constraints { ... } }` 固定（B4-1a） |
 | Compose BOM | **2026.06.01** | B4-1b 升级（Compose UI 1.11.4 / Material3 1.4.0）；再新的 BOM 要求 AGP 9.1+，本轮不升 |
 | compileSdk / targetSdk / minSdk | 36 / 36 / 24 | arm64-v8a 优先 |

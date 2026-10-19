@@ -102,3 +102,10 @@
     public static final java.lang.String BUILD_GIT_SHA;
     public static final java.lang.String BUILD_TIME;
 }
+
+# --- PDFBox-Android（P1 PDF 文本抽取）-----------------------------------------
+# PDFBox 的 JPX（JPEG2000 图片）过滤器引用了可选解码器 com.gemalto.jp2.JP2Decoder；
+# 本项目只抽取文本、不解码图片，因此不引入该可选依赖，仅抑制 R8 的 missing-class 警告。
+# 若未来需要抽取 PDF 内 JPEG2000 图片，必须引入 jp2-android 并移除本规则。
+-dontwarn com.gemalto.jp2.**
+

@@ -1,5 +1,7 @@
 package com.zhibox.memory.core.ingest
 
+import com.zhibox.memory.core.text.DocumentParseException
+import com.zhibox.memory.core.text.PdfExtractionErrorCodes
 import kotlinx.coroutines.CancellationException
 import java.io.IOException
 
@@ -36,6 +38,9 @@ enum class PipelineErrorCode {
 
     /** 被取消/中断（仅诊断展示；业务路径不应落失败） */
     CANCELLED,
+
+    /** 文档解析失败（PDF 加密/扫描件/损坏、Office 损坏/超限、HTML 无正文等；通常确定性失败） */
+    DOCUMENT_PARSE,
 
     /** 未分类 */
     UNKNOWN,
@@ -90,6 +95,18 @@ sealed interface PipelineError {
         override val retryable = true
     }
 
+    /**
+     * 文档内容/格式解析失败。除 PDF 初始化瞬时失败外均**不自动重试**：
+     * 加密/扫描件/损坏/超限不会因重试而改变，UI 应提示用户换文件或解除密码。
+     */
+    data class DocumentParse(
+        override val detail: String?,
+        override val retryable: Boolean = false,
+    ) : PipelineError {
+        override val code = PipelineErrorCode.DOCUMENT_PARSE
+        override val userMessage = detail?.takeIf { it.isNotBlank() } ?: "文档解析失败（请换文件或检查文件完整性）"
+    }
+
     data class Unknown(override val detail: String?) : PipelineError {
         override val code = PipelineErrorCode.UNKNOWN
         override val userMessage = detail?.takeIf { it.isNotBlank() } ?: "导入失败（未知原因）"
@@ -109,6 +126,11 @@ sealed interface PipelineError {
             return when {
                 t is CancellationException -> Cancelled(detail)
                 t is OutOfMemoryError -> OutOfMemory(detail)
+                t is DocumentParseException -> DocumentParse(
+                    detail = detail,
+                    // 只有 PDF 初始化失败视为可重试的瞬时故障；加密/扫描件/损坏/超限/格式不支持均终态。
+                    retryable = t.errorCode == PdfExtractionErrorCodes.INIT,
+                )
                 t is IOException -> Io(detail)
                 t.message?.contains("未找到可用模型", ignoreCase = true) == true ||
                     t.message?.contains("缺少模型", ignoreCase = true) == true ||
@@ -152,6 +174,7 @@ sealed interface PipelineError {
                 PipelineErrorCode.IO -> Io(detail)
                 PipelineErrorCode.OOM -> OutOfMemory(detail)
                 PipelineErrorCode.CANCELLED -> Cancelled(detail)
+                PipelineErrorCode.DOCUMENT_PARSE -> DocumentParse(detail)
                 PipelineErrorCode.UNKNOWN -> Unknown(detail)
             }
         }

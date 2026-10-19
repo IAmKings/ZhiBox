@@ -1,5 +1,7 @@
 package com.zhibox.memory.core.ingest
 
+import com.zhibox.memory.core.text.DocumentParseException
+import com.zhibox.memory.core.text.PdfExtractionErrorCodes
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import org.junit.Assert.assertEquals
@@ -21,6 +23,7 @@ class PipelineErrorTest {
             PipelineError.OutOfMemory("oom"),
             PipelineError.Cancelled("cancelled"),
             PipelineError.Unknown("boom"),
+            PipelineError.DocumentParse("PDF 加密", retryable = false),
         )
         samples.forEach { original ->
             val decoded = PipelineError.decode(PipelineError.encode(original))!!
@@ -71,12 +74,28 @@ class PipelineErrorTest {
     }
 
     @Test
+    fun `document parse failures are deterministic except PDF init`() {
+        val encrypted = PipelineError.classify(
+            DocumentParseException("PDF 加密", "pdf-text-v1", PdfExtractionErrorCodes.ENCRYPTED),
+        )
+        assertEquals(PipelineErrorCode.DOCUMENT_PARSE, encrypted.code)
+        assertFalse("加密 PDF 不应自动重试", encrypted.retryable)
+        assertEquals("PDF 加密", encrypted.userMessage)
+
+        val init = PipelineError.classify(
+            DocumentParseException("初始化失败", "pdf-text-v1", PdfExtractionErrorCodes.INIT),
+        )
+        assertTrue("PDF 初始化瞬时失败才允许自动重试", init.retryable)
+    }
+
+    @Test
     fun retryablePolicy_isExplicit() {
         assertTrue(PipelineError.ModelMissing(null).retryable)
         assertTrue(PipelineError.Io(null).retryable)
         assertFalse(PipelineError.ModelCorrupt(null).retryable)
         assertFalse(PipelineError.SpaceMismatch(null).retryable)
         assertFalse(PipelineError.OutOfMemory(null).retryable)
+        assertFalse(PipelineError.DocumentParse("parse", retryable = false).retryable)
     }
 
     @Test

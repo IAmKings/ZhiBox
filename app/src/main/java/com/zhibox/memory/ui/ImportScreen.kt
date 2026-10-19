@@ -1,5 +1,7 @@
 package com.zhibox.memory.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,13 +15,16 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +62,16 @@ fun ImportScreen(
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     val jobs by viewModel.jobs.collectAsStateWithLifecycle()
     val extractionSummary by viewModel.extractionSummary.collectAsStateWithLifecycle()
+    val stagingFiles by viewModel.stagingFiles.collectAsStateWithLifecycle()
+    val urlFetching by viewModel.urlFetching.collectAsStateWithLifecycle()
+
+    // P1：SAF 多选（txt/md/pdf/docx/pptx/xlsx/html）；选择后复制到 import-staging，不直接写 DB。
+    val pickFiles = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris ->
+        if (uris.isNotEmpty()) viewModel.stageUris(uris)
+    }
+    var urlInput by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         viewModel.onScreenStarted(autoStart, autoCancel)
@@ -71,6 +86,12 @@ fun ImportScreen(
         errorMessage = errorMessage,
         jobs = jobs,
         extractionSummary = extractionSummary,
+        staging = stagingFiles,
+        urlFetching = urlFetching,
+        urlInput = urlInput,
+        onUrlInputChange = { urlInput = it },
+        onPickFiles = { pickFiles.launch(PICK_FILE_MIME_TYPES) },
+        onImportUrl = { viewModel.importUrl(urlInput) },
         onImportAll = viewModel::importAll,
         onCancelImport = viewModel::cancelImport,
         onRetryFailed = viewModel::retryFailed,
@@ -92,6 +113,14 @@ internal fun ImportContent(
     jobs: List<IngestJobEntity>,
     /** B9：SAG 抽取汇总（null=尚未加载；与导入状态独立） */
     extractionSummary: ExtractionCountsUi? = null,
+    // ---- P1：SAF 多选暂存 / 网页 URL ----
+    /** SAF 复制到暂存进行中 */
+    staging: Boolean = false,
+    urlFetching: Boolean = false,
+    urlInput: String = "",
+    onUrlInputChange: (String) -> Unit = {},
+    onPickFiles: () -> Unit = {},
+    onImportUrl: () -> Unit = {},
     onImportAll: () -> Unit,
     onCancelImport: () -> Unit,
     onRetryFailed: () -> Unit,
@@ -139,7 +168,7 @@ internal fun ImportContent(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = onImportAll,
-                            enabled = !importing && stagingCount > 0,
+                            enabled = !importing && !staging && !urlFetching && stagingCount > 0,
                         ) {
                             Text(
                                 stringResource(
@@ -157,6 +186,24 @@ internal fun ImportContent(
                                     color = MaterialTheme.colorScheme.error,
                                 )
                             }
+                        }
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
+                        OutlinedButton(
+                            onClick = onPickFiles,
+                            enabled = !staging && !importing,
+                        ) {
+                            Text(stringResource(R.string.import_pick_files))
+                        }
+                        if (staging) {
+                            Text(
+                                stringResource(R.string.import_staging_copying),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
                         }
                     }
                     if (failedCount > 0) {
@@ -191,6 +238,44 @@ internal fun ImportContent(
                             onAction = onDismissError,
                         )
                     }
+                }
+            }
+
+            // P1：网页 URL 导入（HTTPS-only；正文写入 import-staging 的 .txt）
+            Card {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        stringResource(R.string.import_url_section),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    OutlinedTextField(
+                        value = urlInput,
+                        onValueChange = onUrlInputChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text(stringResource(R.string.import_url_placeholder)) },
+                        label = { Text(stringResource(R.string.import_url_section)) },
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = onImportUrl,
+                            enabled = !urlFetching && urlInput.isNotBlank(),
+                        ) {
+                            Text(
+                                if (urlFetching) {
+                                    stringResource(R.string.import_url_fetching)
+                                } else {
+                                    stringResource(R.string.import_url_fetch)
+                                },
+                            )
+                        }
+                    }
+                    Text(
+                        stringResource(R.string.import_url_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 
@@ -263,6 +348,9 @@ internal fun ImportContent(
     }
 }
 
+/** P1：SAF 多选 MIME 覆盖 txt/md/pdf/docx/pptx/xlsx/html。 */
+private val PICK_FILE_MIME_TYPES = arrayOf("*/*")
+
 @Composable
 private fun SectionHeader(title: String) {
     Text(
@@ -324,6 +412,7 @@ private fun errorActionHint(code: PipelineErrorCode, onOpenSettings: () -> Unit)
         PipelineErrorCode.OOM -> stringResource(R.string.import_error_action_oom)
         PipelineErrorCode.IO,
         PipelineErrorCode.UNKNOWN -> stringResource(R.string.import_error_action_retry)
+        PipelineErrorCode.DOCUMENT_PARSE -> stringResource(R.string.import_error_action_parse)
         PipelineErrorCode.CANCELLED -> null
     }
     if (text != null) {
