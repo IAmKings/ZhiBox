@@ -1,0 +1,9 @@
+10-19 20:46:08.232 28135 28167 I System.out: B12_GRAPH_10K_PERSISTENT_SEED db=b12-graph10k-persistent.db active=10000 inactive=500 sources=100 chunks=105 seed_ms=398
+10-19 20:46:08.234 28135 28167 I System.out: B12_GRAPH_10K_PERSISTENT count_all rows=10000 cold_ms=3 warm_p50_ms=2 warm_p95_ms=4 warm_max_ms=4 rounds=10 target_1500ms_ok=true
+10-19 20:46:08.234 28135 28167 I System.out: B12_GRAPH_10K_PERSISTENT count_src050 rows=100 cold_ms=9 warm_p50_ms=10 warm_p95_ms=13 warm_max_ms=13 rounds=10 target_1500ms_ok=true
+10-19 20:46:08.234 28135 28167 I System.out: B12_GRAPH_10K_PERSISTENT page50_src050 rows=50 cold_ms=12 warm_p50_ms=11 warm_p95_ms=12 warm_max_ms=12 rounds=10 target_1500ms_ok=true
+10-19 20:46:08.234 28135 28167 I System.out: B12_GRAPH_10K_PERSISTENT page50_offset0 rows=50 cold_ms=2 warm_p50_ms=2 warm_p95_ms=2 warm_max_ms=2 rounds=10 target_1500ms_ok=true
+10-19 20:46:08.234 28135 28167 I System.out: B12_GRAPH_10K_PERSISTENT page50_offset5000 rows=50 cold_ms=3 warm_p50_ms=3 warm_p95_ms=4 warm_max_ms=4 rounds=10 target_1500ms_ok=true
+10-19 20:46:08.234 28135 28167 I System.out: B12_GRAPH_10K_PERSISTENT page50_offset9950 rows=50 cold_ms=5 warm_p50_ms=6 warm_p95_ms=10 warm_max_ms=10 rounds=10 target_1500ms_ok=true
+10-19 20:46:08.242 28135 28167 I System.out: B12_GRAPH_10K_PERSISTENT_PAGE_FILTER rows=50 count=100 source=src-050
+10-19 20:46:08.251 28135 28167 I System.out: B12_GRAPH_10K_PERSISTENT_CLEANUP deleted=true db=b12-graph10k-persistent.db

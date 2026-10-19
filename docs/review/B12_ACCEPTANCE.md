@@ -23,7 +23,7 @@
 | 禁网零请求/超时/429/坏 JSON | JVM/TLS mock 通过；真实网络 1 次 timeout 可读 | B11 报告 |
 | 迁移/备份/删除/取消/失败回归 | 备份 v3 回环 **7/7**、迁移 **11/11**（PJZ110）；删除/取消/失败沿用 B1–B11 测试，本轮未逐一复跑 | `B12-backupv3-pjz110.txt`、`B12-migration-pjz110.txt` |
 | 图谱：source 过滤/分页≤200/详情/chunk 原文/空态/entity 连接 | DAO 4/4；GraphUI 6/6；新增相关事件（共享实体）；PJZ110 串行 32/32 | `B12-instrumentation-pjz110.txt`、`B12-graphui-pjz110.txt` |
-| 图谱 query p95 ≤1.5s（10k） | 通过（in-memory 下限）：count p95 8ms、page p95 2–3ms、source filter 3ms | `B12-graph10k-pjz110.txt` |
+| 图谱 query p95 ≤1.5s（10k） | 通过（in-memory + file-backed 两套）：in-memory count p95 8ms/page 2–3ms；file-backed count p95 4–5ms、page p95 ≤12ms、offset9950 p95 10ms | `B12-graph10k-{in-memory,persistent}-pjz110.txt` |
 | 预算档位 | 9/9 JVM；Settings UI 三档 + 数值展示；Search/Chat 下一次请求读取 | `SagBudgetTierTest` |
 | 抽取并发 | `SagExtractionPreferences` 1..4 + Worker 并发 claim + Settings UI；JVM 7/7、设备 3/3 | `SagExtractionPreferencesTest`、`SagExtractionClaimConcurrencyTest` |
 | backup v3 UI/依赖提示/旧包补抽取提示/隐私说明 | UI 审计补缺完成；编译通过；未做专项设备视觉 | Settings task-61 |
@@ -33,7 +33,7 @@
 
 ## 3. 未完成项
 
-1. **三档设备矩阵**：K40 未连接、低端设备缺失；不能宣称三档通过。
+1. **三档设备矩阵**：K40 未连接、低端设备缺失；RC 在 PJZ110 因 debug 包签名冲突无法 clean install（尝试 secondary user 仍全局签名冲突），不能宣称三档/安装矩阵通过。
 2. **release candidate 安装矩阵**：签名/验签已 PASS，但未在 clean 设备安装 RC（PJZ110 已装 debug 包，覆盖会签名冲突）；待 clean 设备安装验收。
 3. **备份 v3 UI 视觉/回环**：B8/B9 已有备份回环测试，但 B12 UI 变更后未再跑专项设备回环；旧包/空 SAG 提示需视觉确认。
 4. **独立 Standards/Spec 审查 B12 变更**：已执行；硬性 RC/竞态/嵌套/文案问题已修，剩余抽取并发、entity 聚合性能/持久盘、备份视觉等缺口。
