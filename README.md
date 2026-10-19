@@ -2,7 +2,7 @@
 
 本地优先的 Android 端侧 RAG 记忆系统骨架：文档导入 → 分块 → 端侧 embedding → SQLite 检索 → 原文证据回溯，全程可离线。架构移植自 SAG 的检索数据模型思想（Kotlin 重写，非直接复用 Python 引擎）。
 
-当前状态：**v0.1.1 release candidate 已准备**（B8–B12 SAG P0 闭环 + R2/R3 代码质量修复；B12 为“高端+中端、缺低端”环境受限验收）。版本 `versionName = 0.1.1` / `versionCode = 2`；**未打 tag、未发布**，发布/发布说明见 [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) 与 `docs/RELEASE.md`。Phase 1 MVP-1 验收与 262 条/50 卡评测历史见 `docs/phase1/`。
+当前状态：**v0.1.1 已发布（tag `v0.1.1`）**；master 正在开发 **v0.1.2**，已落地 P1 导入扩展首版（PDF 文本型 / Office DOCX/PPTX/XLSX / 网页 URL / SAF 文件选择；见 [`B14 报告`](docs/review/B14_IMPORT_EXPANSION_REPORT.md)）。版本 `versionName = 0.1.2` / `versionCode = 3`（**未发布**）；发布说明见 [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) 与 `docs/RELEASE.md`。Phase 1 MVP-1 验收与 262 条/50 卡评测历史见 `docs/phase1/`。
 
 ## 模型路线（B7 起）
 
@@ -58,7 +58,7 @@ B11 在 B10 多跳检索证据上增加**单轮**带引用问答：先在本地�
 
 | 文档 | 内容 |
 |---|---|
-| `docs/RELEASE_NOTES.md` | **发布说明**（v0.1.1 release candidate：B8–B12 SAG 能力、R2/R3 质量修复、升级/回滚/限制；含 v0.1.0-mvp 历史） |
+| `docs/RELEASE_NOTES.md` | **发布说明**（v0.1.1 已发布；v0.1.2 P1 导入扩展开发中；含升级/回滚/限制） |
 | `docs/product/PRD_ZhiBox_SAG_App_v1.0.md` | **后续应用功能 PRD**（P0 SAG 事件-实体索引/多跳检索/引用问答/图谱；P1/P2 范围） |
 | `docs/review/SAG_APP_ALIGNMENT_REPORT.md` | **底座对齐报告**（v1.0 B8 前差距矩阵 + **v1.1 B8–B12 闭环附录**） |
 | `docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` | **后续开发路线图**（B8–B12 批次、依赖、门禁、P1/P2 backlog） |
@@ -72,6 +72,7 @@ B11 在 B10 多跳检索证据上增加**单轮**带引用问答：先在本地�
 | `docs/review/B12_ACCEPTANCE.md` | B12 P0 验收矩阵（环境受限通过；缺低端已记录） |
 | `docs/review/V0.1.1_RELEASE_REPORT.md` | v0.1.1 发布准备报告（质量门禁/签名 RC/hash/升级回滚） |
 | `docs/review/B13_MULTITURN_CHAT_REPORT.md` | B13 P1 多轮问答首版报告（历史上下文/引用继承；不含工具/Agent） |
+| `docs/review/B14_IMPORT_EXPANSION_REPORT.md` | B14 P1 导入扩展首版报告（PDF/Office/网页/SAF；安全预算/限制） |
 | `docs/product/B12_USER_GUIDE.md` | B12 图谱/预算/抽取并发/备份/诊断/隐私用户指南 |
 | `docs/phase1/MVP1-ACCEPTANCE.md` | MVP-1 验收清单（§9.1/9.2/9.3 逐条对照与遗留项） |
 | `docs/RELEASE.md` | release 构建、签名、安装与回滚流程 |

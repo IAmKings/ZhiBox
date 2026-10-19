@@ -1,9 +1,18 @@
-# 发布说明（v0.1.1 release candidate；含 v0.1.0-mvp 历史）
+# 发布说明（v0.1.2 开发中；v0.1.1 已发布；含历史）
 
-> 适用：**v0.1.1 release candidate**（B8–B12 SAG P0 能力 + 代码质量 R2/R3 修复）。本文档面向升级用户与后续维护者，说明行为变更、迁移影响与回滚步骤；实现细节/验收证据见 `docs/review/B*_FIX_REPORT.md`、`docs/CODE_QUALITY_REVIEW_R2.md`/`R3.md`。
-> **发布状态**：本地签名 RC 已准备；**未打 tag、未推送 Release**；发布动作由负责人确认后执行（`docs/RELEASE.md`）。
+> 适用：**v0.1.2 开发中**（v0.1.1 已发布；当前 master 含 P1 导入扩展与多轮问答首版）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/B*_FIX_REPORT.md`、`docs/CODE_QUALITY_REVIEW_R2.md`/`R3.md`。
+> **发布状态**：v0.1.1 已发布/tag；v0.1.2 **未最终验证/未 tag/未发布**，发布动作由负责人确认（`docs/RELEASE.md`）。
 
-## 0. v0.1.1 release candidate（未发布）
+## 0. v0.1.2（开发中，未发布）
+
+- **P1 导入扩展**：文本型 PDF（PDFBox-Android）、DOCX/PPTX/XLSX、HTML、网页 URL、SAF 多选文件；staging 白名单与 50MB 流式上限；扫描件/加密 PDF 可读拒绝，旧 `.doc/.ppt/.xls` 不支持。
+- **P1 多轮问答首版（B13）**：最近 6 条历史作为上下文（不是证据），历史 `[S#]` 剥离，引用仍只来自本轮证据；见 `docs/review/B13_MULTITURN_CHAT_REPORT.md`。
+- **质量**：JVM debug 573/0、release 554/0；lint 0 error；K60U 非 UI 31/31、PDF Android runtime 2/2；APK 约 55.44MB（较 v0.1.1 +≈6MB，PDFBox assets/BC）。
+- **限制**：扫描件无 OCR；URL provenance 未入库；SAF/网页真机 e2e 待设备窗口；v0.1.2 尚未构建签名 RC。
+
+## 1. v0.1.1（已发布）
+
+### 1.0 v0.1.1 release candidate（已发布）
 
 ### 0.1 版本与兼容性
 

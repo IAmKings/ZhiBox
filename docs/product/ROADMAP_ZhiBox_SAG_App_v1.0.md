@@ -170,10 +170,26 @@ schema v7、抽取 pipeline/scheduler/worker、FTS/SAG 向量、补抽取/重试
 
 ---
 
+---
+
+## 7.2 B14 — P1 导入扩展首版（✅ 2026-10-20，v0.1.2 开发中）
+
+**目标**：补齐 TXT/MD 之外的导入面：PDF（文本型）、DOCX/PPTX/XLSX、HTML/网页 URL、SAF 文件选择。
+
+**范围/验收**
+1. `DocumentParser` 分派 + PDFBox PDF 文本抽取 + OOXML 三种 Office + HTML/网页抓取；staging 白名单扩展。
+2. UI：SAF 多选 + 网页 URL；原子暂存/互斥/流式 50MB；网络开关与 HTTPS-only。
+3. 安全：zip 预算/路径穿越、PDF 大小/页数/字符/取消、网页 2MB/Content-Type/私网拦截、解析失败确定性错误码不自动重试。
+4. 测试：JVM 573/554、K60U 非 UI 31/31、K60U PDF Android runtime 2/2；SAF 真机 e2e 待锁屏/输入权限窗口。
+
+**限制**：扫描件无 OCR、旧 `.doc/.ppt/.xls` 不支持、URL provenance 未入库、Office 正则解析有大小/预算上限；见 `docs/review/B14_IMPORT_EXPANSION_REPORT.md`。
+
+---
+
 ## 8. P1 / P2 Backlog（不入 P0）
 
 ### P1（B13+，按价值/成本排序；每项需明确触发条件）
-1. **PDF/Office/网页导入**：MarkItDown/AnyDoc/MinerU 等价能力、来源 URL；解析失败回退；导入进度/幂等。触发：用户非 TXT/MD 资料占比 ≥20% 或明确需求。
+1. **PDF/Office/网页导入（B14 首版 ✅ 2026-10-20）**：文本型 PDF/DOCX/PPTX/XLSX/HTML/网页 URL 已接入；扫描件 OCR、旧 `.doc/.ppt/.xls`、网页信源管理/URL provenance 仍待后续（见 `docs/review/B14_IMPORT_EXPANSION_REPORT.md`）。
 2. **Explore/3D 图谱**：全库 event-entity 漫游、3D 渲染、搜索/筛选；性能与可访问性替代列表。触发：P0 图谱使用/反馈证明需要全库漫游。
 3. **多轮问答首版（B13，✅ 2026-10-20）/ Agent 工具（待续）**：历史上下文注入/引用继承首版完成（见 `docs/review/B13_MULTITURN_CHAT_REPORT.md`）；工具/Agent 编排仍待 P1 后续评估。
 4. **实体别名表**：别名/缩写/全称合并（论文局限），只影响索引/扩展，不改 append-only。触发：抽检显示别名导致明显漏召回。
