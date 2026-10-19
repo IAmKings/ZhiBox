@@ -15,7 +15,7 @@
 | 备份格式 | **v3**（可导入 v1/v2/v3；v0.1.0-mvp 不能读取 v3） |
 | 模型路线 | EGemma2 270M/440M/740M（+ SM8750 NPU 变体；与 v0.1.0 相同） |
 | release 签名 | 沿用现有 release keystore（与 v0.1.0-mvp 同证书；可覆盖升级） |
-| APK（signed RC） | 构建后填写（见 `dist/zhibox-0.1.1-*-release-signed.apk` 与 sidecar SHA-256） |
+| APK（signed RC） | `dist/zhibox-0.1.1-462b09c-release-signed.apk`（49387732 bytes，SHA-256 `e13ee1cbb7ca00f4b281483f1adf1d7ac6a2a20fa0076efe1d9c583c40b1d65b`） |
 
 ### 0.2 用户可见变化
 

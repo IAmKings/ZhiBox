@@ -70,6 +70,7 @@ B11 在 B10 多跳检索证据上增加**单轮**带引用问答：先在本地�
 | `docs/review/B11_FIX_REPORT.md` | B11 实施报告（流式/引用问答/Chat/隐私；真实 QA citation 100%、support 98%，PJZ110 门禁通过） |
 | `docs/review/B12_FIX_REPORT.md` | B12 实施报告（图谱/设置/备份/诊断/预算/抽取并发；环境受限通过） |
 | `docs/review/B12_ACCEPTANCE.md` | B12 P0 验收矩阵（环境受限通过；缺低端已记录） |
+| `docs/review/V0.1.1_RELEASE_REPORT.md` | v0.1.1 发布准备报告（质量门禁/签名 RC/hash/升级回滚） |
 | `docs/product/B12_USER_GUIDE.md` | B12 图谱/预算/抽取并发/备份/诊断/隐私用户指南 |
 | `docs/phase1/MVP1-ACCEPTANCE.md` | MVP-1 验收清单（§9.1/9.2/9.3 逐条对照与遗留项） |
 | `docs/RELEASE.md` | release 构建、签名、安装与回滚流程 |
