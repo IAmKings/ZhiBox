@@ -107,6 +107,33 @@ class AnswerGeneratorTest {
     }
 
     @Test
+    fun `multi turn history is sent as bounded context without old citation ids`() = runBlocking {
+        val provider = FakeStreamingProvider(
+            listOf(
+                LlmStreamEvent.Delta("[S1] 张三在上海学习数学。"),
+                LlmStreamEvent.Completed(model = "test-model", latencyMs = 7L),
+            ),
+        )
+        val history = listOf(
+            ChatTurn(ChatRole.USER, "上一轮问张三在哪里"),
+            ChatTurn(ChatRole.ASSISTANT, "上一轮答在上海 [S9]"),
+        )
+
+        val events = generator(provider)
+            .generate(AnswerRequest("那他现在呢？", listOf(evidence(chunkId = 7L)), history = history))
+            .toList()
+
+        val userPrompt = provider.lastUser.orEmpty()
+        assertTrue("历史应标注为上下文", userPrompt.contains("历史对话") && userPrompt.contains("不是证据"))
+        assertTrue("应包含上一轮用户问题", userPrompt.contains("上一轮问张三在哪里"))
+        assertTrue("应包含上一轮助手回答", userPrompt.contains("上一轮答在上海"))
+        assertFalse("历史中的旧 [S9] 不得进入本轮提示词", userPrompt.contains("[S9]"))
+        assertTrue("本轮证据仍为 S1", userPrompt.contains("[S1]"))
+        assertTrue(provider.lastSystem.orEmpty().contains("历史对话只用于理解指代/上下文"))
+        assertEquals(7L, (events.last() as AnswerEvent.Completed).citations.single().chunkId)
+    }
+
+    @Test
     fun `invalid citation token is replaced and marked unverified`() = runBlocking {
         val provider = FakeStreamingProvider(
             listOf(

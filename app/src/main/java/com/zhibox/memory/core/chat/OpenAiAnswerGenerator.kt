@@ -14,12 +14,13 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 
 /**
- * B11：真实 LLM 的带引用单轮问答生成器（OpenAI-compatible SSE 流式）。
+ * B11/B13：真实 LLM 的带引用问答生成器（OpenAI-compatible SSE 流式；P1 多轮上下文）。
  *
  * 流程：
  * 1. 证据为空 → **零网络**直接 [AnswerEvent.Failed]（code `NO_EVIDENCE`、固定拒答文案）；
  * 2. 读取 [LlmConfigStore]：未配置/读取失败 → 可读 Failed（不发起请求）；
- * 3. [ChatPrompt] 构造系统提示词 + 本轮 query + 证据（≤10 条、每条 ≤1200 字，无历史）；
+ * 3. [ChatPrompt] 构造系统提示词 + 可选历史上下文 + 本轮 query + 证据（≤10 条、每条 ≤1200 字）；
+ *    历史不是证据，且其 `[S#]` 标记会被移除；
  * 4. [LlmStreamingProvider.stream] 收集 Delta → 透传 [AnswerEvent.Delta]；
  * 5. 正常结束后**强制** [CitationValidator.validate]：非法 `[S#]` 替换警示、去重合法引用、
  *    `unverified` 标记无引用答案；最后发一次 [AnswerEvent.Completed]（带 model/latency）。
@@ -80,6 +81,9 @@ class OpenAiAnswerGenerator(
             evidence = evidence,
             maxEvidence = config.maxEvidence,
             maxCharsPerEvidence = config.maxCharsPerEvidence,
+            history = request.history,
+            maxHistoryTurns = config.maxHistoryTurns,
+            maxCharsPerHistoryTurn = config.maxCharsPerHistoryTurn,
         )
 
         // 4) 流式生成：Delta 透传；Failed 记录；Completed 只记 model/latency

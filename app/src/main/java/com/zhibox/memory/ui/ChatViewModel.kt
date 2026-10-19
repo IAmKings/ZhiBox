@@ -13,6 +13,7 @@ import com.zhibox.memory.core.chat.ChatEvidence
 import com.zhibox.memory.core.chat.ChatMessage
 import com.zhibox.memory.core.chat.ChatRepository
 import com.zhibox.memory.core.chat.ChatRole
+import com.zhibox.memory.core.chat.ChatTurn
 import com.zhibox.memory.core.chat.ChatPrompt
 import com.zhibox.memory.core.chat.OpenAiAnswerGenerator
 import com.zhibox.memory.core.chat.RoomChatRepository
@@ -47,10 +48,11 @@ import org.json.JSONObject
 import java.security.MessageDigest
 
 /**
- * 带引用问答（B11 P0 单轮）UI 状态。
+ * 带引用问答（B11 P0 单轮；P1/B13 多轮上下文）UI 状态。
  *
  * 设计要点：
- * - 单轮：每次只把「本轮问题 + 本轮检索证据」发给 LLM，**不注入历史**（PRD FR-06）；
+ * - 证据边界：事实只能来自「本轮检索证据」；历史只用于理解指代/上下文，不是证据；
+ * - P1 多轮：携带最近 6 条 USER/ASSISTANT 历史（每条 ≤600 字，去掉旧 `[S#]` 标记）；
  * - 引用：只有 `AnswerEvent.Completed`（已过 [com.zhibox.memory.core.chat.CitationValidator]）
  *   才持久化 user + assistant + citations；失败/停止不保存半成品最终答案；
  * - 隐私：首次联网前必须显式同意（[LlmPreferences.answerNetworkConsent]）；默认禁网；
@@ -402,7 +404,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ───────────────────────── 单轮执行 ─────────────────────────
+    // ───────────────────────── 问答执行（单轮/多轮） ─────────────────────────
 
     private fun performSend(query: String, appendUser: Boolean = true) {
         if (sendJob?.isActive == true) return
@@ -410,6 +412,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun runTurn(query: String, appendUser: Boolean = true) {
+        // P1 多轮：在追加本轮 user 之前截取历史；retry 时 state 已含本轮 user，需剔除尾条。
+        val history = ChatPrompt.selectHistory(
+            history = historyForTurn(_state.value.messages, query, appendUser),
+        )
         var retrieveMs = 0L
         var generateMs = 0L
         var result: SagResult? = null
@@ -488,6 +494,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     evidenceCount = 0,
                     errorCode = "NO_EVIDENCE",
                     errorStage = "retrieve",
+                    historyTurns = history.size,
                 )
                 return
             }
@@ -505,11 +512,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
 
-            // 3) 流式生成（不注入历史；只发本轮 query+evidence）
+            // 3) 流式生成：history 仅作上下文；事实/引用仍只来自本轮 evidence
             val generateStarted = System.currentTimeMillis()
             var completed: AnswerEvent.Completed? = null
             var failed: AnswerEvent.Failed? = null
-            answerGenerator.generate(AnswerRequest(query = query, evidence = evidence)).collect { event ->
+            // P1：history 仅作上下文，证据仍只来自本轮 evidence；生成器/提示词会再次剥离旧引用。
+            answerGenerator.generate(
+                AnswerRequest(query = query, evidence = evidence, history = history),
+            ).collect { event ->
                 when (event) {
                     is AnswerEvent.Delta -> update { it.copy(streamingText = it.streamingText + event.text) }
                     is AnswerEvent.Completed -> completed = event
@@ -603,6 +613,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 invalidCitations = completed?.invalidCitationTokens?.size ?: 0,
                 errorCode = failed?.code,
                 errorStage = if (failed != null) "generate" else null,
+                historyTurns = history.size,
             )
         } catch (e: CancellationException) {
             // 用户停止：保留部分文本仅展示（不落库、不作为最终答案）
@@ -648,6 +659,29 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         return conversation.id
     }
 
+    /**
+     * P1：把已持久化消息映射为历史上下文。appendUser=false（重试）时 state 已包含本轮
+     * user 消息，必须剔除末尾同内容 user，避免把当前问题重复作为历史。
+     */
+    private fun historyForTurn(
+        messages: List<ChatMessage>,
+        query: String,
+        appendUser: Boolean,
+    ): List<ChatTurn> {
+        val eligible = messages.filter { it.role == ChatRole.USER || it.role == ChatRole.ASSISTANT }
+        val prior = if (!appendUser) {
+            val last = eligible.lastOrNull()
+            if (last != null && last.role == ChatRole.USER && last.content.trim() == query.trim()) {
+                eligible.dropLast(1)
+            } else {
+                eligible
+            }
+        } else {
+            eligible
+        }
+        return prior.map { ChatTurn(role = it.role, content = it.content) }
+    }
+
     private suspend fun refreshMessages(conversationId: String) {
         val loaded = withContext(Dispatchers.IO) {
             val messages = repository.messages(conversationId)
@@ -670,6 +704,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         invalidCitations: Int = 0,
         errorCode: String? = null,
         errorStage: String? = null,
+        historyTurns: Int = 0,
     ) {
         withContext(Dispatchers.IO) {
             try {
@@ -681,6 +716,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     .put("invalidCitations", invalidCitations)
                     .put("errorCode", errorCode ?: JSONObject.NULL)
                     .put("errorStage", errorStage ?: JSONObject.NULL)
+                    .put("historyTurns", historyTurns)
                     .toString()
                 val dao = db.queryTraceDao()
                 dao.insert(

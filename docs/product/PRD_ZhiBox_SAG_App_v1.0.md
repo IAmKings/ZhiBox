@@ -350,7 +350,7 @@ P0 成功定义：用户可在离线模式完成 chunk 检索；在配置 LLM �
 | B11 | 精排+问答 | ✅ 真实 QA citation validity 100%、无证据拒答 100%；50 support 支持率 98%、citation/fullyCited 100%；JVM 504/0、PJZ110 instrumentation 21/21（见 `docs/review/B11_FIX_REPORT.md`） | 引用/证据/禁网门禁 |
 | B12 | 图谱/发布 | ✅ 环境受限通过：PJZ110 signed RC + K60U/K40 debug；低端缺（用户接受）；见 `docs/review/B12_ACCEPTANCE.md` | P0 全验收（环境受限） |
 
-P1：PDF/Office/网页导入、Explore/3D、多轮 Agent/工具、别名、抽取质量专项。
+P1：PDF/Office/网页导入、Explore/3D、多轮 Agent/工具（多轮上下文首版 B13 已完成，工具/Agent 待续）、别名、抽取质量专项。
 P2：MCP/REST/OpenAI/Dify/dsh-sag、本地 LLM、同步/多用户、多模态、ANN。
 
 ---

@@ -328,7 +328,7 @@
     <string name="chat_new_conversation">新对话</string>
     <string name="chat_conversations">最近会话</string>
     <string name="chat_no_conversations">暂无会话</string>
-    <string name="chat_input_hint">输入问题（单轮；只基于本轮检索证据回答）</string>
+    <string name="chat_input_hint">输入问题（支持多轮上下文；只基于本轮检索证据回答）</string>
     <string name="chat_send">发送</string>
     <string name="chat_stop">停止</string>
     <string name="chat_retry">重试</string>

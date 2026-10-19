@@ -7,7 +7,7 @@ import com.zhibox.memory.data.db.MessageCitationEntity
 import java.util.UUID
 
 /**
- * B11：Chat 会话/消息/引用持久化契约（P0 单轮问答；会话历史可查看但不注入下一问）。
+ * B11/B13：Chat 会话/消息/引用持久化契约（P0 单轮；P1 多轮只把历史作为上下文，不是证据）。
  *
  * - 会话/消息/引用写入 Room，删除会话由 FK CASCADE 清理消息/引用；
  * - `sourceScope` 以来源 id 列表保存（空=全部来源；不保存正文/路径）；

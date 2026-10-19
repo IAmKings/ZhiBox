@@ -154,15 +154,31 @@ schema v7、抽取 pipeline/scheduler/worker、FTS/SAG 向量、补抽取/重试
 
 ---
 
+---
+
+## 7.1 B13 — P1 多轮问答首版（✅ 2026-10-20）
+
+**目标**：在 B11 单轮问答上增加会话历史上下文与历史引用可回看；不做工具/Agent 编排。
+
+**范围/验收**
+1. 历史最多 6 条 USER/ASSISTANT、每条 ≤600 字；`[S#]` 从历史剥离，历史不是证据。
+2. 证据/引用仍只来自本轮检索；`CitationValidator` 不变；retry 不重复注入当前 user。
+3. 提示词版本 `b13-multiturn-v1`；trace 记录 `historyTurns`。
+4. 测试：ChatPrompt/AnswerGenerator 多轮用例；JVM 524/505、K60U 非 UI 31/31。
+
+**限制**：真实 LLM 多轮质量评测待设备/API key 窗口；不含工具/Agent；B13 未包含在已构建的 v0.1.1 RC 中。
+
+---
+
 ## 8. P1 / P2 Backlog（不入 P0）
 
 ### P1（B13+，按价值/成本排序；每项需明确触发条件）
 1. **PDF/Office/网页导入**：MarkItDown/AnyDoc/MinerU 等价能力、来源 URL；解析失败回退；导入进度/幂等。触发：用户非 TXT/MD 资料占比 ≥20% 或明确需求。
 2. **Explore/3D 图谱**：全库 event-entity 漫游、3D 渲染、搜索/筛选；性能与可访问性替代列表。触发：P0 图谱使用/反馈证明需要全库漫游。
-3. **多轮 Agent/工具**：threads、@source、历史上下文注入、工具调用、引用继承；需模型能力评估。触发：P0 单轮问答稳定且用户需要多轮上下文。
+3. **多轮问答首版（B13，✅ 2026-10-20）/ Agent 工具（待续）**：历史上下文注入/引用继承首版完成（见 `docs/review/B13_MULTITURN_CHAT_REPORT.md`）；工具/Agent 编排仍待 P1 后续评估。
 4. **实体别名表**：别名/缩写/全称合并（论文局限），只影响索引/扩展，不改 append-only。触发：抽检显示别名导致明显漏召回。
 5. **抽取质量专项**：中文 prompt 迭代、模型对比、实体类型分布/覆盖率、失败回填。触发：B9 抽检未达 PRD FR-01 质量线或用户反馈实体缺失。
-6. **P0 Chat 增强**：多轮上下文/工具/Agent 编排（并入第 3 项时独立评估）。
+6. **P0 Chat 增强**：多轮上下文首版已完成（B13）；工具/Agent 编排并入第 3 项后续评估。
 
 ### P2（触发条件）
 - **集成**：REST/OpenAPI、MCP、OpenAI-compatible、Dify、dsh-sag — 触发：用户明确需要外部 Agent 复用知识库，且 B12 P0 稳定。

@@ -3,7 +3,7 @@ package com.zhibox.memory.core.chat
 import kotlinx.coroutines.flow.Flow
 
 /**
- * B11：单轮带引用问答的核心契约（P0：不注入历史上下文）。
+ * B11/B13：带引用问答的核心契约（P0 单轮；P1 多轮上下文）。
  *
  * 分层：
  * - `core/chat` 只依赖 `core/llm` 与检索结果的纯数据，不依赖 UI/DB；
@@ -63,10 +63,22 @@ data class ChatCitation(
     val rank: Int,
 )
 
-/** 一次问答请求（证据快照只在本次请求内使用，不注入历史）。 */
+/**
+ * 历史对话轮次（P1 多轮上下文的最小输入）。
+ *
+ * 历史只用于理解指代/上下文，**不是证据**；调用方必须去掉历史里的 `[S#]` 标记，
+ * 防止模型把旧证据编号当成本轮可引用证据。
+ */
+data class ChatTurn(
+    val role: ChatRole,
+    val content: String,
+)
+
+/** 一次问答请求（证据快照只在本轮使用；history 仅作上下文，不参与引用校验）。 */
 data class AnswerRequest(
     val query: String,
     val evidence: List<ChatEvidence>,
+    val history: List<ChatTurn> = emptyList(),
 )
 
 /** 流式生成事件：`Delta*` → (`Completed` | `Failed`)，或调用方取消。 */
@@ -94,7 +106,7 @@ sealed interface AnswerEvent {
     data object Stopped : AnswerEvent
 }
 
-/** 生成器：只使用 [AnswerRequest.evidence]；每次调用都是独立单轮请求。 */
+/** 生成器：只使用本轮 [AnswerRequest.evidence] 作为事实依据；history 仅作上下文。 */
 interface AnswerGenerator {
     fun generate(request: AnswerRequest): Flow<AnswerEvent>
 }
@@ -104,5 +116,7 @@ data class AnswerGeneratorConfig(
     val maxEvidence: Int = 10,
     val maxCharsPerEvidence: Int = 1200,
     val maxTokens: Int = 768,
-    val systemPromptVersion: String = "b11-citation-v1",
+    val systemPromptVersion: String = "b13-multiturn-v1",
+    val maxHistoryTurns: Int = 6,
+    val maxCharsPerHistoryTurn: Int = 600,
 )
