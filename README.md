@@ -60,7 +60,7 @@ B11 在 B10 多跳检索证据上增加**单轮**带引用问答：先在本地�
 |---|---|
 | `docs/RELEASE_NOTES.md` | **发布说明**（v0.1.0-mvp：B1–B7 行为变更、升级/回滚步骤、已知限制） |
 | `docs/product/PRD_ZhiBox_SAG_App_v1.0.md` | **后续应用功能 PRD**（P0 SAG 事件-实体索引/多跳检索/引用问答/图谱；P1/P2 范围） |
-| `docs/review/SAG_APP_ALIGNMENT_REPORT.md` | **底座对齐报告**（当前实现 vs zleap-sag README/论文的能力矩阵与差距） |
+| `docs/review/SAG_APP_ALIGNMENT_REPORT.md` | **底座对齐报告**（v1.0 B8 前差距矩阵 + **v1.1 B8–B12 闭环附录**） |
 | `docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` | **后续开发路线图**（B8–B12 批次、依赖、门禁、P1/P2 backlog） |
 | `docs/review/B6_FIX_REPORT.md` | B6 修复报告（文档漂移同步/脚本健壮性） |
 | `docs/review/B8_FIX_REPORT.md` | B8 实施报告（schema v6/抽取契约/LLM 安全基础/备份 v3 骨架） |

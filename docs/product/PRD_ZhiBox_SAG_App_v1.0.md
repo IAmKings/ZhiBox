@@ -1,18 +1,18 @@
 # ZhiBox × SAG 应用功能 PRD（v1.0）
 
-- **文档状态**：**v1.0 已评审（2026-10-18）**；作为 B8–B12 的产品基准（本次只交付规划，不实现代码）
-- **日期**：2026-10-18
-- **适用产品**：ZhiBox Android 端个人知识应用（现有 Phase 1 MVP + B1–B7 底座）
+- **文档状态**：**v1.0 已评审（2026-10-18）**；**B12 收尾（2026-10-19）状态回填**：B8–B12 已实现并按“高端+中端、缺低端”环境受限验收（见 `docs/review/B12_ACCEPTANCE.md`），本文由“规划基准”转为已实现产品基准；不再表示“只规划、未实现代码”。
+- **日期**：2026-10-18（原文）；2026-10-19 状态回填
+- **适用产品**：ZhiBox Android 端个人知识应用（B12 收尾时已含 B8–B12 的 SAG P0 闭环；立稿时为 Phase 1 MVP + B1–B7 底座）
 - **上游依据**：
   - SAG 应用 README-CN：<https://github.com/Zleap-AI/SAG/blob/main/README-CN.md>（repo main commit `a6f6a00f36ce0cbe43cd2fc0445b479e4ae4fff6`，README-CN blob `6b0df82e0a90457dc8f83efbd258b20d0b2b4596`，2026-10-16）
   - 论文：**SAG: SQL-Retrieval Augmented Generation with Query-Time Dynamic Hyperedges**，arXiv:2606.15971v2（2026-08-25）
   - 本地参考：`zleap-sag==0.14.0`（`docs/reference/zleap-sag-0.14.0/`，只读）
-  - 当前实现：Phase 1 MVP + B1–B7（见 `docs/phase1/`、`docs/review/B*_FIX_REPORT.md`；当前 HEAD `0003d76`）
+  - 当前实现：B12 收尾 `676cb9f`（B8–B12 已完成；见 `docs/review/B8…B12_FIX_REPORT.md`）；立稿时基线为 Phase 1 MVP + B1–B7 `0003d76`（`docs/phase1/`）
 - **已确认决策**：
   1. **混合优先**：本地离线检索保底；SAG 的 LLM 环节（事件/实体抽取、查询实体识别、精排/上下文选择、带引用问答）默认接**用户显式配置的远程 OpenAI-compatible LLM**；可一键禁网；本地 LLM 后置。
   2. **P0 核心闭环**：事件-实体索引 + SAG 双路径/扩展/精排 + 带引用问答 + 事件-实体图谱/溯源；PDF/Office/网页导入放 P1。
 - **抽取语义以论文/本 PRD 为准**：参考 `zleap-sag 0.14.0` 的 `extract_document.yaml` 允许一个 chunk 聚合/拆分多个事项、children 与 references，**不直接照搬**；本项目 P0 固定“1 chunk ≤1 个 event”，提示词需按此重写并评测（B9）。
-- **阅读顺序**：本 PRD 定义"做什么/验收什么"；`docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` 定义"按什么批次做"；`docs/review/SAG_APP_ALIGNMENT_REPORT.md` 给出"当前底座与 SAG 的差距证据"。
+- **阅读顺序**：本 PRD 定义"做什么/验收什么"；`docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` 定义"按什么批次做"；`docs/review/SAG_APP_ALIGNMENT_REPORT.md` 给出"当前底座与 SAG 的差距证据"及 **v1.1 B8–B12 闭环附录**。
 
 ---
 

@@ -2,10 +2,11 @@
 
 - **日期**：2026-10-18
 - **产品基准**：`docs/product/PRD_ZhiBox_SAG_App_v1.0.md`（下称 PRD）
-- **对齐证据**：`docs/review/SAG_APP_ALIGNMENT_REPORT.md`
+- **对齐证据**：`docs/review/SAG_APP_ALIGNMENT_REPORT.md`（v1.0 B8 前基线 + **v1.1 闭环附录**，2026-10-19）
 - **上游锚点**：SAG README-CN（repo main `a6f6a00`，README blob `6b0df82`）、论文 arXiv:2606.15971v2、参考 `zleap-sag==0.14.0`
-- **当前底座**：Phase 1 MVP + B1–B7（HEAD `0003d76`）；本计划从 **B8** 开始，不改动已完成的 B1–B7 行为契约。
-- **本文件性质**：开发计划；执行 B8 前需 PRD 批准/基线确认。实现批次可独立开卡，但必须按依赖顺序推进。
+- **当前底座**：B12 收尾 `676cb9f`（B8–B12 已完成）；立稿时基线为 Phase 1 MVP + B1–B7 `0003d76`，本计划从 **B8** 开始，未改动 B1–B7 既有契约。
+- **执行状态**：**B8–B12 已按计划完成**，B12 以“高端+中端、缺低端”环境受限验收关闭（用户 2026-10-19 接受；见 `docs/review/B12_ACCEPTANCE.md`）；不自动 tag/Release。
+- **本文件性质**：开发计划（已执行完毕）；后续能力变更按 P1/P2 backlog 另立批次。
 
 ---
 
