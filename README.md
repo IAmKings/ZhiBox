@@ -2,7 +2,7 @@
 
 本地优先的 Android 端侧 RAG 记忆系统骨架：文档导入 → 分块 → 端侧 embedding → SQLite 检索 → 原文证据回溯，全程可离线。架构移植自 SAG 的检索数据模型思想（Kotlin 重写，非直接复用 Python 引擎）。
 
-当前状态：**Phase 1（离线搜索 MVP）已收尾，MVP-1 内部发布就绪**（验收清单 `docs/phase1/MVP1-ACCEPTANCE.md`：§9.1 十项中 8 项通过、2 项部分通过并记录遗留；§9.3 评测集现状 **262 条 / 50 卡**，MVP-1 验收时为 220 条/45 卡，B2 后扩容（见 `docs/phase1/W3-ROBUSTNESS-EVAL.md` §升级））；**B1–B7 修复批次已完成**（B6 文档/脚本同步随本版本发布）。版本 `versionName = 0.1.0-mvp`（仓库尚未打 tag，发布流程见 `docs/RELEASE.md`）。行为变更与升级/回滚见 [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md)。
+当前状态：**v0.1.1 release candidate 已准备**（B8–B12 SAG P0 闭环 + R2/R3 代码质量修复；B12 为“高端+中端、缺低端”环境受限验收）。版本 `versionName = 0.1.1` / `versionCode = 2`；**未打 tag、未发布**，发布/发布说明见 [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) 与 `docs/RELEASE.md`。Phase 1 MVP-1 验收与 262 条/50 卡评测历史见 `docs/phase1/`。
 
 ## 模型路线（B7 起）
 
@@ -58,7 +58,7 @@ B11 在 B10 多跳检索证据上增加**单轮**带引用问答：先在本地�
 
 | 文档 | 内容 |
 |---|---|
-| `docs/RELEASE_NOTES.md` | **发布说明**（v0.1.0-mvp：B1–B7 行为变更、升级/回滚步骤、已知限制） |
+| `docs/RELEASE_NOTES.md` | **发布说明**（v0.1.1 release candidate：B8–B12 SAG 能力、R2/R3 质量修复、升级/回滚/限制；含 v0.1.0-mvp 历史） |
 | `docs/product/PRD_ZhiBox_SAG_App_v1.0.md` | **后续应用功能 PRD**（P0 SAG 事件-实体索引/多跳检索/引用问答/图谱；P1/P2 范围） |
 | `docs/review/SAG_APP_ALIGNMENT_REPORT.md` | **底座对齐报告**（v1.0 B8 前差距矩阵 + **v1.1 B8–B12 闭环附录**） |
 | `docs/product/ROADMAP_ZhiBox_SAG_App_v1.0.md` | **后续开发路线图**（B8–B12 批次、依赖、门禁、P1/P2 backlog） |

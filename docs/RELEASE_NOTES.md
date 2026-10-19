@@ -1,9 +1,63 @@
-# 发布说明（v0.1.0-mvp 及后续修复批次）
+# 发布说明（v0.1.1 release candidate；含 v0.1.0-mvp 历史）
 
-> 适用：Phase 1 MVP-1 之后的累积发布（B1–B7 修复批次）。本文档面向**升级用户与后续维护者**，
-> 说明行为变更、迁移影响与回滚步骤；实现细节与验收证据见 `docs/review/B*_FIX_REPORT.md`。
+> 适用：**v0.1.1 release candidate**（B8–B12 SAG P0 能力 + 代码质量 R2/R3 修复）。本文档面向升级用户与后续维护者，说明行为变更、迁移影响与回滚步骤；实现细节/验收证据见 `docs/review/B*_FIX_REPORT.md`、`docs/CODE_QUALITY_REVIEW_R2.md`/`R3.md`。
+> **发布状态**：本地签名 RC 已准备；**未打 tag、未推送 Release**；发布动作由负责人确认后执行（`docs/RELEASE.md`）。
 
-## 1. 版本与兼容性
+## 0. v0.1.1 release candidate（未发布）
+
+### 0.1 版本与兼容性
+
+| 项 | v0.1.1 值 |
+|---|---|
+| versionName / versionCode | **`0.1.1` / `2`** |
+| 包名 / minSdk / targetSdk | `com.zhibox.memory` / 24 / 36 |
+| 数据库 schema | **v7**（自 v5 升级；Room 迁移 v5→v7） |
+| 备份格式 | **v3**（可导入 v1/v2/v3；v0.1.0-mvp 不能读取 v3） |
+| 模型路线 | EGemma2 270M/440M/740M（+ SM8750 NPU 变体；与 v0.1.0 相同） |
+| release 签名 | 沿用现有 release keystore（与 v0.1.0-mvp 同证书；可覆盖升级） |
+| APK（signed RC） | 构建后填写（见 `dist/zhibox-0.1.1-*-release-signed.apk` 与 sidecar SHA-256） |
+
+### 0.2 用户可见变化
+
+1. **SAG 抽取与索引（B8/B9）**：文档 ready 后，配置 LLM 且开启 SAG 时后台抽取 1 event + 11 类 entity，写入 event/entity/incidence/SAG 向量/FTS；失败可重试/补抽取；抽取并发可调 1–4（默认 1 串行）。
+2. **三种检索模式（B10）**：混合 / SAG 快速（离线可用）/ SAG 精排；source 限定、预算档位、降级原因与脱敏 trace。
+3. **带引用问答（B11）**：单轮流式 Chat；证据 `[S1]…[Sn]` 可点回原文；无证据拒答、非法/未校验引用警示、停止/重试；首次联网 consent；API Key 存 Keystore，不进日志/备份。
+4. **图谱/设置/备份/诊断（B12）**：来源页「图谱」tab（event 卡片/详情/entities/chunk 原文/共享实体相关事件、source 过滤、分页上限 200）；Settings 增加预算档位、抽取并发、trace 诊断导出、备份 v3/隐私说明；备份 v3 支持导出/导入、模型/空间依赖提示、旧包补抽取。
+5. **代码质量/稳定性（R2/R3）**：事件向量扫描去除 5000 条静默截断（分页全量+有界 top-K）；抽取热路径去除整篇 chunk 物化；SSE 有界逐行读取；抽取 claim/not-indexed 并发守卫；UI 生命周期收集/进场刷新/文案资源化；trace 导出去重；详见两份审查报告。
+
+### 0.3 升级步骤（v0.1.0-mvp → v0.1.1）
+
+1. **先备份**：用 v0.1.0 导出 v2 备份并保存到设备外；记录本机模型/API Key 配置（Key 不入备份，升级后需重新输入或由 Keystore 保留——同签名覆盖升级通常保留，但回滚/清装会丢）。
+2. 用**同一 release keystore** 签名覆盖安装 v0.1.1（versionCode 2 > 1）；不要卸载，否则 App 数据/Keystore alias 丢失。
+3. 首次启动执行 Room v5→v7 迁移；SAG 抽取任务/事件层按新 schema 可用。
+4. 备份导入 v2/v1 仍兼容；导入 v3 后 FTS 从原文重建；旧包/空 SAG 会提示补抽取。
+5. 升级后建议运行一次「设置→诊断」与一次检索/问答 smoke；确认 `versionName=0.1.1`。
+
+### 0.4 回滚步骤
+
+- v0.1.0-mvp **不能读取 v3 备份**；回滚前必须保留升级前导出的 **v2 备份**，或准备旧 APK 可用的数据。
+- 回滚安装 v0.1.0 需**卸载/清数据**（签名相同但 versionCode 降级需 `-d`/卸载），然后从 v2 备份导入；API Key/聊天/SAG 事件层不能回迁到 v0.1.0。
+- 不要仅依赖 v0.1.1 导出的 v3 包做降级恢复。
+
+### 0.5 验证与质量门禁
+
+- JVM：debug **520/520**、release **501/501**；lint **0 errors**（41 warnings，依赖版本提示）；`assembleDebug`/`assembleRelease`/androidTest 编译通过。
+- K40 中端真机：SagRetriever/Graph/备份/迁移/抽取并发等 **41/41** androidTest；PJZ110 此前 B12 门禁 **36/36**（升级前）。
+- 设备矩阵：PJZ110 高端（signed RC clean install/UI）、K60U 高端（debug 非 UI）、K40 中端（debug 非 UI+手动 UI）；**低端 4–6GB 未提供**，按用户接受的“环境受限”口径记录，不宣称完整三档。
+- 性能：Graph 10k p95 ≤12ms（PJZ110）、≤21ms（K60U）、≤62ms（K40），目标 1.5s。
+
+### 0.6 已知限制
+
+- 三档矩阵缺 4–6GB 低端；K60U HyperOS 限制 UI instrumentation；K60U/K40 以 debug 包做功能矩阵（未覆盖安装 RC 以保留数据）。
+- 单轮问答；多轮/Agent、工具、云同步、PDF/Office/网页、3D/Explore、对外集成与部署认证仍为 P1/P2/非目标。
+- 语义支持率为人工复核（B11 support 98%），公共多跳基准横比仍为后续。
+- 发布候选未打 tag/未发布；Release 资产需负责人按 `docs/RELEASE.md` 推送 tag 触发。
+
+---
+
+> **以下第 1–8 节为 v0.1.0-mvp 历史发布说明（B1–B7）**，保留用于升级/回滚追溯；当前版本以上方第 0 节为准。
+
+## 1. v0.1.0-mvp 历史：版本与兼容性
 
 | 项 | 当前值 |
 |---|---|
@@ -99,7 +153,7 @@
 
 ---
 
-## 7. B8–B12 应用功能累积变更（B12 环境受限验收通过，未发布）
+## 8. B8–B12 应用功能累积变更（历史条目，已并入 v0.1.1）
 
 > 本段记录 SAG 应用功能批次（B8–B12）的用户可见变化；B12 已完成代码/自动门禁/签名 RC/单机验收，设备矩阵为“高端+中端、缺低端”（用户 2026-10-19 接受环境受限）；以下不构成正式发布说明，tag/Release 由用户决定。
 
