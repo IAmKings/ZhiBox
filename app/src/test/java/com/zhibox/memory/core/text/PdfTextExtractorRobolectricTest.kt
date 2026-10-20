@@ -203,40 +203,85 @@ class PdfTextExtractorRobolectricTest {
         assertTrue(result.text.contains("Hello PDF"))
     }
 
-    // ---- P1.1：OCR fallback（JVM fake；真实 ML Kit 见 androidTest） ----
+    // ---- P1.1b：逐页混合 OCR（JVM fake；真实 ML Kit 见 androidTest） ----
 
     @Test
     fun `textless pdf falls back to ocr when enabled`() = runBlocking {
-        var ocrCalls = 0
-        val fakeOcr = PdfOcrFallback { _, _ ->
-            ocrCalls++
-            "OCR 识别文本"
+        val requested = mutableListOf<List<Int>>()
+        val fakeOcr = PdfPageOcr { _, _, indices ->
+            requested += indices.toList()
+            indices.associateWith { "OCR 识别文本" }
         }
         val result = PdfTextExtractor.extractWithMetadata(
             context = app,
             file = pdfFile(buildPdf(listOf(""))),
             password = null,
-            ocrFallback = fakeOcr,
+            pageOcr = fakeOcr,
             ocrEnabledOverride = true,
         )
         assertEquals(PdfTextExtractor.OCR_PARSER_ID, result.parserId)
         assertTrue("应使用 OCR 文本：${result.text}", result.text.contains("OCR 识别文本"))
-        assertEquals(1, ocrCalls)
+        assertEquals("纯扫描页应请求 OCR 全部空页", listOf(listOf(0)), requested)
+    }
+
+    @Test
+    fun `mixed pdf only ocrs empty pages and fixes parserId`() = runBlocking {
+        val requested = mutableListOf<Int>()
+        val fakeOcr = PdfPageOcr { _, _, indices ->
+            requested += indices.toList()
+            indices.associateWith { "OCR-第${it + 1}页" }
+        }
+        val file = pdfFile(buildPdf(listOf("Page one", "", "Page three")))
+        val result = PdfTextExtractor.extractWithMetadata(
+            context = app,
+            file = file,
+            password = null,
+            pageOcr = fakeOcr,
+            ocrEnabledOverride = true,
+        )
+        assertEquals("混合 PDF 应标记 pdf-ocr-v1", PdfTextExtractor.OCR_PARSER_ID, result.parserId)
+        assertTrue(result.text.contains("Page one"))
+        assertTrue(result.text.contains("Page three"))
+        assertTrue("应合并 OCR 页文本：${result.text}", result.text.contains("OCR-第2页"))
+        assertEquals("只应对文本层为空的第 2 页 OCR", listOf(1), requested)
+        assertTrue("有文本页不应重复 OCR", result.text.indexOf("Page one") < result.text.indexOf("OCR-第2页"))
+    }
+
+    @Test
+    fun `25 plus pages all ocr-ed without page cap`() = runBlocking {
+        val pageCount = 26
+        val requested = mutableListOf<Int>()
+        val fakeOcr = PdfPageOcr { _, _, indices ->
+            requested += indices.toList()
+            indices.associateWith { "SCAN-${it + 1}" }
+        }
+        val file = pdfFile(buildPdf(List(pageCount) { "" }))
+        val result = PdfTextExtractor.extractWithMetadata(
+            context = app,
+            file = file,
+            password = null,
+            pageOcr = fakeOcr,
+            ocrEnabledOverride = true,
+        )
+        assertEquals(PdfTextExtractor.OCR_PARSER_ID, result.parserId)
+        assertEquals("应 OCR 全部 26 页（无 20 页截断）", pageCount, requested.size)
+        assertTrue(result.text.contains("SCAN-1"))
+        assertTrue(result.text.contains("SCAN-26"))
     }
 
     @Test
     fun `textless pdf with ocr disabled fails no text without calling ocr`() = runBlocking {
         var ocrCalls = 0
-        val fakeOcr = PdfOcrFallback { _, _ ->
-            ocrCalls++
-            "不应调用"
+        val fakeOcr = PdfPageOcr { _, _, indices ->
+            ocrCalls += indices.size
+            indices.associateWith { "不应调用" }
         }
         val error = runCatching {
             PdfTextExtractor.extractWithMetadata(
                 context = app,
                 file = pdfFile(buildPdf(listOf(""))),
                 password = null,
-                ocrFallback = fakeOcr,
+                pageOcr = fakeOcr,
                 ocrEnabledOverride = false,
             )
         }.exceptionOrNull() as DocumentParseException
@@ -245,8 +290,28 @@ class PdfTextExtractorRobolectricTest {
     }
 
     @Test
-    fun `ocr failure is propagated readable`() = runBlocking {
-        val fakeOcr = PdfOcrFallback { _, _ ->
+    fun `mixed pdf with ocr disabled keeps text layer pages`() = runBlocking {
+        var ocrCalls = 0
+        val fakeOcr = PdfPageOcr { _, _, indices ->
+            ocrCalls += indices.size
+            emptyMap()
+        }
+        val result = PdfTextExtractor.extractWithMetadata(
+            context = app,
+            file = pdfFile(buildPdf(listOf("Page one", "", "Page three"))),
+            password = null,
+            pageOcr = fakeOcr,
+            ocrEnabledOverride = false,
+        )
+        assertEquals("未走 OCR 应保持 pdf-text-v1", PdfTextExtractor.PARSER_ID, result.parserId)
+        assertTrue(result.text.contains("Page one"))
+        assertTrue(result.text.contains("Page three"))
+        assertEquals(0, ocrCalls)
+    }
+
+    @Test
+    fun `ocr failure is propagated readable`() {
+        val fakeOcr = PdfPageOcr { _, _, _ ->
             throw DocumentParseException(
                 "OCR 失败（测试注入）",
                 PdfOcrExtractor.PARSER_ID,
@@ -254,13 +319,15 @@ class PdfTextExtractorRobolectricTest {
             )
         }
         val error = runCatching {
-            PdfTextExtractor.extractWithMetadata(
-                context = app,
-                file = pdfFile(buildPdf(listOf(""))),
-                password = null,
-                ocrFallback = fakeOcr,
-                ocrEnabledOverride = true,
-            )
+            runBlocking {
+                PdfTextExtractor.extractWithMetadata(
+                    context = app,
+                    file = pdfFile(buildPdf(listOf(""))),
+                    password = null,
+                    pageOcr = fakeOcr,
+                    ocrEnabledOverride = true,
+                )
+            }
         }.exceptionOrNull() as DocumentParseException
         assertEquals(PdfOcrErrorCodes.FAILED, error.errorCode)
         assertTrue(error.message!!.contains("OCR"))
@@ -269,15 +336,15 @@ class PdfTextExtractorRobolectricTest {
     @Test
     fun `text layer success does not call ocr fallback`() = runBlocking {
         var ocrCalls = 0
-        val fakeOcr = PdfOcrFallback { _, _ ->
-            ocrCalls++
-            "不应调用"
+        val fakeOcr = PdfPageOcr { _, _, indices ->
+            ocrCalls += indices.size
+            emptyMap()
         }
         val result = PdfTextExtractor.extractWithMetadata(
             context = app,
             file = pdfFile(buildPdf(listOf("Hello PDF"))),
             password = null,
-            ocrFallback = fakeOcr,
+            pageOcr = fakeOcr,
             ocrEnabledOverride = true,
         )
         assertEquals(PdfTextExtractor.PARSER_ID, result.parserId)

@@ -46,7 +46,7 @@ object PdfTextExtractor {
 
     internal data class Limits(
         val maxFileBytes: Long = 50L * 1024 * 1024,
-        val maxPages: Int = 500,
+        val maxPages: Int = 2000,
         val maxTextChars: Int = TextExtractionLimits.MAX_TEXT_CHARS,
     ) {
         companion object {
@@ -89,55 +89,123 @@ object PdfTextExtractor {
         context = context,
         file = file,
         password = password,
-        ocrFallback = null,
+        pageOcr = null,
         ocrEnabledOverride = null,
     )
 
     /**
-     * 内部可注入版本（单测用 fake OCR/enabled override；生产入口走 [extractWithMetadata]）。
+     * 内部可注入版本（单测用 fake 页级 OCR / enabled override；生产入口走 [extractWithMetadata]）。
      *
-     * @param ocrFallback 非 null 时覆盖默认 [PdfOcrExtractor]（JVM fake）
+     * P1.1b 混合策略：
+     * 1. 用 PDFBox 逐页抽文本层；纯文本层页面保持原行为；
+     * 2. 仅对**文本层为空的页**调用页级 OCR（[PdfPageOcr.ocrPages]）；有文本页不重复 OCR；
+     * 3. 任一页走了 OCR → parserId=`pdf-ocr-v1`；纯文本层保持 `pdf-text-v1`；
+     * 4. OCR 关闭：有文本页正常返回；全部页为空 → `PDF_NO_TEXT`（提示可开启 OCR）；
+     * 5. 合并后总字符仍受 [TextExtractionLimits.MAX_TEXT_CHARS] 预算约束（超出可读失败）。
+     *
+     * @param pageOcr 非 null 时覆盖默认 [PdfOcrExtractor]（JVM fake）
      * @param ocrEnabledOverride 非 null 时覆盖 [PdfOcrPreferences]（测试无需真实 SharedPreferences）
      */
     internal suspend fun extractWithMetadata(
         context: Context,
         file: File,
         password: CharArray?,
-        ocrFallback: PdfOcrFallback?,
+        pageOcr: PdfPageOcr?,
         ocrEnabledOverride: Boolean?,
     ): PdfExtractionResult = withContext(Dispatchers.IO) {
         currentCoroutineContext().ensureActive()
-        val textResult = try {
-            PdfExtractionResult(
-                text = extractTextLayer(context, file, password, Limits.DEFAULT),
+        val rawPages = extractTextLayerPages(context, file, password, Limits.DEFAULT)
+        val normalizedPages = rawPages.map { ExtractedTextCleanup.normalize(it) }
+        val emptyPageIndices = normalizedPages.indices.filter { normalizedPages[it].isBlank() }
+
+        if (emptyPageIndices.isEmpty()) {
+            // 纯文本层：保持旧行为（整文档 normalize 后返回）
+            return@withContext PdfExtractionResult(
+                text = combinePages(normalizedPages),
                 parserId = PARSER_ID,
             )
-        } catch (e: DocumentParseException) {
-            if (e.errorCode != PdfExtractionErrorCodes.NO_TEXT) throw e
-            val ocrEnabled = ocrEnabledOverride ?: PdfOcrPreferences.enabled(context)
-            if (!ocrEnabled) {
+        }
+
+        val ocrEnabled = ocrEnabledOverride ?: PdfOcrPreferences.enabled(context)
+        if (!ocrEnabled) {
+            val text = combinePages(normalizedPages)
+            if (text.isBlank()) {
                 throw DocumentParseException(
                     "PDF 没有可提取的文本（可能是扫描件/纯图片 PDF）：可在设置中开启 PDF OCR 后重试",
                     PARSER_ID,
                     PdfExtractionErrorCodes.NO_TEXT,
                 )
             }
-            val fallback = ocrFallback ?: PdfOcrExtractor.default(context)
-            PdfExtractionResult(
-                text = fallback.extract(context, file),
-                parserId = OCR_PARSER_ID,
+            return@withContext PdfExtractionResult(text, PARSER_ID)
+        }
+
+        val ocr = pageOcr ?: PdfOcrExtractor.default(context)
+        // 只 OCR 文本层为空的页（0-based 页索引；有文本页保持 pdf-text-v1 原文）
+        val ocrTexts = ocr.ocrPages(context, file, emptyPageIndices.toIntArray())
+        val ocrNormalized = ocrTexts.mapValues { (_, text) -> ExtractedTextCleanup.normalize(text) }
+
+        val merged = StringBuilder()
+        var totalChars = 0
+        for (index in normalizedPages.indices) {
+            val pageText = if (normalizedPages[index].isNotBlank()) {
+                normalizedPages[index]
+            } else {
+                ocrNormalized[index]?.takeIf { it.isNotBlank() }
+            } ?: continue
+            if (merged.isNotEmpty()) {
+                merged.append("\n\n")
+                totalChars += 2
+            }
+            merged.append(pageText)
+            totalChars += pageText.length
+            if (totalChars > TextExtractionLimits.MAX_TEXT_CHARS) {
+                throw DocumentParseException(
+                    "PDF 文本超过上限（${TextExtractionLimits.MAX_TEXT_CHARS} 字符）：请拆分文档后重试",
+                    PARSER_ID,
+                    PdfExtractionErrorCodes.TEXT_TOO_LONG,
+                )
+            }
+        }
+        if (merged.isBlank()) {
+            throw DocumentParseException(
+                "PDF OCR 未识别到文字（扫描件可能过模糊或为空白页）：请确认文件清晰后重试",
+                OCR_PARSER_ID,
+                PdfOcrErrorCodes.NO_TEXT,
             )
         }
-        textResult
+        // 任一页进行了 OCR（空页且 OCR 开启）→ parserId=pdf-ocr-v1（任务契约）
+        PdfExtractionResult(merged.toString(), OCR_PARSER_ID)
     }
 
-    /** 文本层抽取（原 [extract] 实现；P1.1 拆出以便 OCR fallback 捕获 NO_TEXT）。 */
+    private fun combinePages(pages: List<String>): String =
+        ExtractedTextCleanup.normalize(pages.filter { it.isNotBlank() }.joinToString("\n\n"))
+
+    /** 旧整文档文本层入口（纯文本层，不 OCR）：逐页文本拼接后 normalize，空文档 PDF_NO_TEXT。 */
     private suspend fun extractTextLayer(
         context: Context,
         file: File,
         password: CharArray?,
         limits: Limits,
-    ): String =
+    ): String {
+        val pages = extractTextLayerPages(context, file, password, limits)
+        val extracted = ExtractedTextCleanup.normalize(pages.joinToString(""))
+        if (extracted.isBlank()) {
+            throw DocumentParseException(
+                "PDF 没有可提取的文本（可能是扫描件/纯图片 PDF）：本版本仅支持文本型 PDF",
+                PARSER_ID,
+                PdfExtractionErrorCodes.NO_TEXT,
+            )
+        }
+        return extracted
+    }
+
+    /** 逐页文本层抽取（P1.1b）：返回 raw 页面文本（可能为空串），供混合策略判断空页。 */
+    private suspend fun extractTextLayerPages(
+        context: Context,
+        file: File,
+        password: CharArray?,
+        limits: Limits,
+    ): List<String> =
         withContext(Dispatchers.IO) {
             currentCoroutineContext().ensureActive()
             if (!file.isFile) {
@@ -226,7 +294,8 @@ object PdfTextExtractor {
                 }
 
                 val stripper = PDFTextStripper().apply { sortByPosition = true }
-                val text = StringBuilder()
+                val pages = ArrayList<String>(pageCount)
+                var totalChars = 0
                 for (page in 1..pageCount) {
                     // 逐页检查取消：PDFBox 单页解析不可中断，但页面粒度足以让用户取消及时生效
                     currentCoroutineContext().ensureActive()
@@ -241,8 +310,9 @@ object PdfTextExtractor {
                             PdfExtractionErrorCodes.CORRUPT,
                         )
                     }
-                    text.append(pageText)
-                    if (text.length > limits.maxTextChars) {
+                    pages.add(pageText)
+                    totalChars += pageText.length
+                    if (totalChars > limits.maxTextChars) {
                         throw DocumentParseException(
                             "PDF 文本超过上限（${limits.maxTextChars} 字符）：请拆分文档后重试",
                             PARSER_ID,
@@ -251,15 +321,7 @@ object PdfTextExtractor {
                     }
                 }
                 currentCoroutineContext().ensureActive()
-                val extracted = ExtractedTextCleanup.normalize(text.toString())
-                if (extracted.isBlank()) {
-                    throw DocumentParseException(
-                        "PDF 没有可提取的文本（可能是扫描件/纯图片 PDF）：本版本仅支持文本型 PDF",
-                        PARSER_ID,
-                        PdfExtractionErrorCodes.NO_TEXT,
-                    )
-                }
-                extracted
+                return@withContext pages
             } catch (e: CancellationException) {
                 throw e // 取消原样传播（不包装成解析失败）
             } catch (e: LinkageError) {

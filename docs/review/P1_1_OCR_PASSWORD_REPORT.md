@@ -34,10 +34,14 @@
 
 - **APK 增加约 +13.8MB release / +15MB debug**（ML Kit native OCR 引擎 11MB + assets；arm64-only）；release ~69.4MB unsigned。
 - OCR 仅前 20 页，复杂版式/手写/低分辨率质量有限；不自动重试 `PDF_OCR_FAILED`。
-- user password 仅进程内；进程死亡需重输；PDFBox `load` 需要短暂 String（JVM 限制，无持久化/日志）。
+- user password 已用 Keystore 加密暂存（24h TTL，进程重启可恢复，成功/密码错误清理）；PDFBox `load` 需要短暂 String（JVM 限制，无明文持久化/日志）。
 - ML Kit ToS 非 Apache；发布需保留 notices/ToS 文本（docs/reference/THIRD_PARTY_NOTICES.md）。
 
-## 5. 下一步
+## 5. 后续修复（P1.1b）
+
+- 全页/逐页 OCR 与 Keystore 密码恢复见 `P1_1B_DEBT_REPORT.md`；设备项待 K60U 重连补跑。
+
+## 6. 下一步
 
 - P1 下一项：Explore/3D 或实体别名/抽取质量。
 - v0.1.2 发布前：重新签名 RC（含 ML Kit）、signed RC clean install smoke、最终 tag/Release（用户决定）。

@@ -454,11 +454,11 @@
 
     <!-- ==== P1.1：扫描件 OCR / PDF 密码重试 ==== -->
     <string name="settings_pdf_ocr_toggle">扫描件 OCR（端侧）</string>
-    <string name="settings_pdf_ocr_hint">仅当 PDF 无文本层时，对前 20 页做端侧 OCR；使用离线 bundled 模型（首次加载稍慢、增加 APK 体积）。</string>
+    <string name="settings_pdf_ocr_hint">逐页扫描：仅对无文本层的页做端侧 OCR（默认全部页，大文档耗时较长）；离线 bundled 模型，首次加载稍慢、增加 APK 体积。</string>
     <string name="settings_pdf_ocr_save_failed">保存 OCR 开关失败：%1$s</string>
     <string name="import_pdf_password_button">输入 PDF 密码</string>
     <string name="import_pdf_password_dialog_title">输入 PDF 密码</string>
-    <string name="import_pdf_password_dialog_message">该 PDF 需要打开密码（user password）。密码仅用于本次重试，不会保存或上传。</string>
+    <string name="import_pdf_password_dialog_message">该 PDF 需要打开密码（user password）。密码会使用系统密钥加密暂存在本机（24 小时内），导入成功或密码错误后自动删除，不会上传。</string>
     <string name="import_pdf_password_label">PDF 密码</string>
     <string name="import_pdf_password_confirm">重试</string>
     <string name="import_pdf_password_retrying">重试中…</string>

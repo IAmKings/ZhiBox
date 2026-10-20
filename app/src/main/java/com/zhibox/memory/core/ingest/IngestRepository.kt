@@ -14,7 +14,10 @@ import com.zhibox.memory.core.model.Sha256
 import com.zhibox.memory.core.search.VectorMatrixCache
 import com.zhibox.memory.core.text.BigramTokenizer
 import com.zhibox.memory.core.text.Chunker
+import com.zhibox.memory.core.text.DocumentParseException
 import com.zhibox.memory.core.text.DocumentParser
+import com.zhibox.memory.core.text.PdfExtractionErrorCodes
+import com.zhibox.memory.core.text.PdfPasswordStore
 import com.zhibox.memory.core.text.PdfPasswordVault
 import com.zhibox.memory.core.text.TextNormalizer
 import com.zhibox.memory.data.db.AppDatabase
@@ -203,6 +206,12 @@ class IngestRepository(
     private val context: Context,
     val db: AppDatabase = AppDatabase.get(context),
     private val chunker: Chunker = Chunker(),
+    /**
+     * P1.1b：PDF 密码加密持久化。生产默认 Android Keystore；测试可注入 fake cipher 的 store。
+     * 构造本身不访问 Keystore（key 在首次 put/get 时惰性生成）。
+     */
+    @get:VisibleForTesting
+    internal val pdfPasswordStore: PdfPasswordStore = PdfPasswordStore(context),
 ) {
     private val filesDir get() = context.filesDir
 
@@ -488,9 +497,9 @@ class IngestRepository(
      */
     suspend fun processDocument(documentId: String, jobId: String): Unit = withContext(Dispatchers.IO) {
         val docDao = db.documentDao()
-        // P1.1：user password 只存在于进程内 vault；取出（一次性消费）后无论成功/失败/取消都在
-        // finally 清零，绝不下沉到 DB/日志。非 PDF 时通常为 null。
-        val pdfPassword = PdfPasswordVault.take(documentId)
+        // P1.1b：优先进程内 Vault（用户刚输入、UI 可能已清空原数组），否则加密持久化 store
+        // （进程重启后 worker 自动恢复）；一次性取出后在 finally 清零，绝不下沉到 DB/日志。
+        val pdfPassword = takePdfPassword(documentId)
         try {
             val doc = docDao.get(documentId) ?: error("document not found: $documentId")
             val source = db.sourceDao().get(doc.sourceId) ?: error("source not found: ${doc.sourceId}")
@@ -514,6 +523,8 @@ class IngestRepository(
                 fileName = raw.name,
                 password = pdfPassword,
             )
+            // P1.1b：解析成功 → 密码使命结束，立即删除持久化密文（避免长期保留可解密凭据）
+            clearStoredPdfPassword(documentId)
             val normalized = TextNormalizer.normalize(parsed.text)
             docDao.updateParserAndSize(documentId, parsed.parserId, raw.length())
 
@@ -606,6 +617,11 @@ class IngestRepository(
             // OOM 等不可恢复错误：不落业务失败（P1-2：catch Throwable 会把 Error 当失败吞掉）
             throw e
         } catch (e: Exception) {
+            // P1.1b：密码错误/加密失败 → 删除持久化密码（UI 需重新输入）；IO/其他错误保留供下次
+            // worker 自动恢复。只有 PDF_ENCRYPTED 语义能确定密码错误（PdfTextExtractor 稳定码）。
+            if (e is DocumentParseException && e.errorCode == PdfExtractionErrorCodes.ENCRYPTED) {
+                clearStoredPdfPassword(documentId)
+            }
             // P1-1：失败路径清理派生数据 + B1-10 同一事务派生 doc 状态
             withContext(NonCancellable) {
                 // B2-7：结构化分类（CODE:detail），retryable 参与自动重试决策（审查 H1），
@@ -778,6 +794,8 @@ class IngestRepository(
      * 已 ready 的文档不降级（防御：正常发布失败路径不应到达这里）。
      */
     private suspend fun finishCancelled(documentId: String, jobId: String) {
+        // P1.1b：用户取消/文档已 cancelled → 不再自动重试，清理持久化密码（避免密文长期滞留）。
+        clearStoredPdfPassword(documentId)
         db.withTransaction {
             deleteDerivedRows(documentId)
             val docStatus = DocStatus.fromValue(db.documentDao().status(documentId))
@@ -791,6 +809,24 @@ class IngestRepository(
             )
         }
         VectorMatrixCache.invalidate()
+    }
+
+    /**
+     * P1.1b：取本次解析用的密码：进程内 Vault（用户刚输入）优先，否则加密 store（进程重启恢复）。
+     * 解密失败/Keystore 不可用时返回 null（按无密码处理，解析会得到可读 PDF_ENCRYPTED 失败）。
+     */
+    @VisibleForTesting
+    internal fun takePdfPassword(documentId: String): CharArray? =
+        PdfPasswordVault.take(documentId) ?: runCatching { pdfPasswordStore.get(documentId) }.getOrNull()
+
+    /**
+     * P1.1b：清除该文档持久化密码：Vault 防御性清空 + store remove。
+     * 解析成功/密码错误/用户取消/文档删除时调用；IO/取消异常（worker 被停止）不调用以保留恢复能力。
+     */
+    @VisibleForTesting
+    internal fun clearStoredPdfPassword(documentId: String) {
+        runCatching { PdfPasswordVault.remove(documentId) }
+        runCatching { pdfPasswordStore.remove(documentId) }
     }
 
     // ───────────────────────── 派生数据清理 / FTS（B1-1） ─────────────────────────
@@ -843,7 +879,10 @@ class IngestRepository(
     suspend fun deleteSource(sourceId: String) = withContext(Dispatchers.IO) {
         val source = db.sourceDao().get(sourceId) ?: return@withContext
         check(db.ingestJobDao().activeCount(JobStage.ACTIVE_VALUES) == 0) { "导入进行中，请稍后再删除" }
+        // P1.1b：删除来源前记下文档 id，删除后清理其持久化 PDF 密码密文（避免孤儿密钥材料）
+        val documentIds = db.documentDao().all().filter { it.sourceId == sourceId }.map { it.id }
         db.sourceDao().deleteCascade(sourceId)
+        documentIds.forEach { clearStoredPdfPassword(it) }
         // B9：event/entity 由 chunk FK 级联，但 FTS4/sag_vector/共享 entity 需显式清孤儿
         SagCleanup.cleanupOrphans(db)
         val stored = File(source.uri)
@@ -864,6 +903,10 @@ class IngestRepository(
      * 返回被取消的 job/文档计数（供 UI 展示）。
      */
     suspend fun cancelImport(): Int = withContext(Dispatchers.IO) {
+        // P1.1b：用户显式取消（不会自动重试）→ 取消后清理这些文档的持久化密码
+        val pendingDocumentIds = db.documentDao().all()
+            .filter { it.status in DocStatus.ACTIVE_VALUES }
+            .map { it.id }
         val cancelled = db.withTransaction {
             val jobs = db.ingestJobDao().cancelQueued(
                 JobStage.CANCELLED.value, JobStage.QUEUED.value, now(),
@@ -874,6 +917,7 @@ class IngestRepository(
             jobs + docs
         }
         VectorMatrixCache.invalidate()
+        pendingDocumentIds.forEach { clearStoredPdfPassword(it) }
         cancelled
     }
 
@@ -958,8 +1002,17 @@ class IngestRepository(
             true
         }
         if (!requeued) return@withContext false
-        // 事务成功后才暂存密码（失败不保留）；复制后存入 vault，UI 调用方可以立即清空自己的
-        // CharArray（P1.1 E2E 发现：直接存引用会被 ViewModel finally 清零，worker 读到空密码）。
+        // P1.1b：先复制并加密持久化（进程被杀/重启后 worker 可恢复），再入队；
+        // UI 调用方可以立即清空自己的 CharArray（直接存引用会被 ViewModel finally 清零）。
+        // Keystore 不可用（异常设备/Robolectric）不阻断重试：退回进程内 Vault，仅损失跨进程恢复。
+        val persistedPassword = password.copyOf()
+        try {
+            pdfPasswordStore.put(documentId, persistedPassword)
+        } catch (e: Exception) {
+            // 不写日志（密码相关异常不落日志）；当前进程重试仍可用 Vault
+        } finally {
+            persistedPassword.fill('\u0000')
+        }
         PdfPasswordVault.put(documentId, password.copyOf())
         ensureIngestWorker()
         true
