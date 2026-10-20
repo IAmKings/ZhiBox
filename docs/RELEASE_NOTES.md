@@ -8,7 +8,7 @@
 - **P1 导入扩展**：文本型 PDF（PDFBox-Android；owner-password-only 可抽取）、DOCX/PPTX/XLSX、HTML、网页 URL、SAF 多选文件；staging 白名单与 50MB 流式上限；旧 `.doc/.ppt/.xls` 返回明确的“另存为 OOXML”错误；URL 导入把原始地址写入 `source.originUrl`（staging 旁车，schema v8）；**扫描件 OCR（ML Kit 离线，默认开启）与 user-password PDF 输入密码重试**。
 - **P1 多轮问答首版（B13）**：最近 6 条历史作为上下文（不是证据），历史 `[S#]` 剥离，引用仍只来自本轮证据；见 `docs/review/B13_MULTITURN_CHAT_REPORT.md`。
 - **质量**：JVM debug 806/0、release 787/0；lint 0 error；K60U 非 UI 31/31、PDF Android runtime 2/2、staging→导入 PDF/DOCX/PPTX/XLSX/HTML **5/5 ready**（含 SAG event 5）；schema v7→v8/备份/DAO **12/12**；Office SAX 真机 3/3；OCR 25 页全识别、Keystore 6/6、密码杀进程恢复；APK 约 69.44MB（较 v0.1.1 +≈20MB：PDFBox/BC + ML Kit OCR 离线引擎）；OCR 全页/逐页、PDF 密码 Keystore 暂存。
-- **签名 RC**：`dist/zhibox-0.1.2-89b1929-release-signed.apk`（69515201 bytes，SHA-256 `2034e83f242b2dcfb0b34b9aa92cdc787a23c82d21bcbb1370633b7b778ec174`；apksigner PASS；未发布/tag；设备安装 smoke 待可用设备）。
+- **签名 RC**：`dist/zhibox-0.1.2-5284e13-release-signed.apk`（69524581 bytes，SHA-256 `5a4080dde62f90817ed7042b25550d7e5ba725ec156f73b351d967095a0b938c`；apksigner PASS；未发布/tag；设备安装 smoke 待可用设备）。
 - **限制**：扫描件无 OCR；URL provenance 未入库；SAF/网页真机 e2e 待设备窗口。
 
 ## 1. v0.1.1（已发布）

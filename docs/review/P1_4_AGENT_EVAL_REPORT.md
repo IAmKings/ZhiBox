@@ -33,7 +33,11 @@
 | 真实质量 | **未执行**：key_configured=false、人工 0 样本 → 不可宣称质量达标 |
 | 证据 | `P1.4-agent-toggle-k60u.*`、`P1.4-agent-eval-k60u.txt` |
 
-## 4. 阻塞/后续
+## 4. 签名候选
+
+- `dist/zhibox-0.1.2-5284e13-release-signed.apk`（69,524,581 bytes，SHA-256 `5a4080dde62f90817ed7042b25550d7e5ba725ec156f73b351d967095a0b938c`；未发布/tag）。
+
+## 5. 阻塞/后续
 
 - **真实 LLM key**：需用户在 App 设置配置（不入库/日志/备份），或提供安全配置方式；
 - **人工抽检**：需 2 名评审按协议抽检 ≥max(10,20%)；

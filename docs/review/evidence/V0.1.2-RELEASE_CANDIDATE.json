@@ -1,14 +1,14 @@
 {
-  "name": "zhibox-0.1.2-89b1929-release-signed.apk",
-  "path": "dist/zhibox-0.1.2-89b1929-release-signed.apk",
+  "name": "zhibox-0.1.2-5284e13-release-signed.apk",
+  "path": "dist/zhibox-0.1.2-5284e13-release-signed.apk",
   "versionName": "0.1.2",
   "versionCode": 3,
-  "sizeBytes": 69515201,
-  "sha256": "2034e83f242b2dcfb0b34b9aa92cdc787a23c82d21bcbb1370633b7b778ec174",
+  "sizeBytes": 69524581,
+  "sha256": "5a4080dde62f90817ed7042b25550d7e5ba725ec156f73b351d967095a0b938c",
   "signed": true,
   "signing": "release keystore (same as v0.1.1; apksigner PASS)",
   "signerCertSha256": "b1d136badcc7e032a39d8504fb050f98f444017aeb5f5cfce66256afec1db1d1",
-  "status": "release candidate; not published/tagged; includes P1.3c Explore enhancements; device install smoke pending",
-  "gitHeadAtBuild": "89b1929",
-  "builtAt": "2026-10-21T00:45+08:00"
+  "status": "release candidate; not published/tagged; includes P1.4 Agent/eval scaffold; device install smoke pending",
+  "gitHeadAtBuild": "5284e13",
+  "builtAt": "2026-10-21T01:05+08:00"
 }
