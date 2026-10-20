@@ -60,17 +60,28 @@ data class ExploreGraph(
     val truncated: Boolean,
     val totalEvents: Int,
     val maxEvents: Int,
+    /** 本次查询的 offset（分页控件回显；越界页面时仍为请求 offset）。 */
+    val pageOffset: Int = 0,
+    /** 是否还有下一页（offset + 当前页事件数 < totalEvents，且未被候选上限截断）。 */
+    val hasMore: Boolean = false,
 ) {
     val eventNodes: List<ExploreNode> get() = nodes.filter { it.kind == ExploreNodeKind.EVENT }
     val entityNodes: List<ExploreNode> get() = nodes.filter { it.kind == ExploreNodeKind.ENTITY }
 
     companion object {
-        fun empty(maxEvents: Int = ExploreGraphBuilder.MAX_EVENTS): ExploreGraph = ExploreGraph(
+        fun empty(
+            maxEvents: Int = ExploreGraphBuilder.MAX_EVENTS,
+            pageOffset: Int = 0,
+            totalEvents: Int = 0,
+            truncated: Boolean = false,
+        ): ExploreGraph = ExploreGraph(
             nodes = emptyList(),
             edges = emptyList(),
-            truncated = false,
-            totalEvents = 0,
+            truncated = truncated,
+            totalEvents = totalEvents,
             maxEvents = maxEvents,
+            pageOffset = pageOffset,
+            hasMore = false,
         )
     }
 }

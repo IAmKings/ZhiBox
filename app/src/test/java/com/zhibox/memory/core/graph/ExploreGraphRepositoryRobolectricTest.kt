@@ -2,6 +2,7 @@ package com.zhibox.memory.core.graph
 
 import android.app.Application
 import androidx.room.withTransaction
+import com.zhibox.memory.core.extraction.SagFtsRebuilder
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.ChunkEntity
 import com.zhibox.memory.data.db.DocStatus
@@ -67,7 +68,7 @@ class ExploreGraphRepositoryRobolectricTest {
         assertEquals("只含 active event（inactive e4 排除）", 3, graph.eventNodes.size)
         assertEquals(3, graph.totalEvents)
         assertFalse(graph.truncated)
-        assertEquals(ExploreGraphBuilder.MAX_EVENTS, graph.maxEvents)
+        assertEquals(ExploreGraphRepository.DEFAULT_MAX_EVENTS, graph.maxEvents)
         assertTrue(graph.eventNodes.none { it.eventId == seed.inactiveEventId })
 
         assertEquals("实体只来自命中事件的 event_entity 关联", 3, graph.entityNodes.size)
@@ -157,6 +158,129 @@ class ExploreGraphRepositoryRobolectricTest {
         assertEquals(7, graph.maxEvents)
     }
 
+    // ---- P1.3b：FTS 优先 / LIKE 回退 / 分页 ----
+
+    @Test
+    fun ftsSearchHitsEventFtsAndAliasEntityFts() = runBlocking {
+        val seed = seedLibrary()
+        SagFtsRebuilder.rebuildAll(db)
+
+        val byEventFts = ExploreGraphRepository.load(db, query = "数学")
+        assertEquals("event_fts 命中 e2", 1, byEventFts.totalEvents)
+        assertEquals(listOf(seed.eventMath), byEventFts.eventNodes.map { it.eventId })
+
+        val byAlias = ExploreGraphRepository.load(db, query = "沪上")
+        assertEquals("alias 经 entity_fts→event_entity 命中 e1", 1, byAlias.totalEvents)
+        assertEquals(listOf(seed.eventShanghai), byAlias.eventNodes.map { it.eventId })
+        assertTrue("entity_fts 命中的实体应出现在图里", byAlias.entityNodes.any { it.entityId == seed.entityShanghai })
+
+        val bySource = ExploreGraphRepository.load(db, sourceId = "src-B", query = "北京")
+        assertEquals("FTS + source 过滤", 1, bySource.totalEvents)
+        assertEquals(listOf("北京旅行"), bySource.eventNodes.map { it.label })
+    }
+
+    @Test
+    fun ftsMissingIndexFallsBackToLikeSearch() = runBlocking {
+        val seed = seedLibrary()
+        // 模拟旧库/索引缺失：清空 event/entity FTS
+        db.eventDao().clearFts()
+        db.entityDao().clearFts()
+
+        val byAlias = ExploreGraphRepository.load(db, query = "沪上")
+        assertEquals("FTS 空 → LIKE(alias) 回退仍可搜", 1, byAlias.totalEvents)
+        assertEquals(listOf(seed.eventShanghai), byAlias.eventNodes.map { it.eventId })
+
+        val byTitle = ExploreGraphRepository.load(db, query = "数学")
+        assertEquals("FTS 空 → LIKE(event title) 回退", 1, byTitle.totalEvents)
+        assertEquals(listOf(seed.eventMath), byTitle.eventNodes.map { it.eventId })
+    }
+
+    @Test
+    fun blankQueryPaginationPagesHasMoreAndOffsetBeyond() = runBlocking {
+        seedPaginatedEvents(250)
+        val page1 = ExploreGraphRepository.load(db, maxEvents = 100)
+        assertEquals(100, page1.eventNodes.size)
+        assertEquals(250, page1.totalEvents)
+        assertEquals(0, page1.pageOffset)
+        assertTrue(page1.hasMore)
+        assertFalse("正常分页不应误报 truncated（还有页看 hasMore）", page1.truncated)
+
+        val page2 = ExploreGraphRepository.load(db, maxEvents = 100, offset = 100)
+        assertEquals(100, page2.eventNodes.size)
+        assertEquals(100, page2.pageOffset)
+        assertTrue(page2.hasMore)
+        assertTrue("页间按 event.id 稳定排序、不重叠",
+            page2.eventNodes.minOf { it.eventId!! } > page1.eventNodes.maxOf { it.eventId!! })
+
+        val page3 = ExploreGraphRepository.load(db, maxEvents = 100, offset = 200)
+        assertEquals(50, page3.eventNodes.size)
+        assertFalse(page3.hasMore)
+        assertEquals(50, page3.eventNodes.size)
+
+        val beyond = ExploreGraphRepository.load(db, maxEvents = 100, offset = 250)
+        assertTrue("offset 越界返回空图", beyond.nodes.isEmpty())
+        assertTrue(beyond.edges.isEmpty())
+        assertEquals(250, beyond.totalEvents)
+        assertEquals(250, beyond.pageOffset)
+        assertFalse(beyond.hasMore)
+    }
+
+    @Test
+    fun ftsQueryPaginationPagesSecondPageAndOffsetBeyond() = runBlocking {
+        seedPaginatedEvents(250)
+        SagFtsRebuilder.rebuildAll(db)
+
+        val page1 = ExploreGraphRepository.load(db, query = "分页", maxEvents = 100)
+        assertEquals(100, page1.eventNodes.size)
+        assertEquals(250, page1.totalEvents)
+        assertEquals(0, page1.pageOffset)
+        assertTrue(page1.hasMore)
+
+        val page2 = ExploreGraphRepository.load(db, query = "分页", maxEvents = 100, offset = 100)
+        assertEquals(100, page2.eventNodes.size)
+        assertEquals(100, page2.pageOffset)
+        assertTrue(page2.hasMore)
+        assertTrue(page2.eventNodes.minOf { it.eventId!! } > page1.eventNodes.maxOf { it.eventId!! })
+
+        val page3 = ExploreGraphRepository.load(db, query = "分页", maxEvents = 100, offset = 200)
+        assertEquals(50, page3.eventNodes.size)
+        assertFalse(page3.hasMore)
+
+        val beyond = ExploreGraphRepository.load(db, query = "分页", maxEvents = 100, offset = 250)
+        assertTrue(beyond.nodes.isEmpty())
+        assertEquals(250, beyond.totalEvents)
+        assertEquals(250, beyond.pageOffset)
+        assertFalse(beyond.hasMore)
+    }
+
+    @Test
+    fun maxEventsIsClampedToOneTo200() = runBlocking {
+        seedPaginatedEvents(210)
+        val minClamped = ExploreGraphRepository.load(db, maxEvents = 0)
+        assertEquals("maxEvents 最小 1", 1, minClamped.eventNodes.size)
+        assertEquals(1, minClamped.maxEvents)
+
+        val maxClamped = ExploreGraphRepository.load(db, maxEvents = 99_999)
+        assertEquals("maxEvents 最大 200", 200, maxClamped.eventNodes.size)
+        assertEquals(200, maxClamped.maxEvents)
+        assertEquals(210, maxClamped.totalEvents)
+        assertTrue(maxClamped.hasMore)
+    }
+
+    @Test
+    fun ftsCandidateCapMarksTruncatedAndBoundsTotal() = runBlocking {
+        seedCandidateEvents(ExploreGraphRepository.EVENT_FTS_CANDIDATE_LIMIT + 1)
+        SagFtsRebuilder.rebuildAll(db)
+
+        val graph = ExploreGraphRepository.load(db, query = "候选", maxEvents = 100)
+
+        assertEquals("候选上限内总数", ExploreGraphRepository.EVENT_FTS_CANDIDATE_LIMIT, graph.totalEvents)
+        assertEquals(100, graph.eventNodes.size)
+        assertTrue("候选超限 → truncated", graph.truncated)
+        assertEquals(0, graph.pageOffset)
+        assertTrue("候选上限内仍有下一页", graph.hasMore)
+    }
+
     // ---- 上限 ----
 
     @Test
@@ -167,7 +291,8 @@ class ExploreGraphRepositoryRobolectricTest {
         assertEquals(10, graph.eventNodes.size)
         assertEquals(10, graph.maxEvents)
         assertEquals("totalEvents=未截断全量", 205, graph.totalEvents)
-        assertTrue(graph.truncated)
+        assertFalse("普通分页/单页上限不是 truncated", graph.truncated)
+        assertTrue(graph.hasMore)
         assertTrue(graph.entityNodes.isEmpty())
     }
 
@@ -350,6 +475,63 @@ class ExploreGraphRepositoryRobolectricTest {
             },
         )
         entityIds
+    }
+
+    /** 250 条可被 FTS/LIKE 命中的 active 事件（无 entity；分页测试用）。 */
+    private suspend fun seedPaginatedEvents(count: Int) = withContext(Dispatchers.IO) {
+        db.withTransaction {
+            db.sourceDao().upsert(SourceEntity("src-page", "分页来源", "", null, 1, "active"))
+            db.documentDao().upsert(
+                DocumentEntity("doc-page", "src-page", "分页文档", "sum-page", "txt-utf8-v1", 2, DocStatus.READY.value),
+            )
+            val chunkId = db.chunkDao().insertAll(
+                listOf(ChunkEntity(documentId = "doc-page", ordinal = 0, content = "分页正文", charStart = 0, charEnd = 4, tokenEstimate = 4)),
+            ).single()
+            db.eventDao().upsertAll(
+                (1..count).map { index ->
+                    EventEntity(
+                        chunkId = chunkId,
+                        canonicalText = "分页事件$index",
+                        confidence = 0.5,
+                        title = "分页事件$index",
+                        summary = "分页摘要$index",
+                        content = "分页正文$index",
+                        status = EventStatus.ACTIVE.value,
+                        extractionVersion = "ev-page-$index",
+                        active = true,
+                        createdAt = 1_000L + index,
+                    )
+                },
+            )
+        }
+    }
+
+    private suspend fun seedCandidateEvents(count: Int) = withContext(Dispatchers.IO) {
+        db.withTransaction {
+            db.sourceDao().upsert(SourceEntity("src-cand", "候选来源", "", null, 1, "active"))
+            db.documentDao().upsert(
+                DocumentEntity("doc-cand", "src-cand", "候选文档", "sum-cand", "txt-utf8-v1", 2, DocStatus.READY.value),
+            )
+            val chunkId = db.chunkDao().insertAll(
+                listOf(ChunkEntity(documentId = "doc-cand", ordinal = 0, content = "候选正文", charStart = 0, charEnd = 4, tokenEstimate = 4)),
+            ).single()
+            db.eventDao().upsertAll(
+                (1..count).map { index ->
+                    EventEntity(
+                        chunkId = chunkId,
+                        canonicalText = "候选事件$index",
+                        confidence = 0.5,
+                        title = "候选事件$index",
+                        summary = "候选摘要$index",
+                        content = "候选正文$index",
+                        status = EventStatus.ACTIVE.value,
+                        extractionVersion = "ev-cand-$index",
+                        active = true,
+                        createdAt = 2_000L + index,
+                    )
+                },
+            )
+        }
     }
 
     private suspend fun counts(): String = withContext(Dispatchers.IO) {

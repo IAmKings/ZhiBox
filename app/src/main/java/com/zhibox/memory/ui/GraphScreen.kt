@@ -43,6 +43,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -51,6 +53,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlin.math.tan
 import com.zhibox.memory.R
@@ -127,6 +130,8 @@ fun GraphScreen(
         onSelectExploreNode = viewModel::selectExploreNode,
         onOpenEventById = viewModel::openEventById,
         onToggleExploreAutoRotate = viewModel::setExploreAutoRotate,
+        onPrevExplorePage = viewModel::prevExplorePage,
+        onNextExplorePage = viewModel::nextExplorePage,
         modifier = modifier,
     )
 }
@@ -144,10 +149,12 @@ internal fun GraphContent(
     // P1.3：3D 探索（带默认值兼容既有 Preview/测试）
     onToggleExplore: () -> Unit = {},
     onExploreQueryChange: (String) -> Unit = {},
-    onLoadExplore: () -> Unit = {},
+    onLoadExplore: (Boolean) -> Unit = {},
     onSelectExploreNode: (String?) -> Unit = {},
     onOpenEventById: (Long) -> Unit = {},
     onToggleExploreAutoRotate: (Boolean) -> Unit = {},
+    onPrevExplorePage: () -> Unit = {},
+    onNextExplorePage: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -204,6 +211,8 @@ internal fun GraphContent(
                 onOpenEventById = onOpenEventById,
                 onToggleAutoRotate = onToggleExploreAutoRotate,
                 onSwitchToList = onToggleExplore,
+                onPrevExplorePage = onPrevExplorePage,
+                onNextExplorePage = onNextExplorePage,
                 modifier = Modifier.weight(1f),
             )
         } else {
@@ -260,12 +269,14 @@ internal fun GraphContent(
 @Composable
 private fun ExploreSection(
     state: GraphUiState,
-    onLoadExplore: () -> Unit,
+    onLoadExplore: (Boolean) -> Unit,
     onExploreQueryChange: (String) -> Unit,
     onSelectExploreNode: (String?) -> Unit,
     onOpenEventById: (Long) -> Unit,
     onToggleAutoRotate: (Boolean) -> Unit,
     onSwitchToList: () -> Unit,
+    onPrevExplorePage: () -> Unit,
+    onNextExplorePage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // 关键词防抖：停止输入 400ms 后查询（避免每键一次全量 SQL；进入探索时的首查由 ViewModel 触发）
@@ -274,7 +285,7 @@ private fun ExploreSection(
         if (state.exploreQuery == lastRequestedQuery) return@LaunchedEffect
         delay(EXPLORE_QUERY_DEBOUNCE_MS)
         lastRequestedQuery = state.exploreQuery
-        onLoadExplore()
+        onLoadExplore(true)
     }
     Column(
         modifier = modifier
@@ -316,6 +327,16 @@ private fun ExploreSection(
             if (state.exploreError == null) {
                 LoadingState(message = stringResource(R.string.graph_explore_loading))
             }
+        } else if (graph.nodes.isEmpty() && graph.totalEvents > 0) {
+            // 越界页（例如总数变小后停留在旧页码）：可读提示 + 回到第一页
+            Text(
+                stringResource(R.string.graph_explore_page_out_of_range),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            OutlinedButton(onClick = { onLoadExplore(true) }) {
+                Text(stringResource(R.string.graph_explore_first_page))
+            }
         } else if (graph.nodes.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.graph_explore_empty_title),
@@ -344,11 +365,57 @@ private fun ExploreSection(
                     color = MaterialTheme.colorScheme.tertiary,
                 )
             }
+            // P1.3b：分页控件（第 X / 共 Y 页 · 共 N 事件；加载中禁用，不无限翻页）
+            val pageSize = if (state.explorePageSize > 0) {
+                state.explorePageSize
+            } else {
+                EXPLORE_PAGE_SIZE
+            }
+            val totalPages = explorePageCount(graph.totalEvents, pageSize)
+            val currentPage = explorePageNumber(graph.pageOffset, pageSize)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                OutlinedButton(
+                    onClick = onPrevExplorePage,
+                    enabled = !state.exploreLoading && graph.pageOffset > 0,
+                ) { Text(stringResource(R.string.graph_explore_prev_page)) }
+                Text(
+                    stringResource(
+                        R.string.graph_explore_page_info,
+                        currentPage,
+                        totalPages.coerceAtLeast(1),
+                        graph.totalEvents,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedButton(
+                    onClick = onNextExplorePage,
+                    enabled = !state.exploreLoading && graph.hasMore,
+                ) { Text(stringResource(R.string.graph_explore_next_page)) }
+            }
+            if (graph.hasMore) {
+                Text(
+                    stringResource(R.string.graph_explore_has_more),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
             ExploreCanvas(
                 graph = graph,
                 autoRotate = state.exploreAutoRotate,
                 selectedNodeId = state.exploreSelectedNodeId,
                 onSelectNode = onSelectExploreNode,
+                a11yDescription = stringResource(
+                    R.string.graph_explore_canvas_a11y_paged,
+                    currentPage,
+                    totalPages.coerceAtLeast(1),
+                    graph.eventNodes.size,
+                    graph.entityNodes.size,
+                    graph.edges.size,
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(320.dp),
@@ -374,7 +441,7 @@ private fun ExploreSection(
             ErrorState(
                 message = it,
                 actionLabel = stringResource(R.string.graph_explore_retry),
-                onAction = onLoadExplore,
+                onAction = { onLoadExplore(true) },
             )
         }
         // 可访问性/兜底：任何探索状态下都可回到列表模式
@@ -391,6 +458,7 @@ private fun ExploreCanvas(
     autoRotate: Boolean,
     selectedNodeId: String?,
     onSelectNode: (String?) -> Unit,
+    a11yDescription: String,
     modifier: Modifier = Modifier,
 ) {
     var yaw by remember { mutableStateOf(0.35) }
@@ -402,12 +470,8 @@ private fun ExploreCanvas(
     val entityColor = MaterialTheme.colorScheme.tertiary
     val edgeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f)
     val selectedColor = MaterialTheme.colorScheme.error
-    val a11yDescription = stringResource(
-        R.string.graph_explore_canvas_a11y,
-        graph.eventNodes.size,
-        graph.entityNodes.size,
-        graph.edges.size,
-    )
+    val labelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.92f).toArgb()
+    val labelSelectedColor = MaterialTheme.colorScheme.primary.toArgb()
     // 自动旋转（仅 UI 状态，不触发网络/DB）
     LaunchedEffect(autoRotate) {
         if (!autoRotate) return@LaunchedEffect
@@ -459,6 +523,7 @@ private fun ExploreCanvas(
         // 参考缩放：与 ExploreProjection 默认相机参数一致（cameraDistance=3.0、fov=60°）
         val focal = (size.height / 2.0) / tan(Math.toRadians(30.0))
         val referenceScale = (focal / 3.0).toFloat()
+        val radiusById = HashMap<String, Float>(projected.size)
         projected.forEach { item ->
             val isEvent = item.node.kind == ExploreNodeKind.EVENT
             val radius = exploreNodeRadiusPx(
@@ -466,6 +531,7 @@ private fun ExploreCanvas(
                 scale = item.scale,
                 referenceScale = referenceScale,
             )
+            radiusById[item.node.id] = radius
             val center = Offset(item.screenX, item.screenY)
             drawCircle(
                 color = if (isEvent) eventColor else entityColor,
@@ -478,6 +544,49 @@ private fun ExploreCanvas(
                     radius = radius + 3f,
                     center = center,
                     style = Stroke(width = 2f),
+                )
+            }
+        }
+
+        // P1.3b：节点文字标签（选中优先 + 近节点优先，限数量避免遮挡/性能问题）
+        val labelIds = exploreLabelNodeIds(
+            projected = projected,
+            selectedNodeId = selectedNodeId,
+            limit = EXPLORE_LABEL_LIMIT,
+        ).toHashSet()
+        if (labelIds.isNotEmpty()) {
+            val labelPaint = android.graphics.Paint().apply {
+                isAntiAlias = true
+                textAlign = android.graphics.Paint.Align.CENTER
+                color = labelColor
+                textSize = 10.sp.toPx()
+            }
+            val selectedLabelPaint = android.graphics.Paint().apply {
+                isAntiAlias = true
+                textAlign = android.graphics.Paint.Align.CENTER
+                color = labelSelectedColor
+                textSize = 11.sp.toPx()
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            }
+            projected.forEach { item ->
+                if (item.node.id !in labelIds) return@forEach
+                val radius = radiusById[item.node.id] ?: return@forEach
+                val label = item.node.label
+                val text = if (label.length > EXPLORE_LABEL_MAX_CHARS) {
+                    label.take(EXPLORE_LABEL_MAX_CHARS) + "…"
+                } else {
+                    label
+                }
+                val paint = if (item.node.id == selectedNodeId) {
+                    selectedLabelPaint
+                } else {
+                    labelPaint
+                }
+                drawContext.canvas.nativeCanvas.drawText(
+                    text,
+                    item.screenX,
+                    item.screenY - radius - 4f,
+                    paint,
                 )
             }
         }
@@ -559,6 +668,8 @@ private fun ExploreSelectedCard(
 }
 
 private const val EXPLORE_QUERY_DEBOUNCE_MS = 400L
+private const val EXPLORE_LABEL_LIMIT = 12
+private const val EXPLORE_LABEL_MAX_CHARS = 18
 private const val EXPLORE_AUTO_ROTATE_STEP = 0.004
 private const val EXPLORE_DRAG_YAW_FACTOR = 0.01
 private const val EXPLORE_DRAG_PITCH_FACTOR = 0.01

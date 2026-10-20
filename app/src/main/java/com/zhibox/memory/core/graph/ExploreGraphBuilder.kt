@@ -37,6 +37,8 @@ object ExploreGraphBuilder {
      * @param maxEvents 事件上限（默认/夹紧到 [MAX_EVENTS]）
      * @param maxEntities 实体上限（默认/夹紧到 [MAX_ENTITIES]）
      * @param totalEvents 输入事件总数（repository 传入 DB 匹配总数；默认 events.size）
+     * @param pageOffset 当前页 offset（分页回显）
+     * @param hasMore 是否还有下一页（repository 计算）
      */
     fun build(
         events: List<ExploreEventInput>,
@@ -44,11 +46,17 @@ object ExploreGraphBuilder {
         maxEvents: Int = MAX_EVENTS,
         maxEntities: Int = MAX_ENTITIES,
         totalEvents: Int = events.size,
+        pageOffset: Int = 0,
+        hasMore: Boolean = false,
     ): ExploreGraph {
         val eventLimit = maxEvents.coerceIn(1, MAX_EVENTS)
         val entityLimit = maxEntities.coerceIn(1, MAX_ENTITIES)
         if (events.isEmpty() && entities.isEmpty()) {
-            return ExploreGraph.empty(eventLimit)
+            return ExploreGraph.empty(
+                maxEvents = eventLimit,
+                pageOffset = pageOffset.coerceAtLeast(0),
+                totalEvents = max(totalEvents, 0),
+            )
         }
 
         val sortedEvents = events.sortedBy { it.eventId }
@@ -125,6 +133,8 @@ object ExploreGraphBuilder {
             truncated = truncated,
             totalEvents = max(totalEvents, 0),
             maxEvents = eventLimit,
+            pageOffset = pageOffset.coerceAtLeast(0),
+            hasMore = hasMore,
         )
     }
 

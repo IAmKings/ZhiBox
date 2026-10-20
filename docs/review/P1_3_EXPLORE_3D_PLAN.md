@@ -32,7 +32,7 @@
 
 ## 4. 状态
 
-- **首版完成**（core/UI/K60U E2E）；见 `P1_3_EXPLORE_3D_REPORT.md`。后续优化：FTS 搜索、节点文字/更多边类型、真机大库性能。
+- **首版完成**（core/UI/K60U E2E）；**P1.3b 增强完成**：FTS/分页、节点标签、大库/无障碍；见 `P1_3_EXPLORE_3D_REPORT.md`、`P1_3B_EXPLORE_ENHANCEMENTS_REPORT.md`。
 
 ## 5. 顺序
 

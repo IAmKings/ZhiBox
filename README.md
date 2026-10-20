@@ -80,6 +80,7 @@ B11 在 B10 多跳检索证据上增加**单轮**带引用问答：先在本地�
 | `docs/review/P1_2_ALIAS_REPORT.md` | P1.2 实体别名表（schema v9/查询/备份/Graph UI）报告 |
 | `docs/review/B15_2_QUALITY_REPORT.md` | B15.2 抽取质量只读诊断/脱敏 JSON 导出报告 |
 | `docs/review/P1_3_EXPLORE_3D_REPORT.md` | P1.3 Explore/3D 图谱首版报告 |
+| `docs/review/P1_3B_EXPLORE_ENHANCEMENTS_REPORT.md` | P1.3b Explore FTS/分页/标签/大库与无障碍报告 |
 | `docs/product/B12_USER_GUIDE.md` | B12 图谱/预算/抽取并发/备份/诊断/隐私用户指南 |
 | `docs/phase1/MVP1-ACCEPTANCE.md` | MVP-1 验收清单（§9.1/9.2/9.3 逐条对照与遗留项） |
 | `docs/RELEASE.md` | release 构建、签名、安装与回滚流程 |

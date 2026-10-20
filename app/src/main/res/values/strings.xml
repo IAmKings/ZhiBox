@@ -525,7 +525,15 @@
     <string name="graph_explore_open_event">查看事件详情</string>
     <string name="graph_explore_entity_hint">实体节点：可在「列表」模式查看关联事件详情（探索图仅展示关系概览）。</string>
     <string name="graph_explore_no_selection">拖拽旋转视角；点击节点查看信息。</string>
-    <string name="graph_explore_canvas_a11y">3D 图谱：%1$d 个事件、%2$d 个实体、%3$d 条关系边；可切换到列表模式浏览全部事件。</string>
     <string name="graph_explore_list_fallback">查看列表模式</string>
     <string name="graph_explore_retry">重试加载探索图</string>
+
+    <!-- ==== P1.3b：Explore 分页/标签/无障碍 ==== -->
+    <string name="graph_explore_page_info">第 %1$d / 共 %2$d 页 · 共 %3$d 个事件</string>
+    <string name="graph_explore_prev_page">上一页</string>
+    <string name="graph_explore_next_page">下一页</string>
+    <string name="graph_explore_has_more">还有更多事件：点「下一页」继续</string>
+    <string name="graph_explore_page_out_of_range">本页无数据（页码可能已超出当前结果）；可回到第一页查看。</string>
+    <string name="graph_explore_first_page">回到第一页</string>
+    <string name="graph_explore_canvas_a11y_paged">3D 图谱：第 %1$d/%2$d 页，%3$d 个事件、%4$d 个实体、%5$d 条边；可切换到列表模式浏览全部。</string>
 </resources>

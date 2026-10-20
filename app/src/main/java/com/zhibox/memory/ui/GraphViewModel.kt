@@ -6,6 +6,7 @@ import com.zhibox.memory.R
 import com.zhibox.memory.core.extraction.EntityAliasRepository
 import com.zhibox.memory.core.graph.ExploreGraph
 import com.zhibox.memory.core.graph.ExploreGraphRepository
+import com.zhibox.memory.core.graph.ExploreProjection
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.EntityAliasEntity
 import com.zhibox.memory.data.db.EventEntity
@@ -18,6 +19,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+
+/** P1.3b：探索单页事件上限（与 core ExploreGraphRepository.load maxEvents 默认 100 一致）。 */
+internal const val EXPLORE_PAGE_SIZE = 100
 
 /** B12：来源图谱的来源筛选项（id=null 表示全部来源）。 */
 data class GraphSourceFilter(val id: String?, val title: String)
@@ -92,6 +96,10 @@ data class GraphUiState(
     val exploreQuery: String = "",
     val exploreSelectedNodeId: String? = null,
     val exploreAutoRotate: Boolean = false,
+    /** P1.3b：当前请求页 offset（成功响应后回写 graph.pageOffset）。 */
+    val explorePageOffset: Int = 0,
+    /** P1.3b：单页事件上限（与 core load(maxEvents) 一致）。 */
+    val explorePageSize: Int = EXPLORE_PAGE_SIZE,
 )
 
 /**
@@ -186,7 +194,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
                 exploreSelectedNodeId = null,
             )
         }
-        if (_state.value.exploreMode) loadExplore() else onScreenStarted()
+        if (_state.value.exploreMode) loadExplore(resetOffset = true) else onScreenStarted()
     }
 
     /** 加载更多（offset=已渲染数；达到 200 上限后不再请求）。 */
@@ -383,7 +391,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     /** 重试：清空当前页后刷新（保留来源筛选）。 */
     fun retry() {
         update { it.copy(error = null, events = emptyList(), selectedEvent = null) }
-        if (_state.value.exploreMode) loadExplore() else onScreenStarted()
+        if (_state.value.exploreMode) loadExplore(resetOffset = true) else onScreenStarted()
     }
 
     // ───────────────────────── P1.3：3D 探索 ─────────────────────────
@@ -397,7 +405,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
                 exploreSelectedNodeId = if (next) it.exploreSelectedNodeId else null,
             )
         }
-        if (next) loadExplore()
+        if (next) loadExplore(resetOffset = true)
     }
 
     /** 关键词筛选（仅更新状态；UI 防抖后调用 [loadExplore]，避免每键全量查询）。 */
@@ -405,13 +413,44 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         update { it.copy(exploreQuery = query) }
     }
 
-    /** 加载/重载探索图（来源+关键词过滤；代际守卫、防重入、取消重抛）。 */
-    fun loadExplore() {
+    /**
+     * 加载探索图当前页（来源+关键词过滤；代际守卫、防重入、取消重抛）。
+     *
+     * @param resetOffset true=回到第一页（进入探索/切换来源/关键词变化）；false=保留当前 offset。
+     */
+    fun loadExplore(resetOffset: Boolean = false) {
         if (!_state.value.exploreMode || _state.value.exploreLoading) return
+        val offset = if (resetOffset) 0 else _state.value.explorePageOffset.coerceAtLeast(0)
+        loadExplorePage(offset)
+    }
+
+    /** 下一页（仅在 hasMore 时）；offset 步进固定页大小。 */
+    fun nextExplorePage() {
+        val graph = _state.value.exploreGraph ?: return
+        if (_state.value.exploreLoading || !graph.hasMore) return
+        loadExplorePage(graph.pageOffset + _state.value.explorePageSize)
+    }
+
+    /** 上一页（offset>0 时）；不足一页时回到 0。 */
+    fun prevExplorePage() {
+        val graph = _state.value.exploreGraph ?: return
+        if (_state.value.exploreLoading || graph.pageOffset <= 0) return
+        val offset = (graph.pageOffset - _state.value.explorePageSize).coerceAtLeast(0)
+        loadExplorePage(offset)
+    }
+
+    private fun loadExplorePage(offset: Int) {
         val seq = ++exploreSeq
         val sourceId = _state.value.selectedSourceId
         val query = _state.value.exploreQuery.trim()
-        update { it.copy(exploreLoading = true, exploreError = null) }
+        val boundedOffset = offset.coerceAtLeast(0)
+        update {
+            it.copy(
+                exploreLoading = true,
+                exploreError = null,
+                explorePageOffset = boundedOffset,
+            )
+        }
         safeLaunch(
             onError = { t ->
                 if (seq == exploreSeq) {
@@ -430,7 +469,8 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
                         db = db,
                         sourceId = sourceId,
                         query = query,
-                        maxEvents = ExploreGraphRepository.DEFAULT_MAX_EVENTS,
+                        maxEvents = _state.value.explorePageSize,
+                        offset = boundedOffset,
                     )
                 }
                 if (seq != exploreSeq) return@safeLaunch
@@ -442,6 +482,8 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
                         exploreLoading = false,
                         exploreError = null,
                         exploreGraph = graph,
+                        explorePageOffset = graph.pageOffset,
+                        explorePageSize = graph.maxEvents,
                         exploreSelectedNodeId = if (keepSelection) it.exploreSelectedNodeId else null,
                     )
                 }
@@ -681,7 +723,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     companion object {
-        /** 每页事件数（task 要求 ≤50）。 */
+        /** 每页事件数（列表模式；task 要求 ≤50）。 */
         const val PAGE_SIZE = 50
 
         /** 总渲染上限（task 要求 ≤200）。 */
@@ -718,4 +760,40 @@ internal fun exploreNodeRadiusPx(
     if (basePx <= 0f) return 0f
     if (referenceScale <= 0f || scale <= 0f) return basePx
     return (basePx * (scale / referenceScale)).coerceIn(basePx * 0.5f, basePx * 1.8f)
+}
+
+/** P1.3b：总页数（0 保护；totalEvents<=0 或 pageSize<=0 返回 0）。 */
+internal fun explorePageCount(totalEvents: Int, pageSize: Int): Int {
+    if (totalEvents <= 0 || pageSize <= 0) return 0
+    return (totalEvents + pageSize - 1) / pageSize
+}
+
+/** P1.3b：当前页码（1-based；offset 越界时仍按 offset/pageSize+1 展示）。 */
+internal fun explorePageNumber(pageOffset: Int, pageSize: Int): Int {
+    if (pageSize <= 0) return 1
+    return pageOffset.coerceAtLeast(0) / pageSize + 1
+}
+
+/**
+ * P1.3b：Canvas 标签节点选择：选中节点优先且必含，其余按 depth 从近到远取，最多 [limit] 个。
+ * 无选中时按近→远取；[limit]<=0 返回空列表；结果去重、保持顺序。
+ */
+internal fun exploreLabelNodeIds(
+    projected: List<ExploreProjection.ProjectedNode>,
+    selectedNodeId: String?,
+    limit: Int,
+): List<String> {
+    if (limit <= 0 || projected.isEmpty()) return emptyList()
+    val result = LinkedHashSet<String>(limit)
+    if (selectedNodeId != null) {
+        projected.firstOrNull { it.node.id == selectedNodeId }?.let { result += it.node.id }
+    }
+    val nearest = projected.sortedWith(
+        compareBy<ExploreProjection.ProjectedNode> { it.depth }.thenBy { it.node.id },
+    )
+    for (item in nearest) {
+        if (result.size >= limit) break
+        result += item.node.id
+    }
+    return result.take(limit)
 }

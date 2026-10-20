@@ -1,0 +1,8 @@
+P1.3b Explore 增强 K60U E2E（debug v0.1.2，2026-10-21）
+- 数据：250 active events/entities/links（source=大库测试来源），分页大小 100。
+- 空白查询：节点200/边100/事件100/共250；「第 1/共 3 页 · 共 250 个事件」；上一页禁用/下一页可用；无“按上限裁剪”误报（truncated 仅候选/实体硬上限）。
+- 点下一页：第 2/3 页，100 事件，hasMore；a11y contentDescription 包含页码/事件/实体/边/列表模式提示。
+- 节点标签：Canvas 绘制当前页近节点 labels（事件 title/实体 name）；密集 100 节点有重叠（选中优先、有上限，已知边界）。
+- 关键词搜索 250：FTS 命中 6 个事件，第1/1页，6 节点/6 边；搜索正常。
+- 列表切换保持可用。
+- 大库 instrumentation：in-memory 1000 events/entities/links，分页 load 4–75ms（宽 <2s），OK(1 test)。
