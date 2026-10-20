@@ -16,6 +16,8 @@ import com.zhibox.memory.core.llm.LlmConfigStore
 import com.zhibox.memory.core.llm.LlmErrorCode
 import com.zhibox.memory.core.llm.LlmStoreException
 import com.zhibox.memory.core.llm.LlmPreferences
+import com.zhibox.memory.core.extraction.ExtractionQualityAnalyzer
+import com.zhibox.memory.core.extraction.ExtractionQualityReport
 import com.zhibox.memory.core.extraction.SagAvailability
 import com.zhibox.memory.core.extraction.SagExtractionPreferences
 import com.zhibox.memory.core.extraction.SagExtractionScheduler
@@ -151,6 +153,12 @@ data class SettingsUiState(
     val traceExporting: Boolean = false,
     /** trace 导出结果/错误（可读；不含正文） */
     val traceExportMessage: String? = null,
+    // ---- B15.2：抽取质量只读诊断 ----
+    val qualityReport: ExtractionQualityReport? = null,
+    val qualityLoading: Boolean = false,
+    val qualityExporting: Boolean = false,
+    /** 质量报告读取/导出结果（可读；不含正文） */
+    val qualityMessage: String? = null,
 )
 
 /**
@@ -280,6 +288,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         traceRecentModes = s.traceRecentModes,
                     )
                 }
+                // B15.2：质量报告在设置快照写回后单独异步读取，失败不影响其他设置展示
+                refreshExtractionQuality()
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
@@ -1077,6 +1087,82 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // ───────────────────────── B15.2：抽取质量只读诊断 ─────────────────────────
+
+    /** 读取抽取质量报告（IO；失败可读、不阻塞其他设置；防重入）。 */
+    fun refreshExtractionQuality() {
+        if (_state.value.qualityLoading) return
+        update { it.copy(qualityLoading = true, qualityMessage = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        qualityLoading = false,
+                        qualityMessage = str(R.string.settings_quality_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            try {
+                val report = withContext(Dispatchers.IO) {
+                    ExtractionQualityAnalyzer.analyze(db)
+                }
+                update { it.copy(qualityReport = report, qualityLoading = false) }
+            } catch (e: CancellationException) {
+                throw e
+            } finally {
+                update { it.copy(qualityLoading = false) }
+            }
+        }
+    }
+
+    /** 通过 SAF 目标 Uri 导出脱敏质量 JSON（无正文/errorDetail/密钥）。 */
+    fun exportExtractionQuality(uri: Uri) {
+        if (_state.value.qualityExporting) return
+        val report = _state.value.qualityReport
+        if (report == null) {
+            update { it.copy(qualityMessage = str(R.string.settings_quality_export_empty)) }
+            return
+        }
+        update { it.copy(qualityExporting = true, qualityMessage = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        qualityExporting = false,
+                        qualityMessage = str(R.string.settings_quality_export_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            try {
+                val bytes = withContext(Dispatchers.IO) {
+                    ExtractionQualityAnalyzer.toJson(report).toByteArray(Charsets.UTF_8)
+                }
+                withContext(Dispatchers.IO) {
+                    val out = app.contentResolver.openOutputStream(uri)
+                        ?: throw IllegalStateException("无法写入导出文件（Uri 无输出流）")
+                    out.use { stream -> stream.write(bytes) }
+                }
+                update {
+                    it.copy(
+                        qualityExporting = false,
+                        qualityMessage = str(R.string.settings_quality_export_done, bytes.size),
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                update {
+                    it.copy(
+                        qualityExporting = false,
+                        qualityMessage = str(R.string.settings_quality_export_failed, t.readableMessage()),
+                    )
+                }
+            }
+        }
+    }
+
     // ───────────────────────── B12：trace 诊断导出（脱敏，无正文） ─────────────────────────
 
     /**
@@ -1165,4 +1251,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
+}
+
+/** B15.2：覆盖率百分比（0 保护 + 夹取 0..100；UI 与测试共用）。 */
+internal fun coveragePercent(covered: Int, total: Int): Int {
+    if (total <= 0) return 0
+    return ((covered.toLong() * 100L) / total.toLong()).toInt().coerceIn(0, 100)
+}
+
+/** B15.2：比率（0..1）→ 百分比整数（四舍五入后夹取 0..100）。 */
+internal fun ratioPercent(ratio: Double): Int {
+    if (ratio.isNaN() || ratio <= 0.0) return 0
+    return Math.round(ratio * 100.0).toInt().coerceIn(0, 100)
 }

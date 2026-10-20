@@ -85,6 +85,10 @@ fun SettingsScreen(
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(viewModel::previewImport) }
+    // B15.2：抽取质量脱敏 JSON 导出（SAF CreateDocument）
+    val qualityExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri -> uri?.let(viewModel::exportExtractionQuality) }
     val dirPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
     ) { uri -> uri?.let(viewModel::setTreeUri) }
@@ -348,6 +352,8 @@ fun SettingsScreen(
         retryFailedExtraction = viewModel::retryFailedExtraction,
         setExtractionParallelism = viewModel::setExtractionParallelism,
         exportTrace = viewModel::exportTraceJson,
+        refreshQuality = viewModel::refreshExtractionQuality,
+        exportQualityJson = { qualityExportLauncher.launch(QUALITY_EXPORT_FILE_NAME) },
     )
     SettingsContent(state = state, actions = actions)
 }
@@ -384,6 +390,9 @@ class SettingsActions(
     val setExtractionParallelism: (Int) -> Unit = {},
     // B12：trace 诊断导出
     val exportTrace: () -> Unit = {},
+    // B15.2：抽取质量诊断
+    val refreshQuality: () -> Unit = {},
+    val exportQualityJson: () -> Unit = {},
     // B12：检索预算档位
     val setBudgetTier: (SagBudgetTier) -> Unit = {},
     // P1.1：扫描件 OCR 开关
@@ -949,6 +958,139 @@ internal fun SettingsContent(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+
+                    // ---- B15.2：抽取质量（只读；脱敏 JSON 导出）----
+                    HorizontalDivider()
+                    Text(
+                        stringResource(R.string.settings_quality_section),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    val quality = state.qualityReport
+                    if (quality == null) {
+                        Text(
+                            if (state.qualityLoading) {
+                                stringResource(R.string.settings_quality_refreshing)
+                            } else {
+                                stringResource(R.string.settings_quality_empty)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else if (
+                        quality.documentsTotal == 0 &&
+                        quality.eventsTotal == 0 &&
+                        quality.entitiesTotal == 0
+                    ) {
+                        Text(
+                            stringResource(R.string.settings_quality_empty),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Text(
+                            stringResource(
+                                R.string.settings_quality_counts,
+                                quality.documentsTotal,
+                                quality.readyDocuments,
+                                quality.eventsTotal,
+                                quality.eventsActive,
+                                quality.eventsDiscarded,
+                                quality.entitiesTotal,
+                                quality.eventEntityLinks,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            stringResource(
+                                R.string.settings_quality_blank,
+                                quality.blankEventFields.title,
+                                quality.blankEventFields.summary,
+                                quality.blankEventFields.content,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            stringResource(
+                                R.string.settings_quality_coverage,
+                                coveragePercent(
+                                    quality.documentsWithEvents,
+                                    quality.documentsTotal,
+                                ),
+                                quality.documentsWithEvents,
+                                quality.documentsTotal,
+                                quality.documentsWithoutEvents,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            stringResource(
+                                R.string.settings_quality_alias_coverage,
+                                ratioPercent(quality.aliasCoverage),
+                                quality.entitiesWithAliases,
+                                quality.entitiesTotal,
+                                quality.aliasesTotal,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        val statusText = formatDistribution(quality.jobsByStatus, limit = 6)
+                        Text(
+                            stringResource(
+                                R.string.settings_quality_jobs,
+                                quality.extractionJobsTotal,
+                                statusText,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        val errorCodeText = formatDistribution(quality.jobsByErrorCode, limit = 6)
+                        Text(
+                            stringResource(R.string.settings_quality_error_codes, errorCodeText),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        val typeText = formatDistribution(quality.entityTypeCounts, limit = 8)
+                        Text(
+                            stringResource(R.string.settings_quality_types, typeText),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = actions.refreshQuality,
+                            enabled = !state.qualityLoading,
+                        ) {
+                            Text(
+                                if (state.qualityLoading) {
+                                    stringResource(R.string.settings_quality_refreshing)
+                                } else {
+                                    stringResource(R.string.settings_quality_refresh)
+                                },
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = actions.exportQualityJson,
+                            enabled = state.qualityReport != null && !state.qualityExporting,
+                        ) {
+                            Text(
+                                if (state.qualityExporting) {
+                                    stringResource(R.string.settings_quality_exporting)
+                                } else {
+                                    stringResource(R.string.settings_quality_export)
+                                },
+                            )
+                        }
+                    }
+                    state.qualityMessage?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Text(
+                        stringResource(R.string.settings_quality_privacy_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 
@@ -1346,6 +1488,22 @@ private fun budgetTierLabel(tier: SagBudgetTier): String = when (tier) {
     SagBudgetTier.LOW -> stringResource(R.string.settings_budget_tier_low)
 }
 
+/** B15.2：抽取质量分布展示（最多 [limit] 项；其余显示总数，空显示“无”）。 */
+@Composable
+private fun formatDistribution(counts: Map<String, Int>, limit: Int): String {
+    if (counts.isEmpty()) return stringResource(R.string.settings_quality_none)
+    val entries = counts.entries.toList()
+    val shown = entries.take(limit).joinToString(" · ") { "${it.key} ${it.value}" }
+    return if (entries.size > limit) {
+        stringResource(R.string.settings_quality_distribution_more, shown, entries.size)
+    } else {
+        shown
+    }
+}
+
+/** B15.2：质量 JSON 导出默认文件名。 */
+private const val QUALITY_EXPORT_FILE_NAME = "zhibox-extraction-quality.json"
+
 @Composable
 private fun SwitchRow(
     label: String,
@@ -1443,6 +1601,33 @@ private fun SettingsDarkPreview() {
                 budgetTier = SagBudgetTier.MID,
                 extractionParallelism = 2,
                 pdfOcrEnabled = false,
+                // B15.2：抽取质量样例
+                qualityReport = com.zhibox.memory.core.extraction.ExtractionQualityReport(
+                    documentsTotal = 42,
+                    readyDocuments = 40,
+                    eventsTotal = 130,
+                    eventsActive = 120,
+                    eventsDiscarded = 10,
+                    blankEventFields = com.zhibox.memory.core.extraction.BlankEventFields(
+                        title = 2,
+                        summary = 3,
+                        content = 0,
+                    ),
+                    entitiesTotal = 88,
+                    entitiesWithAliases = 12,
+                    aliasesTotal = 20,
+                    entityTypeCounts = mapOf(
+                        "concept" to 30,
+                        "product" to 20,
+                        "unknown" to 8,
+                    ),
+                    eventEntityLinks = 210,
+                    documentsWithEvents = 35,
+                    documentsWithoutEvents = 7,
+                    extractionJobsTotal = 42,
+                    jobsByStatus = mapOf("done" to 40, "failed" to 2),
+                    jobsByErrorCode = mapOf("PDF_ENCRYPTED" to 2),
+                ),
             ),
             actions = SettingsActions(),
         )

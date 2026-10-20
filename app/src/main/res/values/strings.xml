@@ -482,4 +482,26 @@
     <string name="graph_alias_removed">已删除别名：%1$s</string>
     <string name="graph_alias_remove_missing">别名不存在或已被删除</string>
     <string name="graph_alias_save_failed">别名操作失败：%1$s</string>
+
+    <!-- ==== B15.2：抽取质量诊断 ==== -->
+    <string name="settings_quality_section">抽取质量（只读）</string>
+    <string name="settings_quality_counts">文档 %1$d（ready %2$d）· 事件 %3$d（有效 %4$d / 替代丢弃 %5$d）· 实体 %6$d · 事件-实体关联 %7$d</string>
+    <string name="settings_quality_blank">空字段事件：title %1$d · summary %2$d · content %3$d</string>
+    <string name="settings_quality_coverage">抽取覆盖率 %1$d%%（有事件文档 %2$d / 文档 %3$d；缺事件 %4$d）</string>
+    <string name="settings_quality_alias_coverage">别名覆盖率 %1$d%%（%2$d / %3$d 实体，别名共 %4$d 条）</string>
+    <string name="settings_quality_jobs">抽取任务 %1$d · 状态：%2$s</string>
+    <string name="settings_quality_error_codes">失败错误码：%1$s</string>
+    <string name="settings_quality_types">实体类型分布：%1$s</string>
+    <string name="settings_quality_distribution_more">%1$s …（共 %2$d 类）</string>
+    <string name="settings_quality_none">无</string>
+    <string name="settings_quality_refresh">刷新质量报告</string>
+    <string name="settings_quality_refreshing">读取中…</string>
+    <string name="settings_quality_export">导出质量 JSON</string>
+    <string name="settings_quality_exporting">导出中…</string>
+    <string name="settings_quality_export_done">已导出脱敏质量 JSON（%1$d 字节）</string>
+    <string name="settings_quality_export_empty">暂无质量报告：请先刷新</string>
+    <string name="settings_quality_export_failed">导出抽取质量失败：%1$s</string>
+    <string name="settings_quality_failed">读取抽取质量失败：%1$s</string>
+    <string name="settings_quality_empty">暂无抽取数据（文档/事件/实体均为 0）；可先导入文档并开启 SAG 抽取。</string>
+    <string name="settings_quality_privacy_hint">仅计数/比率/枚举分布；不含正文、errorDetail 或密钥。</string>
 </resources>
