@@ -35,6 +35,7 @@
 | `core.text` 测试 | Office 14、HTML 6、WebFetcher 11、PDF Robolectric 8、DocumentParser 分派等全绿 |
 | K60U 非 UI instrumentation | **31/31** |
 | K60U PDF Android runtime instrumented | **2/2**（真实 PDFBox AAR 资源 + DocumentParser Context/File + 损坏 PDF 可读错误） |
+| K60U 真机导入 E2E（debug autostart staging） | **5/5 文档 ready**：PDF/DOCX/PPTX/XLSX/HTML 各 1；job done 5、chunk 5、SAG event 5；内容与 parserId 已核验（`evidence/B14-import-k60u-e2e.txt`、`B14-import-k60u.xml`） |
 | release 构建 | **signed RC**：`dist/zhibox-0.1.2-b887d11-release-signed.apk`（55,479,692 bytes，SHA-256 `3647df0f7a5d2ca2d3007b6710d3ca82c8dfeafe557a0396e87db669d77ae966`；apksigner PASS）；v0.1.1 49.39MB → v0.1.2 约 55.48MB（PDFBox assets/BC 增量约 +6MB） |
 
 ## 4. 限制/未做
@@ -43,7 +44,7 @@
 - Office 使用正则抽 OOXML 文本，复杂/畸形 XML 有 CPU 风险（已有大小/条目预算）；旧 `.doc/.ppt/.xls` 二进制不支持；图表/批注/页眉页脚不全量抽取。
 - URL 导入不保留原始 URL 到 source/document（仅标题入正文/文件名）；不做 URL 去重/网页信源管理；网页仅 HTML/纯文本，不做 JS 渲染。
 - HTML/Office 输出超 200 万字符截断（非静默日志，按预算）。
-- SAF/DocumentsUI 真机 e2e 未完成：K40 当前锁屏（需图案密码）、K60U HyperOS 禁止 adb 输入注入；解析与 UI 编译/单测已覆盖，待可用设备窗口做导入全链路 smoke。
+- **K60U 已通过 staging→导入→解析→chunk/embedding→ready→SAG 抽取真机 E2E**（autostart debug 入口）；但 **SAF 文件选择器/网页 URL 点击**未测：K60U HyperOS 仍拒绝 `INJECT_EVENTS`，K40 锁屏（图案密码）；UI 编译/单测已覆盖，待输入权限窗口补。
 - **签名 RC 已生成但未 tag/发布**；K60U/K40 当前为 debug 包，PJZ110 离线，因此 signed RC 的 SAF/网页真机安装 smoke 仍未执行。
 
 ## 5. 后续

@@ -1,0 +1,19 @@
+B14 P1 导入设备 E2E（K60U 6D8H6TXSDYXC85PZ，debug v0.1.2 代码，2026-10-20）
+方法：用 debug autostart 入口（autostart_import）绕过被 HyperOS 禁止的 adb input，把 5 个 fixture 直接放入 app 私有 files/import-staging；启动后由生产 ImportViewModel/IngestRepository 自动导入。
+Fixture：p1_pdf.pdf / p1_docx.docx / p1_pptx.pptx / p1_xlsx.xlsx / p1_web.html
+结果（从 app DB 导出后 sqlite3 查询）：
+documents=5, ingest_job stage=done 5, chunks=5, events=5
+- p1_docx: docx-ooxml-v1 ready 36709
+- p1_pdf: pdf-text-v1 ready 659
+- p1_pptx: pptx-ooxml-v1 ready 1489
+- p1_web: html-text-v1 ready 250
+- p1_xlsx: xlsx-ooxml-v1 ready 4883
+内容核验：
+- PDF chunk: "P1 PDF text extraction test | Zhang San studies math in Shanghai."
+- DOCX: "P1 Office 导入测试 | 张三在上海学习数学。| 李四在北京工作。"
+- PPTX: "P1 PPTX 标题 | 王五在深圳。"
+- XLSX: "姓名 城市 | 赵六 杭州"
+- HTML: 网页标题/正文钱七成都、孙八武汉
+- event 抽取也有 5 条（LLM 抽取已运行）
+UI dump: docs/review/evidence/B14-import-k60u.xml（显示已登记 5 个任务、SAG 抽取队列/完成状态）
+限制：SAF 文件选择/网页 URL UI 点击未测（K60U HyperOS INJECT_EVENTS 仍拒绝，K40 锁屏）；但 staging→导入→解析→chunk/embedding→ready→SAG event 主链已真机通过。
