@@ -83,3 +83,61 @@ class PdfImportInstrumentedTest {
         return out.toByteArray()
     }
 }
+
+/** B14.1：Android runtime 下 owner-password-only PDF 可抽取；user-password 稳定拒绝。 */
+@RunWith(AndroidJUnit4::class)
+class PdfOwnerPasswordInstrumentedTest {
+    private lateinit var context: Context
+    private lateinit var dir: File
+
+    @Before
+    fun setUp() {
+        context = ApplicationProvider.getApplicationContext()
+        dir = File(context.cacheDir, "p1-pdf-encrypted").apply { mkdirs() }
+    }
+
+    @After
+    fun tearDown() {
+        dir.deleteRecursively()
+    }
+
+    @Test
+    fun ownerPasswordOnly_extractsText() = runBlocking {
+        val file = File(dir, "owner-only.pdf")
+        encryptedPdf(file, userPassword = "")
+        val text = PdfTextExtractor.extract(context, file)
+        assertTrue("owner-only PDF 应可抽取：$text", text.contains("Owner only PDF text"))
+    }
+
+    @Test
+    fun userPassword_failsWithEncryptedCode() = runBlocking {
+        val file = File(dir, "user-password.pdf")
+        encryptedPdf(file, userPassword = "secret")
+        val error = runCatching { PdfTextExtractor.extract(context, file) }.exceptionOrNull()
+            as DocumentParseException
+        assertEquals(PdfExtractionErrorCodes.ENCRYPTED, error.errorCode)
+    }
+
+    private fun encryptedPdf(file: File, userPassword: String) {
+        // PDFBox-Android 字体资源必须先初始化（PdfTextExtractor 生产路径内部会做；测试直接建 PDF 也需做）。
+        com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(context.applicationContext)
+        val doc = com.tom_roush.pdfbox.pdmodel.PDDocument()
+        val page = com.tom_roush.pdfbox.pdmodel.PDPage()
+        doc.addPage(page)
+        com.tom_roush.pdfbox.pdmodel.PDPageContentStream(doc, page).use { cs ->
+            cs.beginText()
+            cs.setFont(com.tom_roush.pdfbox.pdmodel.font.PDType1Font.HELVETICA, 14f)
+            cs.newLineAtOffset(72f, 700f)
+            cs.showText("Owner only PDF text")
+            cs.endText()
+        }
+        val policy = com.tom_roush.pdfbox.pdmodel.encryption.StandardProtectionPolicy(
+            "owner-secret",
+            userPassword,
+            com.tom_roush.pdfbox.pdmodel.encryption.AccessPermission(),
+        )
+        doc.protect(policy)
+        doc.save(file)
+        doc.close()
+    }
+}

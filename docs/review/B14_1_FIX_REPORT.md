@@ -9,6 +9,7 @@
 - 需要 user password 的 PDF：`PDF_ENCRYPTED` 可读失败，不接收/不记录/不持久化密码。
 - 加载成功但权限禁止复制/抽取：`PDF_ENCRYPTED`（owner 权限限制）。
 - 测试：PDFBox `StandardProtectionPolicy` 生成 owner-only/user-password/禁复制三种 fixture；owner-only 成功、其余两类稳定失败。KDoc 同步。
+- **Android runtime 2/2**：K60U 上 `PdfOwnerPasswordInstrumentedTest` 验证 owner-only 抽取成功、user-password 返回 `PDF_ENCRYPTED`（证据 `evidence/B14.1-pdf-encrypted-k60u.txt`）。
 
 ## 2. Legacy Office
 - `.doc/.ppt/.xls` 扩展名与 `application/msword`/`vnd.ms-powerpoint`/`vnd.ms-excel` MIME → `OFFICE_LEGACY_UNSUPPORTED` / `office-legacy`，文案“请另存为 .docx/.pptx/.xlsx”；不再误当 OOXML 解析。
@@ -22,6 +23,7 @@
 
 ## 4. 验证
 - JVM debug **582/0**、release **563/0**；lint 0 errors / 47 warnings。
+- K60U Android runtime：PDF owner/user 密码 **2/2**。
 - `core.text` 82 tests 全绿（含新增 PDF/legacy 测试）。
 - 未改 UI 导入/ViewModel 行为；未 commit 前由 Lead 统一提交。
 
