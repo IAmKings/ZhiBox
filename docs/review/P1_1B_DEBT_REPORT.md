@@ -37,7 +37,7 @@
 | JVM debug / release | **678 / 0**、**659 / 0** |
 | text | 16 类 141 tests / 0 failures |
 | lint | 0 errors / 55 warnings |
-| 设备 | K60U：真实 ML Kit OCR 2 页 instrumentation **1/1**；25 页扫描件真实导入 `pdf-ocr-v1` ready（含 PAGE 25）；Keystore **6/6**；密码重试后 0.7s 杀进程→重启自动恢复 ready |
+| 设备 | K60U：真实 ML Kit OCR 2 页 instrumentation **1/1**；25 页扫描件真实导入 `pdf-ocr-v1` ready（含 PAGE 25）；低分辨率+180°旋转页也 ready；Keystore **6/6**；密码重试后 0.7s 杀进程→重启自动恢复 ready |
 
 ## 4. 真机证据
 
