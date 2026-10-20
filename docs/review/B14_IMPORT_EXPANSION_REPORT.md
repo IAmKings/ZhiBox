@@ -47,7 +47,11 @@
 - **K60U 已通过 staging→导入→解析→chunk/embedding→ready→SAG 抽取真机 E2E**（autostart debug 入口）；但 **SAF 文件选择器/网页 URL 点击**未测：K60U HyperOS 仍拒绝 `INJECT_EVENTS`，K40 锁屏（图案密码）；UI 编译/单测已覆盖，待输入权限窗口补。
 - **签名 RC 已生成但未 tag/发布**；K60U/K40 当前为 debug 包，PJZ110 离线，因此 signed RC 的 SAF/网页真机安装 smoke 仍未执行。
 
-## 5. 后续
+## 5. 限制处理方案
+
+逐项处理方案/验收/触发条件见 **[B14_LIMITATIONS_PLAN.md](B14_LIMITATIONS_PLAN.md)**；不把限制静默标成完成。
+
+## 6. 后续
 
 1. 可用设备上做 SAF 多选 + PDF/DOCX/PPTX/XLSX/HTML 导入 + 网页 URL 的真实 smoke。
 2. 评估 PDFBox OCR/加密策略、URL provenance/去重、Office 流式解析与取消。
