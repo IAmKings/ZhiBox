@@ -37,6 +37,10 @@
 - 标签最多 12 个、未避让；页大小固定 100；大库 1000 实测快，更大库需持续观测。
 - Explore 仍只读展示，不改 schema/备份。
 
-## 5. 后续
+## 5. 签名候选
+
+- `dist/zhibox-0.1.2-f3ab9b8-release-signed.apk`（69,496,295 bytes，SHA-256 `b96f7ddcbccb602187e5939c17a1d46648e1695ab911f5b09f0fd7d4c0da73b3`；未发布/tag）。
+
+## 6. 后续
 
 - 可做标签碰撞避让、FTS 部分命中与 LIKE union、signed RC clean install smoke/tag；P1 剩余 Agent/工具编排与质量评测。
