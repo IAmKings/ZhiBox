@@ -1,0 +1,7 @@
+P1.3 Explore/3D 图谱 K60U E2E（debug v0.1.2，2026-10-20）
+- 数据：source/doc/chunk/event/entity/event_entity 各 1（质量事件/上海/link）。
+- 来源页→图谱→「3D 探索」：节点 2 · 边 1 · 事件 1 / 共 1；Canvas 显示事件/实体节点与边；contentDescription 提供事件/实体/边摘要。
+- 拖拽旋转 yaw/pitch + 自动旋转开关：Canvas 重绘正常（截图 P1.3-explore-3d-rotated-k60u.png）。
+- 点击节点（脚本按截图坐标）：显示「已选节点 / 质量事件 / 事件 / 来源：质量诊断来源」；「查看事件详情」打开既有事件详情（上海实体/别名/原文）。
+- 「查看列表模式」/「列表」chip：回到既有事件卡片列表，数据一致、无崩溃。
+- 空库/上限/筛选由 JVM builder/repository 测试覆盖；关键词搜索未在设备输入（Gboard 中文组合输入限制），代码 JVM 覆盖。

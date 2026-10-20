@@ -504,4 +504,28 @@
     <string name="settings_quality_failed">读取抽取质量失败：%1$s</string>
     <string name="settings_quality_empty">暂无抽取数据（文档/事件/实体均为 0）；可先导入文档并开启 SAG 抽取。</string>
     <string name="settings_quality_privacy_hint">仅计数/比率/枚举分布；不含正文、errorDetail 或密钥。</string>
+
+    <!-- ==== P1.3：Graph 3D 探索 ==== -->
+    <string name="graph_mode_list">列表</string>
+    <string name="graph_mode_explore">3D 探索</string>
+    <string name="graph_explore_search_label">关键词筛选</string>
+    <string name="graph_explore_search_hint">匹配事件标题/摘要、实体名或别名…</string>
+    <string name="graph_explore_auto_rotate">自动旋转</string>
+    <string name="graph_explore_summary">节点 %1$d · 边 %2$d · 事件 %3$d / 共 %4$d</string>
+    <string name="graph_explore_truncated">结果已按上限裁剪：事件上限 %2$d，总计 %1$d；可用来源/关键词缩小范围。</string>
+    <string name="graph_explore_loading">加载探索图…</string>
+    <string name="graph_explore_empty_title">探索图暂无数据</string>
+    <string name="graph_explore_empty_message">当前筛选条件下没有 active 事件；可切换「列表」模式或调整来源/关键词。</string>
+    <string name="graph_explore_failed">探索图加载失败：%1$s</string>
+    <string name="graph_explore_selected">已选节点</string>
+    <string name="graph_explore_kind_event">事件</string>
+    <string name="graph_explore_kind_entity">实体</string>
+    <string name="graph_explore_node_source">来源：%1$s</string>
+    <string name="graph_explore_node_source_unknown">来源未知</string>
+    <string name="graph_explore_open_event">查看事件详情</string>
+    <string name="graph_explore_entity_hint">实体节点：可在「列表」模式查看关联事件详情（探索图仅展示关系概览）。</string>
+    <string name="graph_explore_no_selection">拖拽旋转视角；点击节点查看信息。</string>
+    <string name="graph_explore_canvas_a11y">3D 图谱：%1$d 个事件、%2$d 个实体、%3$d 条关系边；可切换到列表模式浏览全部事件。</string>
+    <string name="graph_explore_list_fallback">查看列表模式</string>
+    <string name="graph_explore_retry">重试加载探索图</string>
 </resources>

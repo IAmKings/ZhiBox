@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import com.zhibox.memory.R
 import com.zhibox.memory.core.extraction.EntityAliasRepository
+import com.zhibox.memory.core.graph.ExploreGraph
+import com.zhibox.memory.core.graph.ExploreGraphRepository
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.EntityAliasEntity
 import com.zhibox.memory.data.db.EventEntity
@@ -82,6 +84,14 @@ data class GraphUiState(
     val aliasSaving: Boolean = false,
     val aliasMessage: String? = null,
     val aliasError: String? = null,
+    // ---- P1.3：3D 探索模式 ----
+    val exploreMode: Boolean = false,
+    val exploreLoading: Boolean = false,
+    val exploreError: String? = null,
+    val exploreGraph: ExploreGraph? = null,
+    val exploreQuery: String = "",
+    val exploreSelectedNodeId: String? = null,
+    val exploreAutoRotate: Boolean = false,
 )
 
 /**
@@ -104,6 +114,9 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     private var requestSeq: Int = 0
     private var loadJob: Job? = null
     private var loadMoreJob: Job? = null
+
+    /** P1.3：探索加载代际——来源/关键词快速切换时旧结果不得覆盖新结果。 */
+    private var exploreSeq: Int = 0
 
     private fun str(id: Int, vararg args: Any): String = app.getString(id, *args)
 
@@ -165,8 +178,15 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     /** 来源筛选（null=全部）：重置分页并重新加载第一页。 */
     fun selectSource(sourceId: String?) {
         if (_state.value.loading) return
-        update { it.copy(selectedSourceId = sourceId, events = emptyList(), error = null) }
-        onScreenStarted()
+        update {
+            it.copy(
+                selectedSourceId = sourceId,
+                events = emptyList(),
+                error = null,
+                exploreSelectedNodeId = null,
+            )
+        }
+        if (_state.value.exploreMode) loadExplore() else onScreenStarted()
     }
 
     /** 加载更多（offset=已渲染数；达到 200 上限后不再请求）。 */
@@ -363,7 +383,136 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     /** 重试：清空当前页后刷新（保留来源筛选）。 */
     fun retry() {
         update { it.copy(error = null, events = emptyList(), selectedEvent = null) }
-        onScreenStarted()
+        if (_state.value.exploreMode) loadExplore() else onScreenStarted()
+    }
+
+    // ───────────────────────── P1.3：3D 探索 ─────────────────────────
+
+    fun toggleExplore() {
+        val next = !_state.value.exploreMode
+        update {
+            it.copy(
+                exploreMode = next,
+                exploreError = null,
+                exploreSelectedNodeId = if (next) it.exploreSelectedNodeId else null,
+            )
+        }
+        if (next) loadExplore()
+    }
+
+    /** 关键词筛选（仅更新状态；UI 防抖后调用 [loadExplore]，避免每键全量查询）。 */
+    fun setExploreQuery(query: String) {
+        update { it.copy(exploreQuery = query) }
+    }
+
+    /** 加载/重载探索图（来源+关键词过滤；代际守卫、防重入、取消重抛）。 */
+    fun loadExplore() {
+        if (!_state.value.exploreMode || _state.value.exploreLoading) return
+        val seq = ++exploreSeq
+        val sourceId = _state.value.selectedSourceId
+        val query = _state.value.exploreQuery.trim()
+        update { it.copy(exploreLoading = true, exploreError = null) }
+        safeLaunch(
+            onError = { t ->
+                if (seq == exploreSeq) {
+                    update {
+                        it.copy(
+                            exploreLoading = false,
+                            exploreError = str(R.string.graph_explore_failed, t.readableMessage()),
+                        )
+                    }
+                }
+            },
+        ) {
+            try {
+                val graph = withContext(Dispatchers.IO) {
+                    ExploreGraphRepository.load(
+                        db = db,
+                        sourceId = sourceId,
+                        query = query,
+                        maxEvents = ExploreGraphRepository.DEFAULT_MAX_EVENTS,
+                    )
+                }
+                if (seq != exploreSeq) return@safeLaunch
+                update {
+                    val keepSelection = graph.nodes.any { node ->
+                        node.id == it.exploreSelectedNodeId
+                    }
+                    it.copy(
+                        exploreLoading = false,
+                        exploreError = null,
+                        exploreGraph = graph,
+                        exploreSelectedNodeId = if (keepSelection) it.exploreSelectedNodeId else null,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                if (seq == exploreSeq) {
+                    update {
+                        it.copy(
+                            exploreLoading = false,
+                            exploreError = str(R.string.graph_explore_failed, t.readableMessage()),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun selectExploreNode(nodeId: String?) {
+        update { it.copy(exploreSelectedNodeId = nodeId) }
+    }
+
+    fun setExploreAutoRotate(enabled: Boolean) {
+        update { it.copy(exploreAutoRotate = enabled) }
+    }
+
+    /** 探索节点「查看事件详情」→ 复用 enrich + loadDetail（按 eventId）。 */
+    fun openEventById(eventId: Long) {
+        if (_state.value.detailLoading) return
+        update { it.copy(detailLoading = true, error = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        detailLoading = false,
+                        error = str(R.string.graph_detail_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            try {
+                val detail = withContext(Dispatchers.IO) {
+                    val entity = db.eventDao().byId(eventId) ?: return@withContext null
+                    val graphEvent = enrich(listOf(entity)).firstOrNull()
+                        ?: return@withContext null
+                    loadDetail(graphEvent)
+                }
+                if (detail == null) {
+                    update {
+                        it.copy(
+                            detailLoading = false,
+                            error = str(
+                                R.string.graph_detail_failed,
+                                str(R.string.graph_event_missing),
+                            ),
+                        )
+                    }
+                } else {
+                    update { it.copy(detailLoading = false, selectedEvent = detail) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                update {
+                    it.copy(
+                        detailLoading = false,
+                        error = str(R.string.graph_detail_failed, t.readableMessage()),
+                    )
+                }
+            }
+        }
     }
 
     // ───────────────────────── IO 数据组装 ─────────────────────────
@@ -559,3 +708,14 @@ internal fun aliasNamesFor(
 ): List<String> = aliasesByEntity[entityId].orEmpty()
     .map { it.alias.trim() }
     .filter { it.isNotEmpty() }
+
+/** P1.3：近大远小节点半径（像素；以参考缩放为 1x，夹取 0.5x..1.8x）。纯函数便于 JVM 测试。 */
+internal fun exploreNodeRadiusPx(
+    basePx: Float,
+    scale: Float,
+    referenceScale: Float,
+): Float {
+    if (basePx <= 0f) return 0f
+    if (referenceScale <= 0f || scale <= 0f) return basePx
+    return (basePx * (scale / referenceScale)).coerceIn(basePx * 0.5f, basePx * 1.8f)
+}

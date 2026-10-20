@@ -1,6 +1,7 @@
 package com.zhibox.memory.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -22,23 +25,40 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlin.math.tan
 import com.zhibox.memory.R
+import com.zhibox.memory.core.graph.ExploreGraph
+import com.zhibox.memory.core.graph.ExploreNode
+import com.zhibox.memory.core.graph.ExploreNodeKind
+import com.zhibox.memory.core.graph.ExploreProjection
+import com.zhibox.memory.core.graph.Vec3
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
 
 /**
@@ -101,6 +121,12 @@ fun GraphScreen(
         onOpenEvent = viewModel::openEvent,
         onRetry = viewModel::retry,
         onDismissError = viewModel::dismissError,
+        onToggleExplore = viewModel::toggleExplore,
+        onExploreQueryChange = viewModel::setExploreQuery,
+        onLoadExplore = viewModel::loadExplore,
+        onSelectExploreNode = viewModel::selectExploreNode,
+        onOpenEventById = viewModel::openEventById,
+        onToggleExploreAutoRotate = viewModel::setExploreAutoRotate,
         modifier = modifier,
     )
 }
@@ -115,6 +141,13 @@ internal fun GraphContent(
     onOpenEvent: (GraphEventUi) -> Unit,
     onRetry: () -> Unit,
     onDismissError: () -> Unit,
+    // P1.3：3D 探索（带默认值兼容既有 Preview/测试）
+    onToggleExplore: () -> Unit = {},
+    onExploreQueryChange: (String) -> Unit = {},
+    onLoadExplore: () -> Unit = {},
+    onSelectExploreNode: (String?) -> Unit = {},
+    onOpenEventById: (Long) -> Unit = {},
+    onToggleExploreAutoRotate: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -134,7 +167,21 @@ internal fun GraphContent(
             }
         }
 
-        // ---- 来源过滤 chips（全部 + active sources）----
+        // ---- P1.3：列表 / 3D 探索切换 ----
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = !state.exploreMode,
+                onClick = { if (state.exploreMode) onToggleExplore() },
+                label = { Text(stringResource(R.string.graph_mode_list)) },
+            )
+            FilterChip(
+                selected = state.exploreMode,
+                onClick = { if (!state.exploreMode) onToggleExplore() },
+                label = { Text(stringResource(R.string.graph_mode_explore)) },
+            )
+        }
+
+        // ---- 来源过滤 chips（全部 + active sources；两种模式共用）----
         if (state.sources.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(state.sources, key = { it.id ?: "__all__" }) { filter ->
@@ -148,45 +195,374 @@ internal fun GraphContent(
             }
         }
 
-        Text(
-            stringResource(R.string.graph_summary, state.totalCount, state.events.size),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        if (state.loading) {
-            LoadingState()
-        } else if (state.events.isEmpty() && state.error == null) {
-            EmptyState(
-                title = stringResource(R.string.graph_empty_title),
-                message = stringResource(R.string.graph_empty_message),
+        if (state.exploreMode) {
+            ExploreSection(
+                state = state,
+                onLoadExplore = onLoadExplore,
+                onExploreQueryChange = onExploreQueryChange,
+                onSelectExploreNode = onSelectExploreNode,
+                onOpenEventById = onOpenEventById,
+                onToggleAutoRotate = onToggleExploreAutoRotate,
+                onSwitchToList = onToggleExplore,
+                modifier = Modifier.weight(1f),
             )
         } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(state.events, key = { it.id }) { event ->
-                    GraphEventCard(event = event, onClick = { onOpenEvent(event) })
-                }
-                if (state.loadingMore) {
-                    item(key = "__loading_more__") {
-                        LoadingState(message = stringResource(R.string.graph_loading_more))
+            Text(
+                stringResource(R.string.graph_summary, state.totalCount, state.events.size),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            if (state.loading) {
+                LoadingState()
+            } else if (state.events.isEmpty() && state.error == null) {
+                EmptyState(
+                    title = stringResource(R.string.graph_empty_title),
+                    message = stringResource(R.string.graph_empty_message),
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(state.events, key = { it.id }) { event ->
+                        GraphEventCard(event = event, onClick = { onOpenEvent(event) })
                     }
-                } else if (state.hasMore) {
-                    item(key = "__load_more__") {
-                        OutlinedButton(onClick = onLoadMore) {
-                            Text(stringResource(R.string.graph_load_more))
+                    if (state.loadingMore) {
+                        item(key = "__loading_more__") {
+                            LoadingState(message = stringResource(R.string.graph_loading_more))
+                        }
+                    } else if (state.hasMore) {
+                        item(key = "__load_more__") {
+                            OutlinedButton(onClick = onLoadMore) {
+                                Text(stringResource(R.string.graph_load_more))
+                            }
                         }
                     }
                 }
             }
         }
+
         if (state.detailLoading) {
             LoadingState()
         }
     }
 }
+
+// ───────────────────────── P1.3：3D 探索 ─────────────────────────
+
+/**
+ * P1.3 探索区：关键词筛选（防抖）、自动旋转开关、3D Canvas、选中节点信息与列表替代入口。
+ *
+ * 列表模式由顶部「列表 / 3D 探索」切换保证可访问性；本区在空/错误/选中实体时也提供
+ * 「查看列表模式」入口。
+ */
+@Composable
+private fun ExploreSection(
+    state: GraphUiState,
+    onLoadExplore: () -> Unit,
+    onExploreQueryChange: (String) -> Unit,
+    onSelectExploreNode: (String?) -> Unit,
+    onOpenEventById: (Long) -> Unit,
+    onToggleAutoRotate: (Boolean) -> Unit,
+    onSwitchToList: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // 关键词防抖：停止输入 400ms 后查询（避免每键一次全量 SQL；进入探索时的首查由 ViewModel 触发）
+    var lastRequestedQuery by remember { mutableStateOf(state.exploreQuery) }
+    LaunchedEffect(state.exploreQuery) {
+        if (state.exploreQuery == lastRequestedQuery) return@LaunchedEffect
+        delay(EXPLORE_QUERY_DEBOUNCE_MS)
+        lastRequestedQuery = state.exploreQuery
+        onLoadExplore()
+    }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = state.exploreQuery,
+            onValueChange = onExploreQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text(stringResource(R.string.graph_explore_search_label)) },
+            placeholder = { Text(stringResource(R.string.graph_explore_search_hint)) },
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.graph_explore_auto_rotate),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Switch(
+                checked = state.exploreAutoRotate,
+                onCheckedChange = onToggleAutoRotate,
+            )
+            if (state.exploreLoading) {
+                Text(
+                    stringResource(R.string.graph_explore_loading),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+
+        val graph = state.exploreGraph
+        if (graph == null) {
+            if (state.exploreError == null) {
+                LoadingState(message = stringResource(R.string.graph_explore_loading))
+            }
+        } else if (graph.nodes.isEmpty()) {
+            EmptyState(
+                title = stringResource(R.string.graph_explore_empty_title),
+                message = stringResource(R.string.graph_explore_empty_message),
+            )
+        } else {
+            Text(
+                stringResource(
+                    R.string.graph_explore_summary,
+                    graph.nodes.size,
+                    graph.edges.size,
+                    graph.eventNodes.size,
+                    graph.totalEvents,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (graph.truncated) {
+                Text(
+                    stringResource(
+                        R.string.graph_explore_truncated,
+                        graph.totalEvents,
+                        graph.maxEvents,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
+            ExploreCanvas(
+                graph = graph,
+                autoRotate = state.exploreAutoRotate,
+                selectedNodeId = state.exploreSelectedNodeId,
+                onSelectNode = onSelectExploreNode,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(320.dp),
+            )
+            val selected = graph.nodes.firstOrNull { it.id == state.exploreSelectedNodeId }
+            if (selected == null) {
+                Text(
+                    stringResource(R.string.graph_explore_no_selection),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                ExploreSelectedCard(
+                    node = selected,
+                    sourceTitle = state.sources.firstOrNull { it.id == selected.sourceId }?.title,
+                    onOpenEventById = onOpenEventById,
+                    onSwitchToList = onSwitchToList,
+                )
+            }
+        }
+
+        state.exploreError?.let {
+            ErrorState(
+                message = it,
+                actionLabel = stringResource(R.string.graph_explore_retry),
+                onAction = onLoadExplore,
+            )
+        }
+        // 可访问性/兜底：任何探索状态下都可回到列表模式
+        OutlinedButton(onClick = onSwitchToList) {
+            Text(stringResource(R.string.graph_explore_list_fallback))
+        }
+    }
+}
+
+/** 拖拽 yaw/pitch、点击 hitTest、近大远小、选中高亮的 3D Canvas（无外部依赖）。 */
+@Composable
+private fun ExploreCanvas(
+    graph: ExploreGraph,
+    autoRotate: Boolean,
+    selectedNodeId: String?,
+    onSelectNode: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var yaw by remember { mutableStateOf(0.35) }
+    var pitch by remember { mutableStateOf(-0.15) }
+    val density = LocalDensity.current
+    val eventRadiusPx = with(density) { 7.dp.toPx() }
+    val entityRadiusPx = with(density) { 4.5f.dp.toPx() }
+    val eventColor = MaterialTheme.colorScheme.primary
+    val entityColor = MaterialTheme.colorScheme.tertiary
+    val edgeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f)
+    val selectedColor = MaterialTheme.colorScheme.error
+    val a11yDescription = stringResource(
+        R.string.graph_explore_canvas_a11y,
+        graph.eventNodes.size,
+        graph.entityNodes.size,
+        graph.edges.size,
+    )
+    // 自动旋转（仅 UI 状态，不触发网络/DB）
+    LaunchedEffect(autoRotate) {
+        if (!autoRotate) return@LaunchedEffect
+        while (true) {
+            withFrameNanos { }
+            yaw += EXPLORE_AUTO_ROTATE_STEP
+        }
+    }
+    val projection = remember(yaw, pitch) {
+        ExploreProjection(yawRadians = yaw, pitchRadians = pitch)
+    }
+    Canvas(
+        modifier = modifier
+            .pointerInput(projection, graph) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    yaw += dragAmount.x * EXPLORE_DRAG_YAW_FACTOR
+                    pitch = (pitch - dragAmount.y * EXPLORE_DRAG_PITCH_FACTOR)
+                        .coerceIn(-EXPLORE_MAX_PITCH, EXPLORE_MAX_PITCH)
+                }
+            }
+            .pointerInput(projection, graph) {
+                detectTapGestures { offset ->
+                    val projected = projection.project(
+                        nodes = graph.nodes,
+                        width = size.width,
+                        height = size.height,
+                    )
+                    val hit = projection.hitTest(projected, offset.x, offset.y)
+                    onSelectNode(hit?.node?.id)
+                }
+            }
+            .semantics { contentDescription = a11yDescription },
+    ) {
+        val projected = projection.project(graph.nodes, size.width.toInt(), size.height.toInt())
+        val byId = projected.associateBy { it.node.id }
+        // 先画边（低 alpha），再画节点（远→近由 project 排序保证）
+        graph.edges.forEach { edge ->
+            val from = byId[edge.from] ?: return@forEach
+            val to = byId[edge.to] ?: return@forEach
+            drawLine(
+                color = edgeColor,
+                start = Offset(from.screenX, from.screenY),
+                end = Offset(to.screenX, to.screenY),
+                strokeWidth = 1f,
+            )
+        }
+        // 参考缩放：相机距离 3、fov 60 时位于原点的节点 scale
+        // 参考缩放：与 ExploreProjection 默认相机参数一致（cameraDistance=3.0、fov=60°）
+        val focal = (size.height / 2.0) / tan(Math.toRadians(30.0))
+        val referenceScale = (focal / 3.0).toFloat()
+        projected.forEach { item ->
+            val isEvent = item.node.kind == ExploreNodeKind.EVENT
+            val radius = exploreNodeRadiusPx(
+                basePx = if (isEvent) eventRadiusPx else entityRadiusPx,
+                scale = item.scale,
+                referenceScale = referenceScale,
+            )
+            val center = Offset(item.screenX, item.screenY)
+            drawCircle(
+                color = if (isEvent) eventColor else entityColor,
+                radius = radius,
+                center = center,
+            )
+            if (item.node.id == selectedNodeId) {
+                drawCircle(
+                    color = selectedColor,
+                    radius = radius + 3f,
+                    center = center,
+                    style = Stroke(width = 2f),
+                )
+            }
+        }
+    }
+}
+
+/** 选中节点信息卡：label/subtitle/类型/来源；事件节点可打开详情，实体节点提示去列表模式。 */
+@Composable
+private fun ExploreSelectedCard(
+    node: ExploreNode,
+    sourceTitle: String?,
+    onOpenEventById: (Long) -> Unit,
+    onSwitchToList: () -> Unit,
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                stringResource(R.string.graph_explore_selected),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Text(
+                    node.label,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    stringResource(
+                        if (node.kind == ExploreNodeKind.EVENT) {
+                            R.string.graph_explore_kind_event
+                        } else {
+                            R.string.graph_explore_kind_entity
+                        },
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            if (node.subtitle.isNotBlank()) {
+                Text(node.subtitle, style = MaterialTheme.typography.bodySmall, maxLines = 3)
+            }
+            node.entityType?.takeIf { it.isNotBlank() }?.let { type ->
+                Text(
+                    stringResource(R.string.graph_detail_entity_line, node.label, type),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                stringResource(
+                    R.string.graph_explore_node_source,
+                    sourceTitle ?: node.sourceId ?: node.documentId
+                        ?: stringResource(R.string.graph_explore_node_source_unknown),
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val eventId = node.eventId
+            if (node.kind == ExploreNodeKind.EVENT && eventId != null) {
+                Button(onClick = { onOpenEventById(eventId) }) {
+                    Text(stringResource(R.string.graph_explore_open_event))
+                }
+            } else {
+                Text(
+                    stringResource(R.string.graph_explore_entity_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedButton(onClick = onSwitchToList) {
+                    Text(stringResource(R.string.graph_explore_list_fallback))
+                }
+            }
+        }
+    }
+}
+
+private const val EXPLORE_QUERY_DEBOUNCE_MS = 400L
+private const val EXPLORE_AUTO_ROTATE_STEP = 0.004
+private const val EXPLORE_DRAG_YAW_FACTOR = 0.01
+private const val EXPLORE_DRAG_PITCH_FACTOR = 0.01
+private const val EXPLORE_MAX_PITCH = 1.2
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -604,6 +980,50 @@ private fun GraphDarkEmptyPreview() {
     ZhiBoxTheme(darkTheme = true) {
         GraphContent(
             state = GraphUiState(sources = previewGraphState.sources),
+            onSelectSource = {},
+            onLoadMore = {},
+            onOpenEvent = {},
+            onRetry = {},
+            onDismissError = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Graph · Explore 3D")
+@Composable
+private fun GraphExplorePreview() {
+    val eventNode = ExploreNode(
+        id = "e:1",
+        kind = ExploreNodeKind.EVENT,
+        label = "蓝牙耳机连接问题排查",
+        subtitle = "先关闭耳机电源再长按配对键 5 秒重新配对。",
+        entityType = null,
+        position = Vec3(0.2, 0.3, 0.8),
+        eventId = 1,
+        sourceId = "src_1",
+    )
+    val entityNode = ExploreNode(
+        id = "t:10",
+        kind = ExploreNodeKind.ENTITY,
+        label = "蓝牙耳机",
+        subtitle = "product",
+        entityType = "product",
+        position = Vec3(-0.4, -0.2, 0.6),
+        entityId = 10,
+    )
+    ZhiBoxTheme(darkTheme = false) {
+        GraphContent(
+            state = previewGraphState.copy(
+                exploreMode = true,
+                exploreGraph = ExploreGraph(
+                    nodes = listOf(eventNode, entityNode),
+                    edges = listOf(com.zhibox.memory.core.graph.ExploreEdge("e:1", "t:10")),
+                    truncated = false,
+                    totalEvents = 1,
+                    maxEvents = 200,
+                ),
+                exploreSelectedNodeId = "e:1",
+            ),
             onSelectSource = {},
             onLoadMore = {},
             onOpenEvent = {},
