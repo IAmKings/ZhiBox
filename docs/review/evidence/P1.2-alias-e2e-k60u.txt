@@ -1,0 +1,10 @@
+P1.2 实体别名设备验证（K60U 6D8H6TXSDYXC85PZ，debug v0.1.2 versionCode 3，2026-10-20）
+- schema v8→v9 迁移 + EntityAliasDao + BackupV3RoundTrip + MigrationTest：**16/16 PASS**（日志）。
+- 测试数据：向 app DB 插入 source/doc/chunk/event/entity + event_entity（entity 上海）。
+- Graph UI：事件详情→「别名」→输入 `2026`→添加：
+  - 对话框显示「已有别名（1） 2026」「已添加别名：2026」；
+  - DB: `entity_alias(id=18,entityId=1,alias=2026,normalizedAlias=2026)`；
+  - `entity_fts` 刷新为 `上海 海城 城市 市2 20 02 26`（含 alias bigram）。
+- Graph UI 删除：点「删除」→ 对话框「已有别名（0）」「已删除别名：2026」；DB alias 表空，FTS 刷新为 `上海 海城 城市`。
+- 查询扩展（alias 精确/子串/FTS）与无 alias 回归由 JVM LexicalQueryEntityAliasRobolectricTest 覆盖；备份回环 alias+FTS 由设备 BackupV3RoundTripTest 覆盖。
+- 说明：本机 UI 输入为 Gboard 中文模式，测试用数字 alias 以避开拼音组合；真实中文 alias 可正常输入。
