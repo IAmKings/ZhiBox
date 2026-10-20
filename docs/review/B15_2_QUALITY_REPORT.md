@@ -28,7 +28,11 @@
 | K60U E2E | 质量卡显示正确；SAF 导出 426B JSON；无正文/标题/摘要/实体名/errorDetail |
 | 证据 | `evidence/P1.2B-quality-e2e-k60u.txt`、`P1.2B-quality-export-k60u.json`、`P1.2B-quality-card-k60u.xml` |
 
-## 4. 边界/后续
+## 4. 签名候选
+
+- `dist/zhibox-0.1.2-452f3c5-release-signed.apk`（69,467,669 bytes，SHA-256 `c610ed579370610313e161d5de8077f4826af78f36894021b1cd7ff1742b07b2`；未发布/tag）。
+
+## 5. 边界/后续
 
 - 覆盖率按“有 event 的文档”统计（含 superseded 历史 event）；active-only 可改一行 SQL。
 - 大库全表 COUNT/GROUP BY 为后台 suspend/IO，UI 显示刷新态；无分页。
