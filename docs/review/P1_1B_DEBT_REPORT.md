@@ -39,7 +39,11 @@
 | lint | 0 errors / 55 warnings |
 | 设备 | 本轮 K60U 断开；真实 ML Kit/Keystore instrumentation 待重连补跑；此前 P1.1 单页 OCR 1/1 |
 
-## 4. 后续
+## 4. 签名候选
+
+- `dist/zhibox-0.1.2-fc8e8d7-release-signed.apk`（69,436,597 bytes，SHA-256 `7ce113779eff38169f8e3c38edcf12f43817a414245a4e5175732c90b5127c3b`；未发布/tag；设备 smoke 待 K60U 重连）。
+
+## 5. 后续
 
 - 重连 K60U 后跑 `PdfOcrInstrumentedTest`、`PdfPasswordStoreKeystoreTest`，补 25 页真实扫描件导入/进程杀停恢复 E2E。
 - 手写/多栏如需更高精度，评估 PaddleOCR/RapidOCR 等离线引擎（会显著增加 APK/集成成本，需单列）。
