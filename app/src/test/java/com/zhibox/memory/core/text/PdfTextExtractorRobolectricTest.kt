@@ -1,16 +1,22 @@
 package com.zhibox.memory.core.text
 
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.pdmodel.encryption.AccessPermission
+import com.tom_roush.pdfbox.pdmodel.encryption.StandardProtectionPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.UUID
 
@@ -26,6 +32,13 @@ import java.util.UUID
 class PdfTextExtractorRobolectricTest {
 
     private val app get() = RuntimeEnvironment.getApplication()
+
+    @Before
+    fun initPdfBoxResources() {
+        // PDFBox-Android 从 assets 加载 fontbox 资源（AFM/cmap）；owner-only 加密 fixture 的
+        // 生成与抽取都依赖同一初始化（生产由 PdfTextExtractor 幂等初始化）。
+        PDFBoxResourceLoader.init(app)
+    }
 
     @Test
     fun `extracts text from minimal text pdf`() = runBlocking {
@@ -100,10 +113,80 @@ class PdfTextExtractorRobolectricTest {
         assertTrue("应为 CancellationException：$error", error is CancellationException)
     }
 
+    // ---- 加密 PDF（B14.1：owner-password-only 支持；user password 仍拒绝） ----
+
+    @Test
+    fun `owner password only pdf extracts when extraction is allowed`() = runBlocking {
+        val text = PdfTextExtractor.extract(
+            app,
+            pdfFile(encryptedPdf(userPassword = "", ownerPassword = "owner-secret", allowExtract = true)),
+        )
+        assertTrue("owner-only 允许抽取时应成功：$text", text.contains("Secret PDF"))
+    }
+
+    @Test
+    fun `user password pdf fails encrypted`() {
+        val error = runCatching {
+            runBlocking {
+                PdfTextExtractor.extract(
+                    app,
+                    pdfFile(encryptedPdf(userPassword = "user-secret", ownerPassword = "owner-secret")),
+                )
+            }
+        }.exceptionOrNull() as DocumentParseException
+        assertEquals(PdfExtractionErrorCodes.ENCRYPTED, error.errorCode)
+        assertTrue("应提示需要打开密码：${error.message}", error.message!!.contains("打开密码"))
+    }
+
+    @Test
+    fun `owner password with extraction disabled fails encrypted`() {
+        val error = runCatching {
+            runBlocking {
+                PdfTextExtractor.extract(
+                    app,
+                    pdfFile(encryptedPdf(userPassword = "", ownerPassword = "owner-secret", allowExtract = false)),
+                )
+            }
+        }.exceptionOrNull() as DocumentParseException
+        assertEquals(PdfExtractionErrorCodes.ENCRYPTED, error.errorCode)
+        assertTrue("应提示权限限制：${error.message}", error.message!!.contains("权限"))
+    }
+
+    @Test
+    fun `document parser dispatches owner password only pdf`() = runBlocking {
+        val file = pdfFile(encryptedPdf(userPassword = "", ownerPassword = "owner-secret", allowExtract = true))
+        val parsed = DocumentParser.parse(app, file, null, file.name)
+        assertEquals(PdfTextExtractor.PARSER_ID, parsed.parserId)
+        assertTrue(parsed.text.contains("Secret PDF"))
+    }
+
     // ---- fixtures ----
 
     private fun pdfFile(bytes: ByteArray): File =
         File(app.cacheDir, "p1-pdf-${UUID.randomUUID()}.pdf").apply { writeBytes(bytes) }
+
+    /**
+     * 用 PDFBox 生成加密 PDF fixture（基于已通过抽取测试的最小数 PDF 再 protect/save）：
+     * - [userPassword] 为空 = owner-password-only（可打开，权限由 [allowExtract] 决定）；
+     * - [userPassword] 非空 = 需要打开密码（本版本拒绝，PDF_ENCRYPTED）。
+     * 仅测试用；不写入正式代码/不记录密码。
+     */
+    private fun encryptedPdf(
+        userPassword: String,
+        ownerPassword: String,
+        allowExtract: Boolean = true,
+    ): ByteArray {
+        val permission = AccessPermission().apply { setCanExtractContent(allowExtract) }
+        val policy = StandardProtectionPolicy(ownerPassword, userPassword, permission).apply {
+            setEncryptionKeyLength(128)
+        }
+        PDDocument.load(buildPdf(listOf("Secret PDF")).inputStream()).use { document ->
+            document.protect(policy)
+            val out = ByteArrayOutputStream()
+            document.save(out)
+            return out.toByteArray()
+        }
+    }
 
     /** 构造最小合法 PDF（Helvetica 文本页；content="" 生成无文本页）。 */
     private fun buildPdf(pageTexts: List<String>): ByteArray {

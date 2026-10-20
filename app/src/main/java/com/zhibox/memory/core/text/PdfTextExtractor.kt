@@ -19,7 +19,9 @@ import java.io.IOException
  * 能力边界（与产品约定一致）：
  * - **仅支持文本型 PDF**（有可提取文字层）；扫描件/纯图片 PDF 无法抽取（不引入 OCR），
  *   返回可读失败（code [PdfExtractionErrorCodes.NO_TEXT]）；
- * - 加密/受密码保护 PDF（`InvalidPasswordException` 或 `isEncrypted`）返回可读失败；
+ * - 加密 PDF：**owner-password-only**（user password 为空且权限允许抽取）支持；
+ *   需要 **user password**（打开密码）或权限禁止复制/抽取文本（owner password 限制）→
+ *   `PDF_ENCRYPTED` 可读失败；本类**不记录/不持久化密码**（仅用空 user password 尝试打开，不接收用户输入）；
  * - 损坏/畸形 PDF 返回可读失败；不记录正文/日志；
  * - 预算：文件大小上限、页数上限、输出字符上限，超限返回可读失败（不静默截断）；
  * - 取消：每页之间检查协程取消，`CancellationException` 原样传播（导入 worker 按取消语义处理）。
@@ -77,10 +79,14 @@ object PdfTextExtractor {
             var document: PDDocument? = null
             try {
                 document = try {
-                    PDDocument.load(file)
+                    // 空 user password 打开：owner-password-only（仅设置 owner 密码、user 密码为空）
+                    // 的 PDF 可打开；需要 user password 的文档会抛 InvalidPasswordException。
+                    // 本类不接收/记录/持久化任何密码。
+                    PDDocument.load(file, "")
                 } catch (e: InvalidPasswordException) {
                     throw DocumentParseException(
-                        "PDF 已加密/受密码保护，无法抽取文本：请解除密码后重试（本版本不支持加密 PDF）",
+                        "PDF 需要打开密码（user password），无法抽取文本：请解除密码后重新导入" +
+                            "（本版本不支持输入 PDF 密码）",
                         PARSER_ID,
                         PdfExtractionErrorCodes.ENCRYPTED,
                     )
@@ -98,11 +104,20 @@ object PdfTextExtractor {
                     )
                 }
                 if (document.isEncrypted) {
-                    throw DocumentParseException(
-                        "PDF 已加密/受密码保护，无法抽取文本：请解除密码后重试（本版本不支持加密 PDF）",
-                        PARSER_ID,
-                        PdfExtractionErrorCodes.ENCRYPTED,
-                    )
+                    // owner-password-only：已用空 user password 打开；是否允许抽取取决于权限位。
+                    val permission = try {
+                        document.currentAccessPermission
+                    } catch (e: RuntimeException) {
+                        null
+                    }
+                    if (permission?.canExtractContent() != true) {
+                        throw DocumentParseException(
+                            "PDF 已加密且权限禁止复制/抽取文本（owner password 限制）：" +
+                                "请用 PDF 工具解除限制后重新导入",
+                            PARSER_ID,
+                            PdfExtractionErrorCodes.ENCRYPTED,
+                        )
+                    }
                 }
                 val pageCount = try {
                     document.numberOfPages

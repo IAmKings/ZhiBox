@@ -3,6 +3,8 @@ package com.zhibox.memory.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,8 +28,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -252,14 +257,27 @@ internal fun ImportContent(
                     OutlinedTextField(
                         value = urlInput,
                         onValueChange = onUrlInputChange,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(ImportUrlInputTag),
                         singleLine = true,
                         placeholder = { Text(stringResource(R.string.import_url_placeholder)) },
                         label = { Text(stringResource(R.string.import_url_section)) },
+                        // B14.1：URL 键盘 + Go 直接触发“抓取并导入”（行为与按钮一致）
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Uri,
+                            imeAction = ImeAction.Go,
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onGo = {
+                                if (urlInput.isNotBlank() && !urlFetching) onImportUrl()
+                            },
+                        ),
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = onImportUrl,
+                            modifier = Modifier.testTag(ImportUrlFetchTag),
                             enabled = !urlFetching && urlInput.isNotBlank(),
                         ) {
                             Text(
@@ -347,6 +365,10 @@ internal fun ImportContent(
         }
     }
 }
+
+/** B14.1：URL 输入/抓取按钮的 Compose UI 测试 tag（androidTest 共用）。 */
+internal const val ImportUrlInputTag = "import_url_input"
+internal const val ImportUrlFetchTag = "import_url_fetch"
 
 /** P1：SAF 多选 MIME 覆盖 txt/md/pdf/docx/pptx/xlsx/html。 */
 private val PICK_FILE_MIME_TYPES = arrayOf("*/*")

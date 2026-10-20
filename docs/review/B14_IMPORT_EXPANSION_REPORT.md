@@ -51,6 +51,13 @@
 
 逐项处理方案/验收/触发条件见 **[B14_LIMITATIONS_PLAN.md](B14_LIMITATIONS_PLAN.md)**；不把限制静默标成完成。
 
+## 5.1 B14.1 小修（2026-10-20）
+
+- PDF owner-password-only 支持；user-password 仍 `PDF_ENCRYPTED`。
+- 旧 `.doc/.ppt/.xls`/legacy MIME/OLE magic 统一 `OFFICE_LEGACY_UNSUPPORTED` 可读错误。
+- URL 输入 `KeyboardType.Uri` + IME Go；新增 6 条 Compose UI 测试（K60U HyperOS 宿主限制，未执行）。
+- 详见 `B14_1_FIX_REPORT.md`。
+
 ## 6. 后续
 
 1. 可用设备上做 SAF 多选 + PDF/DOCX/PPTX/XLSX/HTML 导入 + 网页 URL 的真实 smoke。

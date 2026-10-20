@@ -16,7 +16,7 @@
 - **现状**：所有 `isEncrypted` 一律 `PDF_ENCRYPTED`；owner-password-only 文本 PDF 本可读。
 - **方案（本批后续/先做）**：`PDDocument.load(file, "")` + `getCurrentAccessPermission().canExtractContent()`；仅当需要 user password 时拒绝；密码永不落库/日志/备份。若后续支持用户输入密码：导入时弹出临时密码对话框，仅内存使用，不持久化；失败可重试，不影响整批。
 - **验收**：owner-password-only PDF 可抽取；user-password PDF 返回可读 `PDF_ENCRYPTED`；不产生持久密码字段。
-- **状态**：owner-password 支持列为 B14.1 小修；用户密码输入列 P1.1。
+- **状态**：**owner-password-only 已支持（B14.1）**；用户密码输入列 P1.1。
 
 ### 1.3 旧 `.doc/.ppt/.xls` 不支持
 - **现状**：MIME 可能被误映射为 OOXML，最终报“压缩包损坏”，提示误导。
@@ -27,17 +27,18 @@
 ### 1.4 URL 原始地址未写入 source/document
 - **方案（建议下一批做）**：schema **v8** 增加 `source.origin_url`（nullable）与索引；staging 旁车 JSON 保存 URL；`ImportViewModel.importUrl` 传入 `IngestRepository.importFile(originUrl=…)`；备份 v3 包含该字段；Sources/证据页显示可点击来源 URL。去重键：规范化 URL（scheme/host 小写、去 fragment、限长）。
 - **验收**：网页导入后 source.origin_url 可查、备份回环保留、重复 URL 不重复建 source；不把 URL 塞进 title/uri 的临时方案。
-- **状态**：入库前列为 B14.1 数据层任务（需 schema v8 + 迁移 + 备份测试）。
+- **状态**：入库前列为 **B14.2 数据层任务**（schema v8 + 迁移 + 备份测试）。
 
 ### 1.5 Office 正则解析的大小/预算限制
 - **方案（建议下一批做）**：用流式 SAX/线性 tokenizer 替换 `.*?` 正则；逐段 `ensureActive()`；保留 zip 条目/解压/字符预算；畸形 XML fuzz 测试；错误归类 `DOCUMENT_PARSE` 不自动重试。
 - **验收**：畸形 OOXML（大量未闭合标签）不 O(n²) 拖死 worker；取消及时；合法 DOCX/PPTX/XLSX 结果与当前一致。
-- **状态**：B14.1 core 任务；当前已有大小/条目预算作为临时防线，但不作为最终方案。
+- **状态**：**B14.3 core 任务**；当前已有大小/条目预算作为临时防线，但不作为最终方案。
 
 ### 1.6 SAF / URL UI 点击待输入权限窗口
 - **现状**：K60U 开启 USB 调试后，SAF 选择器已可点击并成功暂存（本次实测）；`WebPageFetcher` 真实公网 HTTPS 抓取 1/1 通过；URL 文本输入受设备 IME 影响，尚未在 UI 完成端到端点击。
 - **方案**：URL 输入补 `KeyboardType.Uri`/IME action；Compose UI 测试用 `performTextInput` 验证字段/按钮/回调，不依赖 adb 注入；真机 URL 导入用 autostart/测试数据旁路补一次（密码/网络开关）。SAF 文件选择器保持 `*/*` + 扩展名白名单。
 - **验收**：SAF 多选→staging→全部导入→ready；URL 输入→抓取→staging→导入；错误码可读；不需要 adb 输入权限也可通过 Compose 测试回归。
+- **状态**：**B14.1 已完成 URL 键盘/UI 测试代码**；K60U HyperOS 仍拒绝 Compose 测试宿主（`Process crashed`），SAF 真机已通过；待可用设备执行 UI test。
 
 ## 2. 执行顺序（不让限制混入下一步）
 

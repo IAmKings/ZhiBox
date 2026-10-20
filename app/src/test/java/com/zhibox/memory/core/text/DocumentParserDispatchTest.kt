@@ -2,6 +2,7 @@ package com.zhibox.memory.core.text
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayOutputStream
@@ -120,6 +121,90 @@ class DocumentParserDispatchTest {
         }.exceptionOrNull() as DocumentParseException
         assertTrue(error.message!!.contains("PDF"))
         assertEquals(PdfExtractionErrorCodes.REQUIRES_CONTEXT, error.errorCode)
+    }
+
+    // ---- B14.1：旧版 Office 明确错误 ----
+
+    @Test
+    fun `legacy office extensions map to dedicated error`() {
+        for (name in listOf("a.doc", "b.ppt", "c.xls")) {
+            val error = runCatching {
+                DocumentParser.parse("old-binary".byteInputStream(), null, name)
+            }.exceptionOrNull() as DocumentParseException
+            assertEquals("扩展名 $name", DocumentParseErrorCodes.OFFICE_LEGACY_UNSUPPORTED, error.errorCode)
+            assertEquals("office-legacy", error.parserId)
+            assertTrue("应提示另存为：${error.message}", error.message!!.contains("另存为"))
+            assertTrue("应列出 docx/pptx/xlsx：${error.message}", error.message!!.contains(".docx"))
+        }
+    }
+
+    @Test
+    fun `legacy office mime maps to dedicated error`() {
+        val mimes = listOf(
+            "application/msword",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.ms-excel",
+        )
+        for (mime in mimes) {
+            val error = runCatching {
+                DocumentParser.parse("old-binary".byteInputStream(), mime, "legacy-file")
+            }.exceptionOrNull() as DocumentParseException
+            assertEquals("MIME $mime 不应映射到 OOXML", DocumentParseErrorCodes.OFFICE_LEGACY_UNSUPPORTED, error.errorCode)
+            assertEquals("office-legacy", error.parserId)
+            assertTrue("应提示另存为：${error.message}", error.message!!.contains("另存为"))
+        }
+    }
+
+    @Test
+    fun `ole magic header fallback reports legacy office`() {
+        val oleMagic = byteArrayOf(
+            0xD0.toByte(), 0xCF.toByte(), 0x11, 0xE0.toByte(),
+            0xA1.toByte(), 0xB1.toByte(), 0x1A, 0xE1.toByte(),
+        )
+        val bytes = oleMagic + ByteArray(64) { it.toByte() }
+        val error = runCatching {
+            DocumentParser.parse(bytes.inputStream(), "application/octet-stream", "mystery.bin")
+        }.exceptionOrNull() as DocumentParseException
+        assertEquals(DocumentParseErrorCodes.OFFICE_LEGACY_UNSUPPORTED, error.errorCode)
+        assertTrue("应提示旧版二进制：${error.message}", error.message!!.contains("旧版"))
+    }
+
+    @Test
+    fun `legacy office failure does not abort batch parsing`() {
+        val files = listOf(
+            "ok.txt" to "hello".toByteArray(),
+            "old.doc" to "x".toByteArray(),
+            "ok.md" to "# md".toByteArray(),
+            "old.xls" to "x".toByteArray(),
+        )
+        val parsedNames = mutableListOf<String>()
+        val legacyCodes = mutableListOf<String>()
+        for ((name, bytes) in files) {
+            runCatching { DocumentParser.parse(bytes.inputStream(), null, name) }
+                .onSuccess { parsedNames += name }
+                .onFailure { throwable ->
+                    val error = throwable as DocumentParseException
+                    legacyCodes += error.errorCode.orEmpty()
+                }
+        }
+        assertEquals("合法文件应继续解析（单文件失败不中断）", listOf("ok.txt", "ok.md"), parsedNames)
+        assertEquals(
+            listOf(
+                DocumentParseErrorCodes.OFFICE_LEGACY_UNSUPPORTED,
+                DocumentParseErrorCodes.OFFICE_LEGACY_UNSUPPORTED,
+            ),
+            legacyCodes,
+        )
+    }
+
+    @Test
+    fun `generic unsupported message lists pdf and has no stale note`() {
+        val error = runCatching {
+            DocumentParser.parse("zip-bytes".byteInputStream(), null, "archive.zip")
+        }.exceptionOrNull() as DocumentParseException
+        assertEquals(DocumentParseErrorCodes.UNSUPPORTED_TYPE, error.errorCode)
+        assertTrue("应列出支持格式（含 pdf）：${error.message}", error.message!!.contains("pdf"))
+        assertFalse("不应再有'PDF 支持即将提供'过期文案", error.message!!.contains("即将提供"))
     }
 
     // ---- fixtures ----
