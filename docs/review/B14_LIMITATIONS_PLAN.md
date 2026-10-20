@@ -10,13 +10,13 @@
 - **现状**：`PdfTextExtractor` 返回 `PDF_NO_TEXT`（可读、不重试）；不伪造“空成功”。
 - **方案**：新增可选 `PdfOcrFallback`（P1.1）：先用 PDF 文本层；空页才用 `PdfRenderer` 栅格化 + 端侧 OCR（ML Kit Text Recognition v2 或等价离线模型），逐页预算/取消；OCR 结果标记 `ocr=true` 写入 parserId/诊断；默认关闭，用户显式选择“尝试 OCR”。
 - **验收**：扫描 fixture（>0 页、无文本层）可抽正文；失败明确 `PDF_OCR_UNAVAILABLE/PDF_OCR_FAILED`；OCR 不引入网络（模型包离线校验）。
-- **触发/归属**：P1.1（用户确认需要扫描件时）；不在 B14 静默支持。
+- **状态**：**P1.1 已完成**（ML Kit 离线 OCR + 设置开关；见 `P1_1_OCR_PASSWORD_REPORT.md`）。
 
 ### 1.2 加密 PDF 无解密
 - **现状**：所有 `isEncrypted` 一律 `PDF_ENCRYPTED`；owner-password-only 文本 PDF 本可读。
 - **方案（本批后续/先做）**：`PDDocument.load(file, "")` + `getCurrentAccessPermission().canExtractContent()`；仅当需要 user password 时拒绝；密码永不落库/日志/备份。若后续支持用户输入密码：导入时弹出临时密码对话框，仅内存使用，不持久化；失败可重试，不影响整批。
 - **验收**：owner-password-only PDF 可抽取；user-password PDF 返回可读 `PDF_ENCRYPTED`；不产生持久密码字段。
-- **状态**：**owner-password-only 已支持（B14.1）**；用户密码输入列 P1.1。
+- **状态**：owner-password-only B14.1 已支持；**user-password 输入/重试 P1.1 已完成**（内存 vault + 对话框）。
 
 ### 1.3 旧 `.doc/.ppt/.xls` 不支持
 - **现状**：MIME 可能被误映射为 OOXML，最终报“压缩包损坏”，提示误导。

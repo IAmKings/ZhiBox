@@ -24,8 +24,9 @@ import java.util.UUID
  * P1 PDF 文本抽取（Robolectric + PDFBox-Android，本地 JVM，无真机/无网络）：
  * 最小文本 PDF 抽取、DocumentParser 分派、损坏/无文本/文件/页数/字符超限、取消传播。
  *
- * 说明：PDFBox-Android 需要 Android Context 做资源初始化，故用 Robolectric；扫描件 OCR/加密
- * PDF 解密不在本版本能力范围（加密直接返回可读失败，测试用损坏文件覆盖失败分支）。
+ * 说明：PDFBox-Android 需要 Android Context 做资源初始化，故用 Robolectric。
+ * P1.1 起：user-password 可带密码重试；扫描件文本层为空时 OCR fallback（JVM 用 fake 注入，
+ * 真实 ML Kit 由 androidTest 覆盖；不联网）。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -158,6 +159,129 @@ class PdfTextExtractorRobolectricTest {
         val parsed = DocumentParser.parse(app, file, null, file.name)
         assertEquals(PdfTextExtractor.PARSER_ID, parsed.parserId)
         assertTrue(parsed.text.contains("Secret PDF"))
+    }
+
+    // ---- P1.1：user password 重试（带密码成功/错误密码仍 PDF_ENCRYPTED） ----
+
+    @Test
+    fun `user password pdf extracts when password provided`() = runBlocking {
+        val file = pdfFile(encryptedPdf(userPassword = "user-secret", ownerPassword = "owner-secret"))
+        val result = PdfTextExtractor.extractWithMetadata(app, file, "user-secret".toCharArray())
+        assertEquals(PdfTextExtractor.PARSER_ID, result.parserId)
+        assertTrue("带正确密码应抽取成功：${result.text}", result.text.contains("Secret PDF"))
+    }
+
+    @Test
+    fun `legacy extract with password still works`() = runBlocking {
+        val file = pdfFile(encryptedPdf(userPassword = "user-secret", ownerPassword = "owner-secret"))
+        val text = PdfTextExtractor.extract(app, file, "user-secret".toCharArray())
+        assertTrue(text.contains("Secret PDF"))
+    }
+
+    @Test
+    fun `wrong user password fails encrypted with retry hint`() {
+        val file = pdfFile(encryptedPdf(userPassword = "user-secret", ownerPassword = "owner-secret"))
+        val error = runCatching {
+            runBlocking { PdfTextExtractor.extractWithMetadata(app, file, "wrong-pass".toCharArray()) }
+        }.exceptionOrNull() as DocumentParseException
+        assertEquals(PdfExtractionErrorCodes.ENCRYPTED, error.errorCode)
+        assertTrue("应提示密码不正确：${error.message}", error.message!!.contains("不正确"))
+    }
+
+    @Test
+    fun `document parser accepts password for encrypted pdf`() = runBlocking {
+        val file = pdfFile(encryptedPdf(userPassword = "user-secret", ownerPassword = "owner-secret"))
+        val parsed = DocumentParser.parse(app, file, null, file.name, "user-secret".toCharArray())
+        assertEquals(PdfTextExtractor.PARSER_ID, parsed.parserId)
+        assertTrue(parsed.text.contains("Secret PDF"))
+    }
+
+    @Test
+    fun `extractWithMetadata returns text layer parser id for normal pdf`() = runBlocking {
+        val result = PdfTextExtractor.extractWithMetadata(app, pdfFile(buildPdf(listOf("Hello PDF"))))
+        assertEquals(PdfTextExtractor.PARSER_ID, result.parserId)
+        assertTrue(result.text.contains("Hello PDF"))
+    }
+
+    // ---- P1.1：OCR fallback（JVM fake；真实 ML Kit 见 androidTest） ----
+
+    @Test
+    fun `textless pdf falls back to ocr when enabled`() = runBlocking {
+        var ocrCalls = 0
+        val fakeOcr = PdfOcrFallback { _, _ ->
+            ocrCalls++
+            "OCR 识别文本"
+        }
+        val result = PdfTextExtractor.extractWithMetadata(
+            context = app,
+            file = pdfFile(buildPdf(listOf(""))),
+            password = null,
+            ocrFallback = fakeOcr,
+            ocrEnabledOverride = true,
+        )
+        assertEquals(PdfTextExtractor.OCR_PARSER_ID, result.parserId)
+        assertTrue("应使用 OCR 文本：${result.text}", result.text.contains("OCR 识别文本"))
+        assertEquals(1, ocrCalls)
+    }
+
+    @Test
+    fun `textless pdf with ocr disabled fails no text without calling ocr`() = runBlocking {
+        var ocrCalls = 0
+        val fakeOcr = PdfOcrFallback { _, _ ->
+            ocrCalls++
+            "不应调用"
+        }
+        val error = runCatching {
+            PdfTextExtractor.extractWithMetadata(
+                context = app,
+                file = pdfFile(buildPdf(listOf(""))),
+                password = null,
+                ocrFallback = fakeOcr,
+                ocrEnabledOverride = false,
+            )
+        }.exceptionOrNull() as DocumentParseException
+        assertEquals(PdfExtractionErrorCodes.NO_TEXT, error.errorCode)
+        assertEquals("OCR 关闭时不得调用 OCR", 0, ocrCalls)
+    }
+
+    @Test
+    fun `ocr failure is propagated readable`() = runBlocking {
+        val fakeOcr = PdfOcrFallback { _, _ ->
+            throw DocumentParseException(
+                "OCR 失败（测试注入）",
+                PdfOcrExtractor.PARSER_ID,
+                PdfOcrErrorCodes.FAILED,
+            )
+        }
+        val error = runCatching {
+            PdfTextExtractor.extractWithMetadata(
+                context = app,
+                file = pdfFile(buildPdf(listOf(""))),
+                password = null,
+                ocrFallback = fakeOcr,
+                ocrEnabledOverride = true,
+            )
+        }.exceptionOrNull() as DocumentParseException
+        assertEquals(PdfOcrErrorCodes.FAILED, error.errorCode)
+        assertTrue(error.message!!.contains("OCR"))
+    }
+
+    @Test
+    fun `text layer success does not call ocr fallback`() = runBlocking {
+        var ocrCalls = 0
+        val fakeOcr = PdfOcrFallback { _, _ ->
+            ocrCalls++
+            "不应调用"
+        }
+        val result = PdfTextExtractor.extractWithMetadata(
+            context = app,
+            file = pdfFile(buildPdf(listOf("Hello PDF"))),
+            password = null,
+            ocrFallback = fakeOcr,
+            ocrEnabledOverride = true,
+        )
+        assertEquals(PdfTextExtractor.PARSER_ID, result.parserId)
+        assertEquals("文本层成功时不得 OCR", 0, ocrCalls)
     }
 
     // ---- fixtures ----

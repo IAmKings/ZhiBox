@@ -342,6 +342,7 @@ fun SettingsScreen(
         },
         setAnswerNetworkConsent = viewModel::setAnswerNetworkConsent,
         setBudgetTier = viewModel::setBudgetTier,
+        setPdfOcrEnabled = viewModel::setPdfOcrEnabled,
         setNetworkDisabled = viewModel::setNetworkDisabled,
         backfillExtraction = viewModel::backfillExtraction,
         retryFailedExtraction = viewModel::retryFailedExtraction,
@@ -385,6 +386,8 @@ class SettingsActions(
     val exportTrace: () -> Unit = {},
     // B12：检索预算档位
     val setBudgetTier: (SagBudgetTier) -> Unit = {},
+    // P1.1：扫描件 OCR 开关
+    val setPdfOcrEnabled: (Boolean) -> Unit = {},
 )
 
 /** 无状态设置内容：供 [SettingsScreen] 与 @Preview / UI 测试直接渲染（B3-7）。 */
@@ -1207,6 +1210,19 @@ internal fun SettingsContent(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+
+                    // ---- P1.1：扫描件 PDF 端侧 OCR（默认开启；仅文本层为空时前 20 页）----
+                    HorizontalDivider()
+                    SwitchRow(
+                        label = stringResource(R.string.settings_pdf_ocr_toggle),
+                        checked = state.pdfOcrEnabled,
+                        onCheckedChange = actions.setPdfOcrEnabled,
+                    )
+                    Text(
+                        stringResource(R.string.settings_pdf_ocr_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 
@@ -1426,6 +1442,7 @@ private fun SettingsDarkPreview() {
                 traceRecentModes = mapOf("qa" to 3, "multi_es_fast" to 7, "vector" to 2),
                 budgetTier = SagBudgetTier.MID,
                 extractionParallelism = 2,
+                pdfOcrEnabled = false,
             ),
             actions = SettingsActions(),
         )

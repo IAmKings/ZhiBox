@@ -15,6 +15,7 @@ import com.zhibox.memory.core.search.VectorMatrixCache
 import com.zhibox.memory.core.text.BigramTokenizer
 import com.zhibox.memory.core.text.Chunker
 import com.zhibox.memory.core.text.DocumentParser
+import com.zhibox.memory.core.text.PdfPasswordVault
 import com.zhibox.memory.core.text.TextNormalizer
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.ChunkEmbeddingEntity
@@ -487,6 +488,9 @@ class IngestRepository(
      */
     suspend fun processDocument(documentId: String, jobId: String): Unit = withContext(Dispatchers.IO) {
         val docDao = db.documentDao()
+        // P1.1：user password 只存在于进程内 vault；取出（一次性消费）后无论成功/失败/取消都在
+        // finally 清零，绝不下沉到 DB/日志。非 PDF 时通常为 null。
+        val pdfPassword = PdfPasswordVault.take(documentId)
         try {
             val doc = docDao.get(documentId) ?: error("document not found: $documentId")
             val source = db.sourceDao().get(doc.sourceId) ?: error("source not found: ${doc.sourceId}")
@@ -502,7 +506,14 @@ class IngestRepository(
 
             // 1. 解析 + 规范化 + 回写真实 parserId/sizeBytes（P1-6；非状态列，不走状态机）
             // P1：统一走 Context+File 入口（PDF 等需要 Android 上下文的解析器由 DocumentParser 内部按类型分派）
-            val parsed = DocumentParser.parse(context, raw, mimeType = null, fileName = raw.name)
+            // P1.1：PDF 可带 user password（vault 一次性取出；DocumentParser 内部含文本层→OCR 回退）
+            val parsed = DocumentParser.parse(
+                context = context,
+                file = raw,
+                mimeType = null,
+                fileName = raw.name,
+                password = pdfPassword,
+            )
             val normalized = TextNormalizer.normalize(parsed.text)
             docDao.updateParserAndSize(documentId, parsed.parserId, raw.length())
 
@@ -601,6 +612,9 @@ class IngestRepository(
                 // 旧纯文本 error 仍可通过 PipelineError.decode 兼容展示。
                 failOrRequeue(documentId, jobId, PipelineError.classify(e))
             }
+        } finally {
+            // P1.1：密码用完即焚（即使解析提前失败/取消；不记录内容）
+            pdfPassword?.fill('\u0000')
         }
     }
 
@@ -893,6 +907,64 @@ class IngestRepository(
         requeued
     }
 
+    /**
+     * P1.1：用户输入 PDF 打开密码后的重试入口。
+     *
+     * 前置：job 与 document 均处于终态 failed（其他状态返回 false），且来源是 PDF
+     * （MIME application/pdf 或 uri 以 .pdf 结尾；非 PDF 抛可读 IllegalArgumentException）。
+     * 事务内：job FAILED→QUEUED（清 error/progress）、document FAILED→PENDING；随后把密码暂存
+     * [PdfPasswordVault]（**不持久化**）并唤醒 ingest worker。worker 在 processDocument 中
+     * `take` 一次性消费并在 finally 清零。
+     *
+     * @return true=已重排队；false=job/doc 不存在或状态不满足（无可重试的失败 PDF）
+     */
+    suspend fun retryPdfWithPassword(
+        jobId: String,
+        documentId: String,
+        password: CharArray,
+    ): Boolean = withContext(Dispatchers.IO) {
+        if (password.isEmpty()) {
+            throw IllegalArgumentException("PDF 密码不能为空：请输入打开密码后重试")
+        }
+        if (password.size > MAX_PDF_PASSWORD_LENGTH) {
+            throw IllegalArgumentException("PDF 密码过长（上限 $MAX_PDF_PASSWORD_LENGTH 字符）")
+        }
+        val requeued = db.withTransaction {
+            val jobDao = db.ingestJobDao()
+            val docDao = db.documentDao()
+            val job = jobDao.get(jobId) ?: return@withTransaction false
+            if (job.documentId != documentId) return@withTransaction false
+            if (JobStage.fromValue(job.stage) != JobStage.FAILED) return@withTransaction false
+            val doc = docDao.get(documentId) ?: return@withTransaction false
+            if (DocStatus.fromValue(docDao.status(documentId)) != DocStatus.FAILED) {
+                return@withTransaction false
+            }
+            val source = db.sourceDao().get(doc.sourceId)
+            val isPdf = source != null && (
+                source.mimeType.orEmpty().lowercase() == "application/pdf" ||
+                    source.uri.lowercase()
+                        .substringBefore('?')
+                        .substringBefore('#')
+                        .endsWith(".pdf")
+                )
+            require(isPdf) {
+                "仅 PDF 文档支持输入打开密码重试（documentId=$documentId）"
+            }
+            // job：FAILED→QUEUED，同时清 error/progress；document：FAILED→PENDING（取消守卫）
+            jobDao.requeue(jobId, JobStage.QUEUED.value, now())
+            docDao.updateStatusIfNotCancelled(
+                documentId, DocStatus.PENDING.value, DocStatus.CANCELLED.value,
+            )
+            true
+        }
+        if (!requeued) return@withContext false
+        // 事务成功后才暂存密码（失败不保留）；复制后存入 vault，UI 调用方可以立即清空自己的
+        // CharArray（P1.1 E2E 发现：直接存引用会被 ViewModel finally 清零，worker 读到空密码）。
+        PdfPasswordVault.put(documentId, password.copyOf())
+        ensureIngestWorker()
+        true
+    }
+
     // ───────────────────────── B7 旧空间检测（模型路线收敛） ─────────────────────────
 
     /**
@@ -1127,6 +1199,9 @@ class IngestRepository(
         private val IMPORTABLE_EXTENSIONS: Set<String> = setOf(
             "txt", "md", "pdf", "docx", "pptx", "xlsx", "html", "htm",
         )
+
+        /** PDF 打开密码长度上限（防御异常输入；正常 PDF 密码远小于此） */
+        private const val MAX_PDF_PASSWORD_LENGTH: Int = 128
         const val EMBED_BATCH = 16
         const val INGEST_BATCH_WORK = "ingest-batch"
 

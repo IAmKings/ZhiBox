@@ -451,4 +451,19 @@
     <!-- ==== B14.2：网页来源 URL provenance ==== -->
     <string name="sources_origin_link">网页来源：%1$s</string>
     <string name="import_url_origin_failed">保存来源 URL 失败（已回滚暂存文件）：%1$s</string>
+
+    <!-- ==== P1.1：扫描件 OCR / PDF 密码重试 ==== -->
+    <string name="settings_pdf_ocr_toggle">扫描件 OCR（端侧）</string>
+    <string name="settings_pdf_ocr_hint">仅当 PDF 无文本层时，对前 20 页做端侧 OCR；使用离线 bundled 模型（首次加载稍慢、增加 APK 体积）。</string>
+    <string name="settings_pdf_ocr_save_failed">保存 OCR 开关失败：%1$s</string>
+    <string name="import_pdf_password_button">输入 PDF 密码</string>
+    <string name="import_pdf_password_dialog_title">输入 PDF 密码</string>
+    <string name="import_pdf_password_dialog_message">该 PDF 需要打开密码（user password）。密码仅用于本次重试，不会保存或上传。</string>
+    <string name="import_pdf_password_label">PDF 密码</string>
+    <string name="import_pdf_password_confirm">重试</string>
+    <string name="import_pdf_password_retrying">重试中…</string>
+    <string name="import_pdf_password_empty">PDF 密码不能为空</string>
+    <string name="import_pdf_password_requeued">已重新排队 PDF 导入任务，稍后可在任务列表查看进度</string>
+    <string name="import_pdf_password_not_requeued">无法重试：任务状态已变化或不是 PDF（请刷新后查看）</string>
+    <string name="import_pdf_password_failed">PDF 密码重试失败：%1$s</string>
 </resources>

@@ -59,6 +59,7 @@
 - Android runtime 加密 PDF 2/2（K60U）；JVM 604/585；详见 `B14_1_FIX_REPORT.md`。
 - **B14.2**：schema v8 `source.originUrl` + staging 旁车 + Sources 链接；K60U DB/迁移/备份 **12/12**、origin E2E 通过；详见 `B14_2_ORIGIN_URL_REPORT.md`。
 - **B14.3**：Office 正则全部替换为 SAX（XXE/DOCTYPE/畸形拒绝、取消、预算）；K60U 真实 DOCX/PPTX/XLSX **3/3 ready**；详见 `B14_3_OFFICE_SAX_REPORT.md`。
+- **P1.1**：扫描件 OCR（ML Kit 离线）+ user-password PDF 重试；K60U 真实扫描件 `pdf-ocr-v1`、加密 PDF 密码重试成功；详见 `P1_1_OCR_PASSWORD_REPORT.md`。
 
 ## 6. 后续
 

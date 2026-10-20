@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zhibox.memory.R
 import com.zhibox.memory.core.ingest.IngestRepository
+import com.zhibox.memory.core.ingest.PipelineError
 import com.zhibox.memory.core.llm.LlmPreferences
 import com.zhibox.memory.core.text.WebPageFetcher
 import com.zhibox.memory.core.text.WebPageResult
@@ -75,6 +76,10 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
     /** P1：网页 URL 抓取进行中。 */
     private val _urlFetching = MutableStateFlow(false)
     val urlFetching: StateFlow<Boolean> = _urlFetching.asStateFlow()
+
+    /** P1.1：PDF 打开密码重试进行中（防连点）。 */
+    private val _pdfPasswordRetrying = MutableStateFlow(false)
+    val pdfPasswordRetrying: StateFlow<Boolean> = _pdfPasswordRetrying.asStateFlow()
 
     /** 一次性操作成功/信息（可读单行文案） */
     private val _message = MutableStateFlow<String?>(null)
@@ -220,6 +225,61 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // ───────────────────────── P1：SAF 多选暂存 ─────────────────────────
+
+    /**
+     * P1.1：用户输入 PDF 打开密码（user password）后重试失败任务。
+     *
+     * 隐私约定：
+     * - 密码只以 [CharArray] 形式经 core `PdfPasswordVault` 传递，**不写 prefs/DB、不写日志、不拼接进错误文案**；
+     * - 本方法无论如何都会在 `finally` 将传入数组清零（UI 侧同时清空输入框状态）；
+     * - 失败只提示可读原因（空密码/非 PDF/状态变化/异常）。
+     *
+     * @return 通过 [message]/[errorMessage] 反馈：true=已重排队，false=状态已变化不可重试。
+     */
+    fun retryPdfWithPassword(jobId: String, documentId: String, password: CharArray) {
+        if (_pdfPasswordRetrying.value) return
+        if (jobId.isBlank() || documentId.isBlank()) {
+            password.fill('\u0000')
+            _errorMessage.value = str(R.string.import_pdf_password_not_requeued)
+            return
+        }
+        if (password.isEmpty()) {
+            password.fill('\u0000')
+            _errorMessage.value = str(R.string.import_pdf_password_empty)
+            return
+        }
+        _pdfPasswordRetrying.value = true
+        _errorMessage.value = null
+        safeLaunch(
+            onError = { t ->
+                _pdfPasswordRetrying.value = false
+                setError(R.string.import_pdf_password_failed, t)
+            },
+        ) {
+            try {
+                val requeued = withContext(Dispatchers.IO) {
+                    repository.retryPdfWithPassword(jobId, documentId, password)
+                }
+                if (requeued) {
+                    _message.value = str(R.string.import_pdf_password_requeued)
+                    refreshStaging()
+                } else {
+                    _errorMessage.value = str(R.string.import_pdf_password_not_requeued)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IllegalArgumentException) {
+                // core 的可读校验错误（密码为空/过长/非 PDF 等）；不含密码本身
+                _errorMessage.value = str(R.string.import_pdf_password_failed, e.readableMessage())
+            } catch (t: Throwable) {
+                _errorMessage.value = str(R.string.import_pdf_password_failed, t.readableMessage())
+            } finally {
+                // 防御性清零（core vault 亦会一次性消费后清零；此处覆盖 UI→VM 的副本）
+                password.fill('\u0000')
+                _pdfPasswordRetrying.value = false
+            }
+        }
+    }
 
     /**
      * P1：把 SAF 选中的文件复制到 `filesDir/import-staging`（**不直接写 DB**）。
@@ -636,4 +696,18 @@ internal fun writeOriginSidecarAtomically(stagingFile: File, sourceUrl: String) 
     } finally {
         temp.delete()
     }
+}
+
+/**
+ * P1.1：判断失败任务是否属于“PDF 需要打开密码/密码不正确”，用于显示「输入 PDF 密码」入口。
+ *
+ * 兼容两种 error 形态：
+ * - 新格式 `DOCUMENT_PARSE:<detail>`：detail 由 [PipelineError.decode] 还原为 userMessage；
+ * - 旧纯文本：直接原文匹配。
+ * 仅 FAILED 阶段可重试；非 PDF 的解析失败不会命中这两个文案。
+ */
+internal fun requiresPdfPassword(job: IngestJobEntity): Boolean {
+    if (JobStage.fromValue(job.stage) != JobStage.FAILED) return false
+    val message = PipelineError.decode(job.error)?.userMessage ?: job.error ?: return false
+    return message.contains("PDF 需要打开密码") || message.contains("PDF 打开密码不正确")
 }

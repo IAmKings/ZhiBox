@@ -71,6 +71,12 @@ robolectric = "4.17"
 # 本机 Maven Central 对该 group 403，settings.gradle.kts 已配置 Aliyun central 限定 fallback。
 pdfboxAndroid = "2.0.27.0"
 
+# P1.1 导入扩展：ML Kit 端侧中文 OCR（离线 bundled 模型；扫描件 PDF 回退）。
+# 固定 16.0.1（Google Maven；AAR 内置 gocr/taser OCR 模型，无需联网下载模型）。
+# 传递依赖 Play Services tasks/base/basement + com.google.mlkit:common + text-recognition-bundled-common；
+# license = ML Kit Terms of Service（https://developers.google.com/ml-kit/terms，**非 Apache**）。
+mlkitTextRecognitionChinese = "16.0.1"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
@@ -112,6 +118,9 @@ robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "
 # P1 导入扩展：PDF 文本抽取（Apache-2.0；传递 BouncyCastle 1.72 = Bouncy Castle Licence）。
 # 依赖可行性/尺寸/APK 影响见 docs/UPSTREAM_VERSIONS.md；解析代码由 P1 导入任务实现。
 pdfbox-android = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfboxAndroid" }
+# P1.1 导入扩展：ML Kit 中文 OCR（ML Kit Terms of Service，非 Apache；AAR assets 内置离线模型）。
+# 尺寸/APK 增量/传递依赖见 docs/UPSTREAM_VERSIONS.md 与 docs/reference/THIRD_PARTY_NOTICES.md。
+mlkit-text-recognition-chinese = { group = "com.google.mlkit", name = "text-recognition-chinese", version.ref = "mlkitTextRecognitionChinese" }
 # B5：Compose UI 测试（版本由 Compose BOM 2026.06.01 管理 = 1.11.4，故不写 version.ref）
 #   · ui-test-junit4：androidTest（真机 instrumentation，createAndroidComposeRule / createComposeRule）
 #   · ui-test-manifest：debugImplementation（提供测试宿主 Activity，仅 debug 变体）

@@ -75,6 +75,7 @@ B11 在 B10 多跳检索证据上增加**单轮**带引用问答：先在本地�
 | `docs/review/B14_IMPORT_EXPANSION_REPORT.md` | B14 P1 导入扩展首版报告（PDF/Office/网页/SAF；安全预算/限制） |
 | `docs/review/B14_2_ORIGIN_URL_REPORT.md` | B14.2 URL 溯源报告（schema v8 source.originUrl/迁移/备份/旁车/UI） |
 | `docs/review/B14_3_OFFICE_SAX_REPORT.md` | B14.3 Office SAX 流式解析/安全/取消报告 |
+| `docs/review/P1_1_OCR_PASSWORD_REPORT.md` | P1.1 扫描件 OCR 与 user-password PDF 报告 |
 | `docs/product/B12_USER_GUIDE.md` | B12 图谱/预算/抽取并发/备份/诊断/隐私用户指南 |
 | `docs/phase1/MVP1-ACCEPTANCE.md` | MVP-1 验收清单（§9.1/9.2/9.3 逐条对照与遗留项） |
 | `docs/RELEASE.md` | release 构建、签名、安装与回滚流程 |

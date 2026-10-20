@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
@@ -33,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -69,6 +71,7 @@ fun ImportScreen(
     val extractionSummary by viewModel.extractionSummary.collectAsStateWithLifecycle()
     val stagingFiles by viewModel.stagingFiles.collectAsStateWithLifecycle()
     val urlFetching by viewModel.urlFetching.collectAsStateWithLifecycle()
+    val pdfPasswordRetrying by viewModel.pdfPasswordRetrying.collectAsStateWithLifecycle()
 
     // P1：SAF 多选（txt/md/pdf/docx/pptx/xlsx/html）；选择后复制到 import-staging，不直接写 DB。
     val pickFiles = rememberLauncherForActivityResult(
@@ -77,9 +80,76 @@ fun ImportScreen(
         if (uris.isNotEmpty()) viewModel.stageUris(uris)
     }
     var urlInput by remember { mutableStateOf("") }
+    // P1.1：PDF 密码对话框（jobId to documentId；密码只存本地 Compose 状态，确认后立即清空）
+    var pdfPasswordTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var pdfPasswordInput by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         viewModel.onScreenStarted(autoStart, autoCancel)
+    }
+
+    // P1.1：失败 PDF 输入打开密码后重试（密码不显示明文、不持久化、不写日志）
+    val passwordTarget = pdfPasswordTarget
+    if (passwordTarget != null) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!pdfPasswordRetrying) {
+                    pdfPasswordTarget = null
+                    pdfPasswordInput = ""
+                }
+            },
+            title = { Text(stringResource(R.string.import_pdf_password_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        stringResource(R.string.import_pdf_password_dialog_message),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    OutlinedTextField(
+                        value = pdfPasswordInput,
+                        onValueChange = { pdfPasswordInput = it },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.import_pdf_password_label)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done,
+                        ),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !pdfPasswordRetrying && pdfPasswordInput.isNotEmpty(),
+                    onClick = {
+                        val (jobId, documentId) = passwordTarget
+                        val password = pdfPasswordInput.toCharArray()
+                        // 先清 UI 状态（对话框/明文输入），CharArray 交由 ViewModel 传递并清零
+                        pdfPasswordTarget = null
+                        pdfPasswordInput = ""
+                        viewModel.retryPdfWithPassword(jobId, documentId, password)
+                    },
+                ) {
+                    Text(
+                        if (pdfPasswordRetrying) {
+                            stringResource(R.string.import_pdf_password_retrying)
+                        } else {
+                            stringResource(R.string.import_pdf_password_confirm)
+                        },
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !pdfPasswordRetrying,
+                    onClick = {
+                        pdfPasswordTarget = null
+                        pdfPasswordInput = ""
+                    },
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
     }
 
     ImportContent(
@@ -97,6 +167,10 @@ fun ImportScreen(
         onUrlInputChange = { urlInput = it },
         onPickFiles = { pickFiles.launch(PICK_FILE_MIME_TYPES) },
         onImportUrl = { viewModel.importUrl(urlInput) },
+        onRequestPdfPassword = { jobId, documentId ->
+            pdfPasswordInput = ""
+            pdfPasswordTarget = jobId to documentId
+        },
         onImportAll = viewModel::importAll,
         onCancelImport = viewModel::cancelImport,
         onRetryFailed = viewModel::retryFailed,
@@ -126,6 +200,8 @@ internal fun ImportContent(
     onUrlInputChange: (String) -> Unit = {},
     onPickFiles: () -> Unit = {},
     onImportUrl: () -> Unit = {},
+    /** P1.1：失败 PDF 请求输入打开密码（jobId, documentId）；默认空实现兼容 Preview/既有测试 */
+    onRequestPdfPassword: (jobId: String, documentId: String) -> Unit = { _, _ -> },
     onImportAll: () -> Unit,
     onCancelImport: () -> Unit,
     onRetryFailed: () -> Unit,
@@ -338,7 +414,7 @@ internal fun ImportContent(
                         SectionHeader(stringResource(R.string.import_section_active))
                     }
                     items(activeJobs, key = { "job-${it.id}" }) { job ->
-                        JobCard(job, onOpenSettings)
+                        JobCard(job, onOpenSettings, onRequestPdfPassword)
                     }
                 }
                 if (finishedJobs.isNotEmpty()) {
@@ -346,7 +422,7 @@ internal fun ImportContent(
                         SectionHeader(stringResource(R.string.import_section_recent))
                     }
                     items(finishedJobs, key = { "job-${it.id}" }) { job ->
-                        JobCard(job, onOpenSettings)
+                        JobCard(job, onOpenSettings, onRequestPdfPassword)
                     }
                 }
                 if (jobs.size >= ImportViewModel.RECENT_JOB_LIMIT) {
@@ -384,7 +460,11 @@ private fun SectionHeader(title: String) {
 }
 
 @Composable
-private fun JobCard(job: IngestJobEntity, onOpenSettings: () -> Unit) {
+private fun JobCard(
+    job: IngestJobEntity,
+    onOpenSettings: () -> Unit,
+    onRequestPdfPassword: (jobId: String, documentId: String) -> Unit = { _, _ -> },
+) {
     // B2-7：job.error 是 `CODE:detail` 编码（旧数据为纯文本，decode 会兼容为 UNKNOWN）。
     // 只向用户展示 decode 后的 userMessage，绝不直接显示编码串。
     val rawError = job.error
@@ -412,6 +492,13 @@ private fun JobCard(job: IngestJobEntity, onOpenSettings: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                 )
                 pipelineError?.let { errorActionHint(it.code, onOpenSettings) }
+                // P1.1：PDF 打开密码失败 → 提供“输入 PDF 密码”重试入口
+                val documentId = job.documentId
+                if (documentId != null && requiresPdfPassword(job)) {
+                    TextButton(onClick = { onRequestPdfPassword(job.id, documentId) }) {
+                        Text(stringResource(R.string.import_pdf_password_button))
+                    }
+                }
             }
         }
     }

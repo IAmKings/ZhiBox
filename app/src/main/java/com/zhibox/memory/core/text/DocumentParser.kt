@@ -123,9 +123,10 @@ object DocumentParser {
         file: File,
         mimeType: String? = null,
         fileName: String = file.name,
+        password: CharArray? = null,
     ): Parsed {
         val kind = detectKind(mimeType, fileName)
-        if (kind == Kind.PDF) return parsePdf(context, file)
+        if (kind == Kind.PDF) return parsePdf(context, file, password)
         // P1 审查修复：Office 走内存 zip 解压，必须有源文件大小上限；避免低端机长时间卡死/OOM。
         if (kind in setOf(Kind.DOCX, Kind.PPTX, Kind.XLSX) &&
             file.length() > TextExtractionLimits.MAX_OFFICE_SOURCE_BYTES
@@ -148,15 +149,19 @@ object DocumentParser {
         return parsed
     }
 
-    /** PDF 解析：委托 [PdfTextExtractor]（PDFBox 初始化 + 逐页抽取/取消/预算）。 */
-    internal suspend fun parsePdf(context: Context?, file: File): Parsed {
+    /**
+     * PDF 解析：委托 [PdfTextExtractor]（PDFBox 初始化 + 逐页抽取/取消/预算；P1.1 起含 OCR 回退）。
+     *
+     * @param password user password（由导入层从 [PdfPasswordVault] 取出并负责清零；非 PDF/无密码为 null）
+     */
+    internal suspend fun parsePdf(context: Context?, file: File, password: CharArray? = null): Parsed {
         val appContext = context ?: throw DocumentParseException(
             "PDF 解析需要 Android 上下文（内部错误）：请通过应用内导入流程重试",
             PdfTextExtractor.PARSER_ID,
             PdfExtractionErrorCodes.REQUIRES_CONTEXT,
         )
-        val text = PdfTextExtractor.extract(appContext, file)
-        return Parsed(capText(text), PdfTextExtractor.PARSER_ID)
+        val result = PdfTextExtractor.extractWithMetadata(appContext, file, password)
+        return Parsed(capText(result.text), result.parserId)
     }
 
     internal fun capText(text: String): String =

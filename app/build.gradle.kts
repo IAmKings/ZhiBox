@@ -253,6 +253,10 @@ dependencies {
     // 本任务只引入依赖；PDF 解析/抽取代码由 P1 导入任务实现。
     // 版本、仓库 fallback（Aliyun，仅该 group）与 strict 校验元数据见 libs.versions.toml / settings.gradle.kts。
     implementation(libs.pdfbox.android)
+    // P1.1 导入扩展：ML Kit 端侧中文 OCR（离线 bundled 模型；文本抽取失败/扫描件 PDF 回退用）。
+    // 本任务只引入依赖；OCR 调用代码由 P1.1 导入任务实现（PdfOcrFallback）。
+    // license = ML Kit Terms of Service（非 Apache）；分发声明见 docs/reference/THIRD_PARTY_NOTICES.md。
+    implementation(libs.mlkit.text.recognition.chinese)
 
     testImplementation(libs.junit)
     // B3-10：JVM 单测需要可用 org.json（Android 的平台 org.json 在 JVM 是 stub）

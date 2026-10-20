@@ -27,6 +27,7 @@ import com.zhibox.memory.core.model.PathPreferences
 import com.zhibox.memory.core.model.SharedModelStore
 import com.zhibox.memory.core.sag.SagBudgetPreferences
 import com.zhibox.memory.core.sag.SagBudgetTier
+import com.zhibox.memory.core.text.PdfOcrPreferences
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.DocStatus
 import kotlinx.coroutines.CancellationException
@@ -128,6 +129,9 @@ data class SettingsUiState(
     // ---- B12：SAG 抽取并发度（1..4，默认 1=串行；Worker 读取） ----
     val extractionParallelism: Int = SagExtractionPreferences.DEFAULT_PARALLELISM,
     val extractionParallelismSaving: Boolean = false,
+    /** P1.1：扫描 PDF 端侧 OCR 开关（默认 true；仅文本层为空时对前 20 页 OCR） */
+    val pdfOcrEnabled: Boolean = PdfOcrPreferences.DEFAULT_PDF_OCR_ENABLED,
+    val pdfOcrSaving: Boolean = false,
     /** B12：档位持久化进行中（UI 禁用，避免连点/乱序写） */
     val budgetSaving: Boolean = false,
     // ---- B9：SAG 两阶段抽取状态 ----
@@ -212,6 +216,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val answerNetworkConsent: Boolean,
         val budgetTier: SagBudgetTier,
         val extractionParallelism: Int,
+        val pdfOcrEnabled: Boolean,
         // B9
         val sagAvailable: Boolean,
         val extractionCounts: ExtractionCountsUi,
@@ -268,6 +273,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         answerNetworkConsent = s.answerNetworkConsent,
                         budgetTier = s.budgetTier,
                         extractionParallelism = s.extractionParallelism,
+                        pdfOcrEnabled = s.pdfOcrEnabled,
                         sagAvailable = s.sagAvailable,
                         extractionCounts = s.extractionCounts,
                         traceTotalCount = s.traceTotalCount,
@@ -339,6 +345,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val answerNetworkConsent = LlmPreferences.answerNetworkConsent(app)
         val budgetTier = SagBudgetPreferences.tier(app)
         val extractionParallelism = SagExtractionPreferences.parallelism(app)
+        val pdfOcrEnabled = PdfOcrPreferences.enabled(app)
         // B9：SAG 抽取可用性与任务计数（IO 上下文；可用性失败按不可用处理，不阻塞刷新）
         val sagAvailable = runCatching { SagAvailability.isAvailable(app) }.getOrDefault(false)
         val extractionCounts = readExtractionCounts()
@@ -378,6 +385,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             answerNetworkConsent = answerNetworkConsent,
             budgetTier = budgetTier,
             extractionParallelism = extractionParallelism,
+            pdfOcrEnabled = pdfOcrEnabled,
             sagAvailable = sagAvailable,
             extractionCounts = extractionCounts,
             traceTotalCount = traceTotalCount,
@@ -900,6 +908,31 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         ) {
             withContext(Dispatchers.IO) { SagBudgetPreferences.setTier(app, tier) }
             update { it.copy(budgetTier = tier, budgetSaving = false) }
+        }
+    }
+
+    /** P1.1：保存扫描件 OCR 开关（IO 持久化；下一次 PDF 解析读取）。 */
+    fun setPdfOcrEnabled(enabled: Boolean) {
+        if (_state.value.pdfOcrEnabled == enabled || _state.value.pdfOcrSaving) return
+        update { it.copy(pdfOcrSaving = true, error = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        pdfOcrSaving = false,
+                        error = str(R.string.settings_pdf_ocr_save_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            try {
+                withContext(Dispatchers.IO) { PdfOcrPreferences.setEnabled(app, enabled) }
+                update { it.copy(pdfOcrEnabled = enabled, pdfOcrSaving = false) }
+            } catch (e: CancellationException) {
+                throw e
+            } finally {
+                update { it.copy(pdfOcrSaving = false) }
+            }
         }
     }
 
