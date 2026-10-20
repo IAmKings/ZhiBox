@@ -544,4 +544,28 @@
     <string name="graph_explore_channel_like">LIKE</string>
     <string name="graph_explore_channel_both">FTS + LIKE</string>
     <string name="graph_explore_channel_none">—</string>
+
+    <!-- ==== P1.4：Chat Agent 工具 ==== -->
+    <string name="chat_agent_toggle">Agent 工具</string>
+    <string name="chat_agent_unavailable_hint">Agent 工具需要 LLM 就绪（配置 + 允许联网 + 开启问答）</string>
+    <string name="chat_agent_steps_title">Agent 工具步骤</string>
+    <string name="chat_agent_step_line">· %1$s：%2$s</string>
+    <string name="chat_agent_running">Agent 规划中…</string>
+    <string name="chat_agent_step_ok">成功</string>
+    <string name="chat_agent_step_failed">失败（%1$s）</string>
+    <string name="chat_agent_tool_search_knowledge">知识库检索</string>
+    <string name="chat_agent_tool_lookup_entities">实体查询</string>
+    <string name="chat_agent_fallback">Agent 已回退普通检索（%1$s），问答继续</string>
+    <string name="chat_agent_fallback_not_configured">LLM 未配置</string>
+    <string name="chat_agent_fallback_config_error">配置读取失败</string>
+    <string name="chat_agent_fallback_no_tools">无可用工具</string>
+    <string name="chat_agent_fallback_empty_query">问题为空</string>
+    <string name="chat_agent_fallback_provider_error">模型调用失败</string>
+    <string name="chat_agent_fallback_provider_exception">模型调用异常</string>
+    <string name="chat_agent_fallback_bad_json">规划输出格式错误</string>
+    <string name="chat_agent_fallback_unknown_action">规划动作未知</string>
+    <string name="chat_agent_fallback_bad_input">工具参数非法</string>
+    <string name="chat_agent_fallback_tool_exception">工具执行异常</string>
+    <string name="chat_agent_fallback_tool_error">工具执行失败</string>
+    <string name="chat_agent_fallback_max_calls">超出工具调用上限</string>
 </resources>

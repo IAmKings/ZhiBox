@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://zhibox.local/schemas/agent_eval_result_v1.json",
+  "title": "ZhiBox B17 Agent 真实评测结果（v1）",
+  "description": "仅记录真实 LLM 运行结果（key 由用户配置，不入库/日志）。mock/离线 harness 结果不得写入本文件冒充真实质量。",
+  "type": "object",
+  "required": ["schema_version", "run", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "run": {
+      "type": "object",
+      "required": ["model", "prompt_version", "date", "device", "key_configured"],
+      "additionalProperties": true,
+      "properties": {
+        "model": { "type": "string", "description": "固定模型 id（与 LlmConfig.model 一致）" },
+        "prompt_version": { "type": "string", "description": "AgentPrompt.PROMPT_VERSION（如 b16-agent-tools-v1）" },
+        "date": { "type": "string", "description": "ISO-8601 时间" },
+        "device": { "type": "string" },
+        "app_version": { "type": "string" },
+        "key_configured": { "type": "boolean", "description": "真实 key 是否已配置；false 时结果不是真实质量评测" },
+        "notes": { "type": "string" }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "case_id", "expected_route", "actual_route", "fallback", "expected_citations",
+          "citations", "citation_valid", "refused", "answer", "latency_ms", "manual_support"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "case_id": { "type": "string", "description": "与 agent_eval_cases.json 的 id 对应" },
+          "expected_route": { "type": "array", "items": { "type": "string" } },
+          "expected_fallback": { "type": ["string", "null"] },
+          "actual_route": { "type": "array", "items": { "type": "string" } },
+          "fallback": { "type": ["string", "null"] },
+          "expected_citations": { "type": "array", "items": { "type": "string" } },
+          "citations": { "type": "array", "items": { "type": "string" } },
+          "citation_valid": { "type": "boolean", "description": "CitationValidator.valid（引用均来自本轮 evidence 且无非法 token）" },
+          "unverified": { "type": "boolean", "description": "无有效引用但有非空回答" },
+          "refused": { "type": "boolean", "description": "无证据时是否拒答（UI/生成器 NO_EVIDENCE 或明确无证据提示）" },
+          "answer": { "type": "string", "description": "原始回答（本地留存用于人工抽检；不得提交真实 key/隐私数据）" },
+          "latency_ms": { "type": "integer", "minimum": 0 },
+          "error_code": { "type": ["string", "null"] },
+          "manual_support": {
+            "type": "string",
+            "enum": ["support", "partial", "unsupported", "not_checked"],
+            "description": "人工抽检结论：support=有证据且回答正确；partial=部分正确/证据不足；unsupported=错误/无证据支撑；not_checked=未抽检"
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

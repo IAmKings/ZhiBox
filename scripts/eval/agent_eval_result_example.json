@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "run": {
+    "model": "eval-mock-model",
+    "prompt_version": "b16-agent-tools-v1",
+    "date": "2026-10-21T00:00:00+08:00",
+    "device": "MOCK-LOCAL",
+    "key_configured": false,
+    "notes": "示例/结构演示：离线 mock，不是真实 LLM 结果，score_agent_eval.py 会拒绝质量声明。"
+  },
+  "cases": [
+    {
+      "case_id": "fact-single-hop",
+      "expected_route": ["search_knowledge", "final"],
+      "expected_fallback": null,
+      "actual_route": ["search_knowledge", "final"],
+      "fallback": null,
+      "expected_citations": ["S1"],
+      "citations": ["S1"],
+      "citation_valid": true,
+      "unverified": false,
+      "refused": false,
+      "answer": "示例回答（mock，不含真实内容）[S1]",
+      "latency_ms": 120,
+      "error_code": null,
+      "manual_support": "not_checked"
+    },
+    {
+      "case_id": "refuse-no-tool-call",
+      "expected_route": ["final"],
+      "expected_fallback": null,
+      "actual_route": ["final"],
+      "fallback": null,
+      "expected_citations": [],
+      "citations": [],
+      "citation_valid": false,
+      "unverified": true,
+      "refused": true,
+      "answer": "无证据，无法回答该问题。",
+      "latency_ms": 90,
+      "error_code": null,
+      "manual_support": "not_checked"
+    },
+    {
+      "case_id": "fallback-bad-json",
+      "expected_route": [],
+      "expected_fallback": "AGENT_BAD_JSON",
+      "actual_route": [],
+      "fallback": "AGENT_BAD_JSON",
+      "expected_citations": [],
+      "citations": [],
+      "citation_valid": false,
+      "unverified": true,
+      "refused": true,
+      "answer": "无证据，无法回答该问题。",
+      "latency_ms": 30,
+      "error_code": "AGENT_BAD_JSON",
+      "manual_support": "not_checked"
+    }
+  ]
+}

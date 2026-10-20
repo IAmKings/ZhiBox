@@ -4,6 +4,12 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zhibox.memory.R
+import com.zhibox.memory.core.agent.AgentFallbackReasons
+import com.zhibox.memory.core.agent.AgentOrchestrator
+import com.zhibox.memory.core.agent.AgentTool
+import com.zhibox.memory.core.agent.AgentToolCall
+import com.zhibox.memory.core.agent.AgentToolResult
+import com.zhibox.memory.core.agent.AgentToolSpec
 import com.zhibox.memory.core.chat.AnswerEvent
 import com.zhibox.memory.core.chat.AnswerGenerator
 import com.zhibox.memory.core.chat.AnswerRequest
@@ -46,6 +52,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.security.MessageDigest
+import java.text.Normalizer
+import java.util.Locale
 
 /**
  * 带引用问答（B11 P0 单轮；P1/B13 多轮上下文）UI 状态。
@@ -97,6 +105,12 @@ data class ChatUiState(
     // ---- 诊断 ----
     val effectiveMode: String? = null,
     val degradedReason: String? = null,
+    // ---- P1.4：Agent 工具 ----
+    val agentEnabled: Boolean = false,
+    val agentAttempted: Boolean = false,
+    val agentRunning: Boolean = false,
+    val agentToolCalls: List<AgentToolCall> = emptyList(),
+    val agentFallbackReason: String? = null,
 ) {
     /** LLM 问答是否就绪（开关 + 允许联网 + 已配置 Key）。 */
     val llmReady: Boolean get() = answerEnabled && networkAllowed && llmConfigured
@@ -137,6 +151,102 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
     private val repository: ChatRepository by lazy { RoomChatRepository(db.chatDao()) }
     private val answerGenerator: AnswerGenerator by lazy { OpenAiAnswerGenerator.from(app) }
+
+    /**
+     * P1.4：本地只读 Agent 工具（search_knowledge / lookup_entities）。
+     * 只注入到 [AgentOrchestrator]；最终答案仍由 answerGenerator + CitationValidator 生成/校验。
+     */
+    private val agentTools: Map<String, AgentTool> by lazy {
+        mapOf(
+            "search_knowledge" to object : AgentTool {
+                override val spec = AgentToolSpec(
+                    name = "search_knowledge",
+                    description = "检索本地知识库（离线 SAG/向量），输入为自然语言检索词；返回命中的证据条数。",
+                )
+
+                override suspend fun execute(input: String): AgentToolResult {
+                    val mode = if (_state.value.llmReady) {
+                        RetrievalMode.MULTI
+                    } else {
+                        RetrievalMode.MULTI_ES_FAST
+                    }
+                    val result = retriever.retrieve(
+                        SagQuery(
+                            query = input,
+                            mode = mode,
+                            topK = TOP_K,
+                            sourceIds = _state.value.sourceScope,
+                            budget = SagBudgetPreferences.tier(app).budget,
+                        ),
+                    )
+                    val evidence = result.hits
+                        .take(ChatPrompt.DEFAULT_MAX_EVIDENCE)
+                        .mapIndexed { index, hit -> hit.toChatEvidence(index) }
+                    return if (evidence.isEmpty()) {
+                        AgentToolResult(
+                            observation = "未检索到证据",
+                            errorCode = "AGENT_TOOL_NO_EVIDENCE",
+                        )
+                    } else {
+                        // observation 仅用于 planner（不含正文）；evidence 供合并与最终引用
+                        AgentToolResult(
+                            observation = "检索到 ${evidence.size} 条证据",
+                            evidence = evidence,
+                        )
+                    }
+                }
+            },
+            "lookup_entities" to object : AgentTool {
+                override val spec = AgentToolSpec(
+                    name = "lookup_entities",
+                    description = "查询本地实体库（名称/别名），输入为实体名；返回类型、别名数与关联事件数。",
+                )
+
+                override suspend fun execute(input: String): AgentToolResult {
+                    val normalized = normalizeEntityLookup(input)
+                    if (normalized.isEmpty()) {
+                        return AgentToolResult(
+                            observation = "未找到匹配实体",
+                            errorCode = "AGENT_TOOL_NO_ENTITY",
+                        )
+                    }
+                    val canonical = db.entityDao().byNormalizedName(normalized)
+                    val aliasRow = if (canonical == null) {
+                        db.entityAliasDao().byNormalizedAlias(normalized)
+                    } else {
+                        null
+                    }
+                    val entity = canonical ?: aliasRow?.let { db.entityDao().byId(it.entityId) }
+                    if (entity == null) {
+                        return AgentToolResult(
+                            observation = "未找到匹配实体",
+                            errorCode = "AGENT_TOOL_NO_ENTITY",
+                        )
+                    }
+                    val aliases = db.entityAliasDao().byEntity(entity.id).map { it.alias }
+                    val links = db.eventEntityDao().byEntity(entity.id)
+                    // observation 只含名称/类型/数量，不含事件/正文
+                    return AgentToolResult(
+                        observation = buildString {
+                            append("实体：").append(entity.name.ifBlank { entity.normalizedName })
+                            append("；类型：").append(entity.entityType ?: "未知")
+                            append("；别名数：").append(aliases.size)
+                            append("；关联事件数：").append(links.size)
+                        },
+                    )
+                }
+            },
+        )
+    }
+
+    /** P1.4：Agent 规划器（只有开关开启且 llmReady 时才调用；失败由 core 确定性回退）。 */
+    private val agentOrchestrator: AgentOrchestrator by lazy {
+        AgentOrchestrator(
+            provider = llmProvider,
+            store = llmStore,
+            tools = agentTools,
+        )
+    }
 
     private val _state = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
@@ -285,6 +395,23 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     // ───────────────────────── 输入/发送/停止/重试 ─────────────────────────
 
+    /** P1.4：Agent 工具开关（默认关；仅 LLM 就绪时可用，VM 侧再兜底拒绝）。 */
+    fun setAgentEnabled(enabled: Boolean) {
+        if (enabled && !_state.value.llmReady) {
+            update { it.copy(errorMessage = str(R.string.chat_agent_unavailable_hint)) }
+            return
+        }
+        update {
+            it.copy(
+                agentEnabled = enabled,
+                agentAttempted = false,
+                agentRunning = false,
+                agentToolCalls = emptyList(),
+                agentFallbackReason = null,
+            )
+        }
+    }
+
     fun setInput(value: String) {
         update { it.copy(input = value) }
     }
@@ -432,6 +559,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 degradedReason = null,
                 canRetry = false,
                 lastQuery = query,
+                agentAttempted = false,
+                agentRunning = false,
+                agentToolCalls = emptyList(),
+                agentFallbackReason = null,
             )
         }
         try {
@@ -475,7 +606,57 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             retrieveMs = System.currentTimeMillis() - retrieveStarted
             update { it.copy(infoMessage = null) }
             val retrieved = result
-            if (retrieved.hits.isEmpty() || retrieved.refused != null) {
+            // 普通检索证据（可能为空/refused；agent 工具仍可补充，所以不在此早退）
+            var mergedEvidence: List<ChatEvidence> = if (
+                retrieved.hits.isEmpty() || retrieved.refused != null
+            ) {
+                emptyList()
+            } else {
+                retrieved.hits
+                    .take(ChatPrompt.DEFAULT_MAX_EVIDENCE)
+                    .mapIndexed { index, hit -> hit.toChatEvidence(index) }
+            }
+
+            // 2) P1.4：Agent 工具（仅 llmReady + 用户开关；规划失败确定性回退，不阻断主链路）
+            if (shouldRunAgent(_state.value.agentEnabled, _state.value.llmReady)) {
+                update {
+                    it.copy(
+                        agentAttempted = true,
+                        agentRunning = true,
+                        agentToolCalls = emptyList(),
+                        agentFallbackReason = null,
+                    )
+                }
+                val agentRun = try {
+                    withContext(Dispatchers.Default) { agentOrchestrator.plan(query = query) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    // 工具/规划异常不阻断普通链路：视为未使用 agent
+                    null
+                }
+                val calls = agentRun?.calls.orEmpty()
+                update {
+                    it.copy(
+                        agentRunning = false,
+                        agentToolCalls = calls,
+                        agentFallbackReason = if (agentRun != null && agentRun.usedAgent) {
+                            null
+                        } else {
+                            agentRun?.fallbackReason ?: AgentFallbackReasons.PROVIDER_EXCEPTION
+                        },
+                    )
+                }
+                if (agentRun != null && agentRun.usedAgent) {
+                    mergedEvidence = mergeAgentEvidence(
+                        normal = mergedEvidence,
+                        tool = agentRun.evidence,
+                        limit = ChatPrompt.DEFAULT_MAX_EVIDENCE,
+                    )
+                }
+            }
+
+            if (mergedEvidence.isEmpty()) {
                 update {
                     it.copy(
                         streaming = false,
@@ -499,10 +680,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 return
             }
 
-            // 2) 证据快照（S1..Sn；最多 10 条，与生成器预算一致）
-            evidence = retrieved.hits
-                .take(ChatPrompt.DEFAULT_MAX_EVIDENCE)
-                .mapIndexed { index, hit -> hit.toChatEvidence(index) }
+            // 3) 证据快照（S1..Sn；普通证据优先、工具补充按 chunkId 去重；与生成器预算一致）
+            evidence = mergedEvidence
             update {
                 it.copy(
                     evidence = evidence,
@@ -512,7 +691,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
 
-            // 3) 流式生成：history 仅作上下文；事实/引用仍只来自本轮 evidence
+            // 4) 流式生成：history 仅作上下文；事实/引用仍只来自本轮 evidence
             val generateStarted = System.currentTimeMillis()
             var completed: AnswerEvent.Completed? = null
             var failed: AnswerEvent.Failed? = null
@@ -788,3 +967,37 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         const val TRACE_KEEP = 50
     }
 }
+
+/**
+ * P1.4：是否运行 Agent（仅用户开启且 LLM 就绪）。
+ * 关闭/未就绪时必须走普通路径，不调用 planner/本地工具。
+ */
+internal fun shouldRunAgent(agentEnabled: Boolean, llmReady: Boolean): Boolean =
+    agentEnabled && llmReady
+
+/**
+ * P1.4：合并普通检索证据与 Agent 工具证据。
+ *
+ * - 按 chunkId 去重，**普通检索优先**（先放入 normal）；
+ * - 结果截断到 [limit] 并重新编号 S1..Sn（CitationValidator 按列表顺序编号）；
+ * - 空列表/limit<=0 返回空。
+ */
+internal fun mergeAgentEvidence(
+    normal: List<ChatEvidence>,
+    tool: List<ChatEvidence>,
+    limit: Int,
+): List<ChatEvidence> {
+    if (limit <= 0) return emptyList()
+    val merged = LinkedHashMap<Long, ChatEvidence>()
+    normal.forEach { merged.putIfAbsent(it.chunkId, it) }
+    tool.forEach { merged.putIfAbsent(it.chunkId, it) }
+    return merged.values
+        .take(limit)
+        .mapIndexed { index, item -> item.copy(evidenceId = "S${index + 1}") }
+}
+
+/** P1.4：实体查询输入归一化（NFC + trim + lowercase + 连续空白合一，与 core entity.normalizedName 同口径）。 */
+internal fun normalizeEntityLookup(raw: String): String =
+    Normalizer.normalize(raw.trim(), Normalizer.Form.NFC)
+        .lowercase(Locale.ROOT)
+        .replace(Regex("\\s+"), " ")

@@ -20,6 +20,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,6 +35,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zhibox.memory.R
+import com.zhibox.memory.core.agent.AgentFallbackReasons
+import com.zhibox.memory.core.agent.AgentToolCall
 import com.zhibox.memory.core.chat.ChatCitation
 import com.zhibox.memory.core.chat.ChatConversation
 import com.zhibox.memory.core.chat.ChatMessage
@@ -108,6 +111,7 @@ fun ChatScreen(
         onDismissError = viewModel::clearError,
         onDismissWarning = viewModel::clearWarning,
         onBack = onBack,
+        onAgentEnabledChange = viewModel::setAgentEnabled,
     )
 }
 
@@ -128,6 +132,7 @@ internal fun ChatContent(
     onDismissError: () -> Unit,
     onDismissWarning: () -> Unit,
     onBack: () -> Unit,
+    onAgentEnabledChange: (Boolean) -> Unit = {},
 ) {
     ZhiBoxScreen(title = stringResource(R.string.chat_title), onBack = onBack) { padding ->
         Column(
@@ -262,6 +267,86 @@ internal fun ChatContent(
                 )
             }
 
+            // ---- P1.4：Agent 工具（默认关；仅 llmReady 可用）+ 工具步骤/回退原因 ----
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.chat_agent_toggle),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Switch(
+                        checked = state.agentEnabled,
+                        onCheckedChange = onAgentEnabledChange,
+                        enabled = state.llmReady && !state.streaming,
+                    )
+                }
+                if (!state.llmReady) {
+                    Text(
+                        stringResource(R.string.chat_agent_unavailable_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (state.agentAttempted || state.agentToolCalls.isNotEmpty()) {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(
+                            Modifier.padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(
+                                stringResource(R.string.chat_agent_steps_title),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (state.agentRunning) {
+                                Text(
+                                    stringResource(R.string.chat_agent_running),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                            // 只展示工具名/成功失败/错误码，不展示 observation/结果正文
+                            state.agentToolCalls.forEach { call ->
+                                Text(
+                                    stringResource(
+                                        R.string.chat_agent_step_line,
+                                        agentToolLabel(call),
+                                        if (call.errorCode == null) {
+                                            stringResource(R.string.chat_agent_step_ok)
+                                        } else {
+                                            stringResource(
+                                                R.string.chat_agent_step_failed,
+                                                call.errorCode,
+                                            )
+                                        },
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (call.errorCode == null) {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    } else {
+                                        MaterialTheme.colorScheme.error
+                                    },
+                                )
+                            }
+                            val fallbackReason = state.agentFallbackReason
+                            if (!state.agentRunning && fallbackReason != null) {
+                                Text(
+                                    stringResource(
+                                        R.string.chat_agent_fallback,
+                                        agentFallbackReasonText(fallbackReason),
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // ---- 消息区（可滚动，避免小屏挤压）----
             LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -355,6 +440,33 @@ internal fun ChatContent(
             }
         }
     }
+}
+
+/** P1.4：Agent 工具名可读标签（未知工具名原样展示；不展示 input/结果正文）。 */
+@Composable
+private fun agentToolLabel(call: AgentToolCall): String = when (call.name) {
+    "search_knowledge" -> stringResource(R.string.chat_agent_tool_search_knowledge)
+    "lookup_entities" -> stringResource(R.string.chat_agent_tool_lookup_entities)
+    else -> call.name
+}
+
+/** P1.4：Agent fallback 原因码 → 可读文案（未知码原样展示）。 */
+@Composable
+private fun agentFallbackReasonText(reason: String): String = when (reason) {
+    AgentFallbackReasons.NOT_CONFIGURED -> stringResource(R.string.chat_agent_fallback_not_configured)
+    AgentFallbackReasons.CONFIG_ERROR -> stringResource(R.string.chat_agent_fallback_config_error)
+    AgentFallbackReasons.NO_TOOLS -> stringResource(R.string.chat_agent_fallback_no_tools)
+    AgentFallbackReasons.EMPTY_QUERY -> stringResource(R.string.chat_agent_fallback_empty_query)
+    AgentFallbackReasons.PROVIDER_ERROR -> stringResource(R.string.chat_agent_fallback_provider_error)
+    AgentFallbackReasons.PROVIDER_EXCEPTION ->
+        stringResource(R.string.chat_agent_fallback_provider_exception)
+    AgentFallbackReasons.BAD_JSON -> stringResource(R.string.chat_agent_fallback_bad_json)
+    AgentFallbackReasons.UNKNOWN_ACTION -> stringResource(R.string.chat_agent_fallback_unknown_action)
+    AgentFallbackReasons.BAD_INPUT -> stringResource(R.string.chat_agent_fallback_bad_input)
+    AgentFallbackReasons.TOOL_EXCEPTION -> stringResource(R.string.chat_agent_fallback_tool_exception)
+    AgentFallbackReasons.TOOL_ERROR -> stringResource(R.string.chat_agent_fallback_tool_error)
+    AgentFallbackReasons.MAX_TOOL_CALLS -> stringResource(R.string.chat_agent_fallback_max_calls)
+    else -> reason
 }
 
 @OptIn(ExperimentalLayoutApi::class)

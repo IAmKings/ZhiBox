@@ -1,0 +1,5 @@
+P1.4 Agent/工具编排 + 质量评测骨架（K60U UI/JVM，2026-10-21）
+- Chat 顶部显示「Agent 工具」开关与提示「Agent 工具需要 LLM 就绪（配置 + 允许联网 + 开启问答）」；当前无 LLM key，开关不可用，普通问答/检索不受影响。
+- Agent core JVM 30 tests（planning JSON/预算/fallback/工具异常/evidence 去重/取消）；全量 JVM 806/787。
+- B17 离线 harness：20 cases route_ok=20/fallback_ok=11/citation_ok=20；输出明确 contract_only=true real_quality=false。
+- 真实质量评测未执行：key_configured=false、人工抽检 0 样本；QUALITY_CLAIM_ALLOWED=false。
