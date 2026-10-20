@@ -32,7 +32,11 @@
 | K60U 5000 benchmark | loads=29 p50=22ms p95=216ms max=241ms，OK |
 | 证据 | `evidence/P1.3c-perf-k60u.txt`、截图/XML |
 
-## 5. 边界
+## 5. 签名候选
+
+- `dist/zhibox-0.1.2-89b1929-release-signed.apk`（69,515,201 bytes，SHA-256 `2034e83f242b2dcfb0b34b9aa92cdc787a23c82d21bcbb1370633b7b778ec174`；未发布/tag）。
+
+## 6. 边界
 
 - union 每次非空 query 多一次有界 LIKE 扫描；超大库 p95 会增长（5000 库实测 216ms）。
 - total/hasMore 受候选上限约束，truncated 提示，不是无限全量。
