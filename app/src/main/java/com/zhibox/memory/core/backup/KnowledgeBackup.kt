@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.VisibleForTesting
 import androidx.room.withTransaction
+import com.zhibox.memory.core.extraction.EntityAliasRepository
 import com.zhibox.memory.core.extraction.SagFtsRebuilder
 import com.zhibox.memory.core.ingest.IngestRepository
 import com.zhibox.memory.core.model.ModelCatalog
@@ -19,6 +20,7 @@ import com.zhibox.memory.data.db.ChunkFtsEntity
 import com.zhibox.memory.data.db.DocumentEntity
 import com.zhibox.memory.data.db.DocStatus
 import com.zhibox.memory.data.db.EmbeddingMetaEntity
+import com.zhibox.memory.data.db.EntityAliasEntity
 import com.zhibox.memory.data.db.EntityEntity
 import com.zhibox.memory.data.db.EventEntity
 import com.zhibox.memory.data.db.EventEntityRel
@@ -53,7 +55,7 @@ import java.util.zip.ZipOutputStream
  * - vectors.bin              — chunk 向量二进制（LE；头 count:i32；v2 起行：
  *   spaceIdx:i16 / chunkId:i64 / len:i32 / roleLen:i16 / role / norm:f64 / createdAt:i64 / blob）
  * - v3（B8）SAG 层新增（v1/v2 包没有这些 entry → 导入按空处理）：
- *   events.jsonl / entities.jsonl / event_entities.jsonl /
+ *   events.jsonl / entities.jsonl / event_entities.jsonl / entity_aliases.jsonl（可选，v9 别名） /
  *   sag_vectors.jsonl（多态 owner 的向量，blob 用 base64 承载） / extraction_jobs.jsonl
  *   （event_fts/entity_fts 是派生数据不导出；chat/query_trace 属本地隐私数据，P0 不导出）
  *
@@ -114,6 +116,8 @@ object KnowledgeBackup {
     private const val ENTRY_EVENT_ENTITIES = BackupValidator.ENTRY_EVENT_ENTITIES
     private const val ENTRY_SAG_VECTORS = BackupValidator.ENTRY_SAG_VECTORS
     private const val ENTRY_EXTRACTION_JOBS = BackupValidator.ENTRY_EXTRACTION_JOBS
+    // B15.1（v9）：可选实体别名 entry（旧包缺省 = 空；不提升 FORMAT_VERSION）
+    private const val ENTRY_ENTITY_ALIASES = BackupValidator.ENTRY_ENTITY_ALIASES
 
     /**
      * runCatching 的取消安全版本（审查修复 P1-2）：CancellationException 必须向上传播，
@@ -416,6 +420,15 @@ object KnowledgeBackup {
             for (e in page) if (closure.includesEntity(e.id)) entityCount++
             offset += page.size
         }
+        // B15.1：只统计包内 entity 的别名（entity 闭包之外不导出）。
+        var entityAliasCount = 0
+        offset = 0
+        while (true) {
+            val page = db.entityAliasDao().page(PAGE_SIZE, offset)
+            if (page.isEmpty()) break
+            for (alias in page) if (closure.includesEntity(alias.entityId)) entityAliasCount++
+            offset += page.size
+        }
         val chunkIds = closure.chunkIds()
         var extractionJobCount = 0
         offset = 0
@@ -512,6 +525,14 @@ object KnowledgeBackup {
             { closure.includesEntity(it.id) }, ::entityJson,
         )
         check(entitiesWritten == entityCount) { "导出期间 entity 数量发生变化（$entitiesWritten/$entityCount）——请稍后重试" }
+        // B15.1：别名行只带包内 entity（写入顺序在 entities 之后；导入端同样先 entity 后 alias）。
+        val aliasesWritten = writePagedJsonl(
+            ENTRY_ENTITY_ALIASES, { db.entityAliasDao().page(PAGE_SIZE, it) },
+            { closure.includesEntity(it.entityId) }, ::entityAliasJson,
+        )
+        check(aliasesWritten == entityAliasCount) {
+            "导出期间 entity_alias 数量发生变化（$aliasesWritten/$entityAliasCount）——请稍后重试"
+        }
         val linksWritten = writePagedJsonl(
             ENTRY_EVENT_ENTITIES, { db.eventEntityDao().page(PAGE_SIZE, it) },
             { closure.includesEvent(it.eventId) }, ::eventEntityJson,
@@ -661,6 +682,12 @@ object KnowledgeBackup {
         .put("name", e.name).put("description", e.description)
         .put("createdAt", e.createdAt)
 
+    /** B15.1：实体别名行（只导出包内 entity 的别名；id/entityId/alias/normalizedAlias/createdAt）。 */
+    private fun entityAliasJson(a: EntityAliasEntity): JSONObject = JSONObject()
+        .put("id", a.id).put("entityId", a.entityId)
+        .put("alias", a.alias).put("normalizedAlias", a.normalizedAlias)
+        .put("createdAt", a.createdAt)
+
     private fun eventEntityJson(rel: EventEntityRel): JSONObject = JSONObject()
         .put("id", rel.id).put("eventId", rel.eventId).put("entityId", rel.entityId)
         .put("role", rel.role ?: JSONObject.NULL)
@@ -712,6 +739,7 @@ object KnowledgeBackup {
         val eventEntities: List<EventEntityRel> = emptyList(),
         val sagVectors: List<SagVectorEntity> = emptyList(),
         val extractionJobs: List<ExtractionJobEntity> = emptyList(),
+        val entityAliases: List<EntityAliasEntity> = emptyList(),
     )
 
     private fun readPreview(context: Context, zip: ZipInputStream): ImportPreview {
@@ -757,6 +785,12 @@ object KnowledgeBackup {
         val v3 = formatVersion >= 3
         val events = if (v3) parseEvents(entries[ENTRY_EVENTS]) else emptyList()
         val entities = if (v3) parseEntities(entries[ENTRY_ENTITIES]) else emptyList()
+        // B15.1：别名按包内 entity 闭包校验（entityId 必须存在；normalizedAlias 包内唯一）。
+        val entityAliases = if (v3) {
+            parseEntityAliases(entries[ENTRY_ENTITY_ALIASES], entities.mapTo(HashSet()) { it.id })
+        } else {
+            emptyList()
+        }
         val eventEntities = if (v3) parseEventEntities(entries[ENTRY_EVENT_ENTITIES]) else emptyList()
         val extractionJobs = if (v3) {
             parseExtractionJobs(entries[ENTRY_EXTRACTION_JOBS], chunkIds, documents.mapTo(HashSet()) { it.id })
@@ -813,6 +847,7 @@ object KnowledgeBackup {
             eventEntities = eventEntities,
             sagVectors = sagVectors,
             extractionJobs = extractionJobs,
+            entityAliases = entityAliases,
         )
     }
 
@@ -1079,6 +1114,59 @@ object KnowledgeBackup {
         }
         check(parsed.size <= BackupValidator.MAX_ENTITIES) {
             "entities.jsonl 行数超过上限（${BackupValidator.MAX_ENTITIES}）"
+        }
+        return parsed
+    }
+
+    /**
+     * B15.1：entity_aliases.jsonl 解析/校验（可选 entry，旧包缺失=空）。
+     *
+     * 规则（与生产 [EntityAliasRepository] 一致，避免坏包进入单事务后 FK/UNIQUE 报底层错）：
+     * - id/entityId > 0，id 包内唯一；entityId ∈ 包内 entities 闭包；
+     * - alias trim 后长度在 MIN_ALIAS_LENGTH..MAX_ALIAS_LENGTH；normalizedAlias 非空且长度受限；
+     * - normalizedAlias 包内全局唯一（DB 唯一索引）；行数 ≤ MAX_ENTITY_ALIASES。
+     *
+     * @param entityIds 已解析的包内 entity id 集合（闭包外别名拒绝整包）
+     */
+    private fun parseEntityAliases(bytes: ByteArray?, entityIds: Set<Long>): List<EntityAliasEntity> {
+        val seenIds = HashSet<Long>()
+        val seenNormalized = HashSet<String>()
+        val parsed = parseJsonLines(ENTRY_ENTITY_ALIASES, bytes) { o ->
+            val id = o.optLong("id", 0L)
+            check(id > 0) { "entity_aliases.jsonl 记录 id 非法：$id" }
+            check(seenIds.add(id)) { "entity_aliases.jsonl id 重复：$id" }
+            val entityId = o.optLong("entityId", 0L)
+            check(entityId > 0) { "entity_aliases.jsonl $id 的 entityId 非法：$entityId" }
+            check(entityId in entityIds) {
+                "entity_aliases.jsonl $id 的 entityId 不在包内实体闭包：$entityId——" +
+                    "包已损坏或导出不完整"
+            }
+            val alias = o.optString("alias", "").trim()
+            check(alias.isNotEmpty()) { "entity_aliases.jsonl $id 的 alias 为空" }
+            check(
+                alias.length in EntityAliasRepository.MIN_ALIAS_LENGTH..EntityAliasRepository.MAX_ALIAS_LENGTH,
+            ) {
+                "entity_aliases.jsonl $id 的 alias 长度非法（${alias.length}；允许 " +
+                    "${EntityAliasRepository.MIN_ALIAS_LENGTH}..${EntityAliasRepository.MAX_ALIAS_LENGTH}）"
+            }
+            val normalizedAlias = o.optString("normalizedAlias", "").trim()
+            check(normalizedAlias.isNotEmpty()) { "entity_aliases.jsonl $id 缺少 normalizedAlias" }
+            check(normalizedAlias.length <= EntityAliasRepository.MAX_ALIAS_LENGTH) {
+                "entity_aliases.jsonl $id 的 normalizedAlias 过长（${normalizedAlias.length}）"
+            }
+            check(seenNormalized.add(normalizedAlias)) {
+                "entity_aliases.jsonl normalizedAlias 重复：$normalizedAlias（DB 唯一索引，拒绝整包）"
+            }
+            EntityAliasEntity(
+                id = id,
+                entityId = entityId,
+                alias = alias,
+                normalizedAlias = normalizedAlias,
+                createdAt = o.optLong("createdAt", 0L),
+            )
+        }
+        check(parsed.size <= BackupValidator.MAX_ENTITY_ALIASES) {
+            "entity_aliases.jsonl 行数超过上限（${BackupValidator.MAX_ENTITY_ALIASES}）"
         }
         return parsed
     }
@@ -1452,6 +1540,7 @@ object KnowledgeBackup {
             // - event_fts/entity_fts 无 FK，必须 clearFts（派生数据，B9 重新写入）。
             db.extractionJobDao().deleteAll()
             db.sagVectorDao().deleteAll()
+            db.entityAliasDao().deleteAll()
             db.entityDao().deleteAll()
             db.embeddingDao().deleteAll()
             db.chunkDao().deleteAllFts()
@@ -1480,6 +1569,8 @@ object KnowledgeBackup {
             // 保证 FK 约束满足；v1/v2 包这些列表为空 → 恢复后 SAG 结构为空（PRD 预期，可在线补抽取）。
             if (parsed.events.isNotEmpty()) db.eventDao().upsertAll(parsed.events)
             if (parsed.entities.isNotEmpty()) db.entityDao().upsertAll(parsed.entities)
+            // B15.1：entity 之后写别名（FK 满足）；FTS 重建在事务外，会读取 alias 生成 entity_fts。
+            if (parsed.entityAliases.isNotEmpty()) db.entityAliasDao().upsertAll(parsed.entityAliases)
             if (parsed.eventEntities.isNotEmpty()) db.eventEntityDao().upsertAll(parsed.eventEntities)
             if (parsed.sagVectors.isNotEmpty()) db.sagVectorDao().insertAll(parsed.sagVectors)
             if (parsed.extractionJobs.isNotEmpty()) db.extractionJobDao().upsertAll(parsed.extractionJobs)

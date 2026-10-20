@@ -3,7 +3,9 @@ package com.zhibox.memory.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import com.zhibox.memory.R
+import com.zhibox.memory.core.extraction.EntityAliasRepository
 import com.zhibox.memory.data.db.AppDatabase
+import com.zhibox.memory.data.db.EntityAliasEntity
 import com.zhibox.memory.data.db.EventEntity
 import com.zhibox.memory.data.db.SourceStatus
 import kotlinx.coroutines.CancellationException
@@ -39,6 +41,8 @@ data class GraphEntityUi(
     val name: String,
     val type: String?,
     val description: String,
+    /** P1.2：该实体的全部别名（展示用；增删通过 EntityAliasRepository，事件卡片 entityNames 仍为 canonical） */
+    val aliases: List<String> = emptyList(),
 )
 
 /** B12：事件详情中的"共享实体串联事件"（entity 连接视图）。 */
@@ -74,6 +78,10 @@ data class GraphUiState(
     val hasMore: Boolean = false,
     val detailLoading: Boolean = false,
     val selectedEvent: GraphEventDetailUi? = null,
+    // ---- P1.2：实体别名管理 ----
+    val aliasSaving: Boolean = false,
+    val aliasMessage: String? = null,
+    val aliasError: String? = null,
 )
 
 /**
@@ -87,6 +95,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
 
     private val app: Application = getApplication()
     private val db: AppDatabase by lazy { AppDatabase.get(app) }
+    private val aliasRepository: EntityAliasRepository by lazy { EntityAliasRepository(db) }
 
     private val _state = MutableStateFlow(GraphUiState())
     val state: StateFlow<GraphUiState> = _state.asStateFlow()
@@ -241,7 +250,110 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun closeEvent() {
-        update { it.copy(selectedEvent = null) }
+        update { it.copy(selectedEvent = null, aliasSaving = false, aliasMessage = null, aliasError = null) }
+    }
+
+    // ───────────────────────── P1.2：实体别名 ─────────────────────────
+
+    /** 新增实体别名（经 core EntityAliasRepository；重复/超长/校验错误以可读 message 展示）。 */
+    fun addEntityAlias(entityId: Long, alias: String) {
+        val state = _state.value
+        if (state.aliasSaving) return
+        val trimmed = alias.trim()
+        if (trimmed.isEmpty()) {
+            update { it.copy(aliasError = str(R.string.graph_alias_save_failed, "别名不能为空")) }
+            return
+        }
+        update { it.copy(aliasSaving = true, aliasError = null, aliasMessage = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        aliasSaving = false,
+                        aliasError = str(R.string.graph_alias_save_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            try {
+                withContext(Dispatchers.IO) { aliasRepository.addAlias(entityId, trimmed) }
+                refreshSelectedDetail()
+                update {
+                    it.copy(aliasSaving = false, aliasMessage = str(R.string.graph_alias_added, trimmed))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IllegalArgumentException) {
+                // core 校验错误（空/重复/超长/与实体名冲突/数量上限）已是可读中文
+                update {
+                    it.copy(
+                        aliasSaving = false,
+                        aliasError = str(R.string.graph_alias_save_failed, e.readableMessage()),
+                    )
+                }
+            } catch (t: Throwable) {
+                update {
+                    it.copy(
+                        aliasSaving = false,
+                        aliasError = str(R.string.graph_alias_save_failed, t.readableMessage()),
+                    )
+                }
+            }
+        }
+    }
+
+    /** 删除实体别名（按 entityId+原始别名 normalize 匹配；删除后刷新当前详情）。 */
+    fun removeEntityAlias(entityId: Long, alias: String) {
+        if (_state.value.aliasSaving) return
+        update { it.copy(aliasSaving = true, aliasError = null, aliasMessage = null) }
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(
+                        aliasSaving = false,
+                        aliasError = str(R.string.graph_alias_save_failed, t.readableMessage()),
+                    )
+                }
+            },
+        ) {
+            try {
+                val removed = withContext(Dispatchers.IO) {
+                    aliasRepository.removeAlias(entityId, alias)
+                }
+                refreshSelectedDetail()
+                update {
+                    it.copy(
+                        aliasSaving = false,
+                        aliasMessage = if (removed) {
+                            str(R.string.graph_alias_removed, alias)
+                        } else {
+                            str(R.string.graph_alias_remove_missing)
+                        },
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                update {
+                    it.copy(
+                        aliasSaving = false,
+                        aliasError = str(R.string.graph_alias_save_failed, t.readableMessage()),
+                    )
+                }
+            }
+        }
+    }
+
+    /** 关闭别名对话框/切换实体时清理反馈，避免串到下一个实体。 */
+    fun clearAliasFeedback() {
+        update { it.copy(aliasMessage = null, aliasError = null) }
+    }
+
+    /** 别名增删后刷新当前详情（保持 chunk 原文/相关事件/别名一致）。 */
+    private suspend fun refreshSelectedDetail() {
+        val current = _state.value.selectedEvent ?: return
+        val refreshed = withContext(Dispatchers.IO) { loadDetail(current.event) }
+        update { it.copy(selectedEvent = refreshed) }
     }
 
     fun dismissError() {
@@ -317,6 +429,8 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         val chunk = db.chunkDao().chunksByIds(listOf(event.chunkId)).firstOrNull()
         val relations = db.eventEntityDao().byEvents(listOf(event.id))
         val entities = db.entityDao().byIds(relations.map { it.entityId }.distinct())
+        // P1.2：批量读取别名（一次 DAO 查询，避免逐实体 N+1）
+        val aliasesByEntity = aliasRepository.listFor(entities.map { it.id })
         return GraphEventDetailUi(
             event = event,
             entities = relations.mapNotNull { relation ->
@@ -326,6 +440,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
                         name = entity.name.ifBlank { entity.normalizedName },
                         type = entity.entityType,
                         description = entity.description,
+                        aliases = aliasNamesFor(aliasesByEntity, entity.id),
                     )
                 }
             }.distinctBy { it.id },
@@ -433,3 +548,14 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         const val RELATED_EVENTS_LIMIT = 20
     }
 }
+
+/**
+ * P1.2：从批量别名映射中取某实体的别名展示列表（trim + 过滤空白）。
+ * 保持 repository 返回顺序（DAO byEntities 顺序），供 [GraphEntityUi.aliases] 使用。
+ */
+internal fun aliasNamesFor(
+    aliasesByEntity: Map<Long, List<EntityAliasEntity>>,
+    entityId: Long,
+): List<String> = aliasesByEntity[entityId].orEmpty()
+    .map { it.alias.trim() }
+    .filter { it.isNotEmpty() }

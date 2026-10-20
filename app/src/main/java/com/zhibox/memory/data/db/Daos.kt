@@ -758,6 +758,54 @@ interface EntityDao {
     suspend fun searchFts(match: String, limit: Int): List<Long>
 }
 
+/** B15.1（schema v9）：实体别名 DAO（用户维护；normalizedAlias 唯一；FK CASCADE）。 */
+@Dao
+interface EntityAliasDao {
+    /** 插入别名；normalizedAlias 冲突返回 -1（调用方先查重并给可读错误）。 */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnore(alias: EntityAliasEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(aliases: List<EntityAliasEntity>)
+
+    @Query("SELECT * FROM entity_alias WHERE id = :id")
+    suspend fun byId(id: Long): EntityAliasEntity?
+
+    @Query("SELECT * FROM entity_alias WHERE entityId = :entityId ORDER BY id")
+    suspend fun byEntity(entityId: Long): List<EntityAliasEntity>
+
+    @Query("SELECT * FROM entity_alias WHERE entityId IN (:entityIds) ORDER BY entityId, id")
+    suspend fun byEntities(entityIds: List<Long>): List<EntityAliasEntity>
+
+    @Query("SELECT * FROM entity_alias WHERE normalizedAlias = :normalizedAlias LIMIT 1")
+    suspend fun byNormalizedAlias(normalizedAlias: String): EntityAliasEntity?
+
+    @Query("SELECT * FROM entity_alias WHERE normalizedAlias IN (:normalizedAliases)")
+    suspend fun byNormalizedAliases(normalizedAliases: List<String>): List<EntityAliasEntity>
+
+    @Query("SELECT * FROM entity_alias ORDER BY id")
+    suspend fun all(): List<EntityAliasEntity>
+
+    /** 备份/诊断分页导出（B15.1 backup 由其他任务接） */
+    @Query("SELECT * FROM entity_alias ORDER BY id LIMIT :limit OFFSET :offset")
+    suspend fun page(limit: Int, offset: Int): List<EntityAliasEntity>
+
+    @Query("DELETE FROM entity_alias WHERE id = :id")
+    suspend fun deleteById(id: Long): Int
+
+    @Query("DELETE FROM entity_alias WHERE entityId = :entityId AND normalizedAlias = :normalizedAlias")
+    suspend fun deleteByEntityAndNormalized(entityId: Long, normalizedAlias: String): Int
+
+    @Query("DELETE FROM entity_alias WHERE entityId = :entityId")
+    suspend fun deleteByEntity(entityId: Long): Int
+
+    @Query("DELETE FROM entity_alias")
+    suspend fun deleteAll()
+
+    @Query("SELECT COUNT(*) FROM entity_alias")
+    suspend fun count(): Int
+}
+
 /** B8：event-entity 关联（weight=关联强度，description=关系描述） */
 @Dao
 interface EventEntityDao {

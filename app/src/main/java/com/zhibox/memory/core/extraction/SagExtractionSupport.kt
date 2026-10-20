@@ -83,9 +83,18 @@ internal object SagExtractionSupport {
             .filter { it.isNotEmpty() }
             .joinToString(" ")
 
-    /** entity 关键词文本：name + description */
-    fun entityFtsText(name: String, description: String): String =
-        listOf(name.trim(), description.trim())
+    /**
+     * entity 关键词文本：name + description + aliases（B15.1）。
+     *
+     * FTS 写入/重建共用同一口径：别名进入 entity_fts 派生文本，使按别名查询也能通过 FTS 召回
+     * canonical entity；aliases 为空时输出与 v8 完全一致（无别名回归不变）。
+     */
+    fun entityFtsText(
+        name: String,
+        description: String,
+        aliases: List<String> = emptyList(),
+    ): String =
+        (listOf(name.trim(), description.trim()) + aliases.map { it.trim() })
             .filter { it.isNotEmpty() }
             .joinToString(" ")
 

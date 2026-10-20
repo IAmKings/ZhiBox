@@ -466,4 +466,20 @@
     <string name="import_pdf_password_requeued">已重新排队 PDF 导入任务，稍后可在任务列表查看进度</string>
     <string name="import_pdf_password_not_requeued">无法重试：任务状态已变化或不是 PDF（请刷新后查看）</string>
     <string name="import_pdf_password_failed">PDF 密码重试失败：%1$s</string>
+
+    <!-- ==== P1.2：Graph 实体别名 ==== -->
+    <string name="graph_alias_manage_button">别名</string>
+    <string name="graph_alias_dialog_title">管理别名：%1$s</string>
+    <string name="graph_alias_inline">别名：%1$s</string>
+    <string name="graph_alias_more">+%1$d</string>
+    <string name="graph_alias_section">已有别名（%1$d）</string>
+    <string name="graph_alias_empty">暂无别名；添加后可提升实体召回（如英文名/简称/缩写）。</string>
+    <string name="graph_alias_input_label">新别名</string>
+    <string name="graph_alias_add">添加</string>
+    <string name="graph_alias_delete">删除</string>
+    <string name="graph_alias_saving">保存中…</string>
+    <string name="graph_alias_added">已添加别名：%1$s</string>
+    <string name="graph_alias_removed">已删除别名：%1$s</string>
+    <string name="graph_alias_remove_missing">别名不存在或已被删除</string>
+    <string name="graph_alias_save_failed">别名操作失败：%1$s</string>
 </resources>

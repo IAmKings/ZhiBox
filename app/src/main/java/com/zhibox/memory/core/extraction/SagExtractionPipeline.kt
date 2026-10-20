@@ -418,13 +418,21 @@ class SagExtractionPipeline(
                     description = extracted.description.trim().ifBlank { null },
                 ),
             )
-            // entity FTS：文本口径固定为 name+description，重写保证与主表一致
+            // entity FTS：文本口径固定为 name+description+aliases（B15.1），重写保证与主表/别名一致；
+            // 别名读取失败不阻塞抽取（退化为 name+description，后续 alias 写入/重建会刷新）。
+            val entityAliases = runCatching {
+                db.entityAliasDao().byEntity(entityRow.id).map { it.alias }
+            }.getOrDefault(emptyList())
             db.entityDao().deleteFtsByEntity(entityRow.id)
             db.entityDao().insertFts(
                 EntityFtsEntity(
                     entityId = entityRow.id,
                     text = SagExtractionSupport.toFtsText(
-                        SagExtractionSupport.entityFtsText(entityRow.name, entityRow.description),
+                        SagExtractionSupport.entityFtsText(
+                            entityRow.name,
+                            entityRow.description,
+                            entityAliases,
+                        ),
                     ),
                 ),
             )

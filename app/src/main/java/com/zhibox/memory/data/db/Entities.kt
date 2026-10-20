@@ -348,6 +348,38 @@ data class EntityFtsEntity(
 )
 
 /**
+ * B15.1（schema v9）：实体别名（用户维护，用于查询扩展/实体 FTS）。
+ *
+ * - `normalizedAlias` 全局唯一（同一别名只能指向一个 canonical entity）；
+ * - FK CASCADE：删除 entity 时别名自动清理；`entityId` 索引供按实体批量读取/删除；
+ * - [alias] 保留用户输入（trim 后），[normalizedAlias] 用 `SagSupport.normalizeEntityName` 口径
+ *   （NFC + trim + lowercase + 空白合一）作为唯一键/精确匹配键；
+ * - alias 只在查询扩展与 entity_fts 派生索引中生效，不修改 event/entity 本体（append-only 语义不变）。
+ */
+@Entity(
+    tableName = "entity_alias",
+    indices = [
+        Index("entityId"),
+        Index(value = ["normalizedAlias"], unique = true),
+    ],
+    foreignKeys = [
+        ForeignKey(
+            entity = EntityEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["entityId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+data class EntityAliasEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val entityId: Long,
+    val alias: String,
+    val normalizedAlias: String,
+    val createdAt: Long,
+)
+
+/**
  * B8（v6）：每 chunk 一条的抽取任务（B9 由导入联动创建；不阻塞文档 ready）。
  * 状态见 [ExtractionJobStatus]；`errorCode/errorDetail` 可读失败信息（不含 API key/正文）。
  */

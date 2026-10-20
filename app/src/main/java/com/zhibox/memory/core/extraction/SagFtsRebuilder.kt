@@ -13,7 +13,8 @@ import com.zhibox.memory.data.db.EventFtsEntity
  *
  * 口径：
  * - event：仅 `active = true` 的当前事件（被 supersede 的历史行不进索引，避免召回旧版本）；
- * - entity：全部实体（entity 跨文档复用，无 active 语义）；
+ * - entity：全部实体（entity 跨文档复用，无 active 语义）；FTS 文本 = name+description+全部 aliases
+ *   （B15.1：备份导入后重建也能恢复别名命中；无别名实体与 v8 完全一致）；
  * - 文本构造与 pipeline 写入侧共用 [SagExtractionSupport]（eventFtsText/entityFtsText），
  *   保证"重建结果 == 日常写入结果"。
  *
@@ -46,6 +47,8 @@ object SagFtsRebuilder {
             rebuilt += batch.size
         }
 
+        val aliasesByEntity = db.entityAliasDao().all()
+            .groupBy({ it.entityId }, { it.alias })
         val entities = db.entityDao().all()
         for (batch in entities.chunked(BATCH_SIZE)) {
             db.entityDao().insertFtsAll(
@@ -56,6 +59,7 @@ object SagFtsRebuilder {
                             SagExtractionSupport.entityFtsText(
                                 name = entity.name.ifBlank { entity.normalizedName },
                                 description = entity.description,
+                                aliases = aliasesByEntity[entity.id].orEmpty(),
                             ),
                         ),
                     )

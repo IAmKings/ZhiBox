@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -22,10 +23,15 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -53,6 +59,28 @@ fun GraphScreen(
         viewModel.onScreenStarted()
     }
 
+    // P1.2：实体别名管理对话框（仅记录 entityId；实体内容从 selectedEvent 实时取，增删后自动刷新）
+    var aliasEntityId by remember { mutableStateOf<Long?>(null) }
+    val aliasEntity = aliasEntityId?.let { id ->
+        state.selectedEvent?.entities?.firstOrNull { it.id == id }
+    }
+    if (aliasEntityId != null && aliasEntity != null) {
+        AliasManageDialog(
+            entity = aliasEntity,
+            saving = state.aliasSaving,
+            message = state.aliasMessage,
+            error = state.aliasError,
+            onAdd = { alias -> viewModel.addEntityAlias(aliasEntity.id, alias) },
+            onRemove = { alias -> viewModel.removeEntityAlias(aliasEntity.id, alias) },
+            onDismiss = {
+                if (!state.aliasSaving) {
+                    aliasEntityId = null
+                    viewModel.clearAliasFeedback()
+                }
+            },
+        )
+    }
+
     val detail = state.selectedEvent
     if (detail != null) {
         BackHandler { viewModel.closeEvent() }
@@ -61,6 +89,7 @@ fun GraphScreen(
             onBack = viewModel::closeEvent,
             embedded = true,
             onOpenRelated = viewModel::openRelatedEvent,
+            onManageAliases = { entityId -> aliasEntityId = entityId },
         )
         return
     }
@@ -217,6 +246,101 @@ private fun GraphEventCard(event: GraphEventUi, onClick: () -> Unit) {
     }
 }
 
+/** P1.2：实体别名管理对话框（展示/删除已有别名 + 输入新增；保存中禁用防连点）。 */
+@Composable
+private fun AliasManageDialog(
+    entity: GraphEntityUi,
+    saving: Boolean,
+    message: String?,
+    error: String?,
+    onAdd: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var aliasInput by remember(entity.id) { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.graph_alias_dialog_title, entity.name)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    stringResource(R.string.graph_alias_section, entity.aliases.size),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (entity.aliases.isEmpty()) {
+                    Text(
+                        stringResource(R.string.graph_alias_empty),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    entity.aliases.forEach { alias ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        ) {
+                            Text(alias, style = MaterialTheme.typography.bodySmall)
+                            TextButton(
+                                onClick = { onRemove(alias) },
+                                enabled = !saving,
+                            ) { Text(stringResource(R.string.graph_alias_delete)) }
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = aliasInput,
+                    onValueChange = { aliasInput = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !saving,
+                    label = { Text(stringResource(R.string.graph_alias_input_label)) },
+                )
+                if (saving) {
+                    Text(
+                        stringResource(R.string.graph_alias_saving),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                error?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                message?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !saving && aliasInput.isNotBlank(),
+                onClick = {
+                    val value = aliasInput
+                    aliasInput = ""
+                    onAdd(value)
+                },
+            ) { Text(stringResource(R.string.graph_alias_add)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !saving) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+/** 详情实体行内别名展示上限（其余显示 +N；完整列表在「别名」对话框）。 */
+private const val GRAPH_ALIAS_INLINE_LIMIT = 3
+
 /** 事件详情覆盖层（不依赖脚手架：标题+摘要+实体+owning chunk 原文）。 */
 @Composable
 fun GraphDetailScreen(
@@ -224,6 +348,7 @@ fun GraphDetailScreen(
     onBack: () -> Unit,
     embedded: Boolean = false,
     onOpenRelated: (Long) -> Unit = {},
+    onManageAliases: (Long) -> Unit = {},
 ) {
     if (embedded) {
         // B12：SourcesScreen 已有 Scaffold；详情作为内容层渲染，避免双层 TopBar。
@@ -240,6 +365,7 @@ fun GraphDetailScreen(
                 detail = detail,
                 modifier = Modifier.weight(1f),
                 onOpenRelated = onOpenRelated,
+                onManageAliases = onManageAliases,
             )
         }
         return
@@ -254,6 +380,7 @@ fun GraphDetailScreen(
                 .fillMaxSize()
                 .padding(padding),
             onOpenRelated = onOpenRelated,
+            onManageAliases = onManageAliases,
         )
     }
 }
@@ -263,6 +390,7 @@ private fun GraphDetailBody(
     detail: GraphEventDetailUi,
     modifier: Modifier = Modifier,
     onOpenRelated: (Long) -> Unit = {},
+    onManageAliases: (Long) -> Unit = {},
 ) {
         Column(
             modifier = modifier
@@ -322,6 +450,26 @@ private fun GraphDetailBody(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                            }
+                            // P1.2：别名行（最多展示 3 个，其余 +N）+ 管理入口
+                            if (entity.aliases.isNotEmpty()) {
+                                val shown = entity.aliases.take(GRAPH_ALIAS_INLINE_LIMIT)
+                                val hidden = entity.aliases.size - shown.size
+                                val aliasText = buildString {
+                                    append(shown.joinToString("、"))
+                                    if (hidden > 0) {
+                                        append(" ")
+                                        append(stringResource(R.string.graph_alias_more, hidden))
+                                    }
+                                }
+                                Text(
+                                    stringResource(R.string.graph_alias_inline, aliasText),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            TextButton(onClick = { onManageAliases(entity.id) }) {
+                                Text(stringResource(R.string.graph_alias_manage_button))
                             }
                         }
                     }
@@ -473,7 +621,13 @@ private fun GraphDetailPreview() {
             detail = GraphEventDetailUi(
                 event = previewGraphEvent,
                 entities = listOf(
-                    GraphEntityUi(1, "蓝牙耳机", "product", "待配对设备"),
+                    GraphEntityUi(
+                        1,
+                        "蓝牙耳机",
+                        "product",
+                        "待配对设备",
+                        aliases = listOf("BT 耳机", "earbuds", "TWS"),
+                    ),
                     GraphEntityUi(2, "协议栈", "concept", "系统蓝牙协议实现"),
                 ),
                 chunkContent = "先关闭耳机电源再长按配对键 5 秒，进入可发现状态后重新配对。",

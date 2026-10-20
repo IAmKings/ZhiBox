@@ -54,6 +54,8 @@ internal object BackupValidator {
     const val MAX_EVENT_ENTITIES = 1_000_000
     const val MAX_SAG_VECTORS = 2_000_000
     const val MAX_EXTRACTION_JOBS = 500_000
+    /** B15.1：实体别名行数上限（别名 × 实体，正常库远低于此） */
+    const val MAX_ENTITY_ALIASES = 1_000_000
     private const val MAX_ROLE_BYTES = 64
     private const val READ_BUFFER = 64 * 1024
 
@@ -71,12 +73,17 @@ internal object BackupValidator {
     const val ENTRY_EVENT_ENTITIES = "event_entities.jsonl"
     const val ENTRY_SAG_VECTORS = "sag_vectors.jsonl"
     const val ENTRY_EXTRACTION_JOBS = "extraction_jobs.jsonl"
+    // B15.1（schema v9）：实体别名（**可选** entry；旧 v1/v2/v3 包缺省 = 无别名）。
+    // 不提升 FORMAT_VERSION（纯 additive）：旧版 App 读取新包时该 entry 不在其 KNOWN_ENTRIES，
+    // 按未知 entry 跳过；新版读取旧包缺失 → parseJsonLines(null)=空。
+    const val ENTRY_ENTITY_ALIASES = "entity_aliases.jsonl"
 
     /** 已知 entry 名（不在名单内的 entry 一律跳过——但不跳过尺寸统计，防未知 entry 绕过 zip bomb 防护） */
     val KNOWN_ENTRIES = setOf(
         ENTRY_META, ENTRY_REQUIREMENTS, ENTRY_SOURCES, ENTRY_DOCUMENTS,
         ENTRY_CHUNKS, ENTRY_APP_KV, ENTRY_VECTORS,
         ENTRY_EVENTS, ENTRY_ENTITIES, ENTRY_EVENT_ENTITIES, ENTRY_SAG_VECTORS, ENTRY_EXTRACTION_JOBS,
+        ENTRY_ENTITY_ALIASES,
     )
 
     /** 可注入的限额（单测用小限额覆盖"超限"分支，避免真的分配 512MB） */

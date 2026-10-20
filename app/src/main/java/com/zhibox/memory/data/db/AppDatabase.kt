@@ -31,8 +31,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ChatMessageEntity::class,
         MessageCitationEntity::class,
         QueryTraceEntity::class,
+        // ---- B15.1（schema v9）：实体别名 ----
+        EntityAliasEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -52,6 +54,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun extractionJobDao(): ExtractionJobDao
     abstract fun chatDao(): ChatDao
     abstract fun queryTraceDao(): QueryTraceDao
+    abstract fun entityAliasDao(): EntityAliasDao
 
     companion object {
         /**
@@ -604,6 +607,44 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * schema v8 → v9（B15.1）：新增 `entity_alias`（实体别名，用户维护）。
+         *
+         * - 只建表 + 两个索引（normalizedAlias 唯一、entityId 普通），不触碰既有表/数据；
+         * - FK `entityId → entity.id ON DELETE CASCADE`（删除实体自动清理别名）；
+         * - 旧库别名表为空：查询扩展/FTS 行为与 v8 完全一致（无 alias 回归）；
+         * - 迁移后 foreign_key_check 必须为空，并记录 schema_migrations=9。
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `entity_alias` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`entityId` INTEGER NOT NULL, " +
+                        "`alias` TEXT NOT NULL, " +
+                        "`normalizedAlias` TEXT NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL, " +
+                        "FOREIGN KEY(`entityId`) REFERENCES `entity`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE )",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_entity_alias_normalizedAlias` " +
+                        "ON `entity_alias` (`normalizedAlias`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_entity_alias_entityId` " +
+                        "ON `entity_alias` (`entityId`)",
+                )
+                db.execSQL(
+                    "INSERT OR IGNORE INTO schema_migrations (`version`, `appliedAt`) " +
+                        "VALUES (9, ${System.currentTimeMillis()})",
+                )
+                db.query("PRAGMA foreign_key_check").use { violations ->
+                    check(!violations.moveToFirst()) { "schema v8→v9 迁移后存在外键违规" }
+                }
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -616,7 +657,7 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(
                         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                        MIGRATION_6_7, MIGRATION_7_8,
+                        MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
                     )
                     .build().also { instance = it }
             }

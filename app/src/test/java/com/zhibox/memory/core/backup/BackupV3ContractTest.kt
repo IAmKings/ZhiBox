@@ -8,7 +8,7 @@ import org.junit.Test
 
 /**
  * B8 备份 v3 纯 JVM 契约（不依赖 Android/Room）：
- * - 格式版本门（1–3 可读，4+ 拒绝）与 KNOWN_ENTRIES=12（v2 的 7 个 + v3 的 5 个）；
+ * - 格式版本门（1–3 可读，4+ 拒绝）与 KNOWN_ENTRIES=13（v2 的 7 个 + v3 的 5 个 + B15.1 可选 entity_aliases）；
  * - `sag_vectors.jsonl` 的 base64 编解码（往返/长度不符/非法字符/空）；
  * - `BackupClosure.validateImportClosure` 的 v3 引用闭包：event→chunk、entity normalizedName 唯一、
  *   event (chunkId, extractionVersion) 唯一、event_entity 双端、sag 多态 owner、extraction_job 双 FK；
@@ -36,15 +36,17 @@ class BackupV3ContractTest {
     }
 
     @Test
-    fun knownEntriesHasTwelveIncludingV3Set() {
+    fun knownEntriesHasThirteenIncludingV3AndAliasSet() {
         val v3Entries = setOf(
             BackupValidator.ENTRY_EVENTS,
             BackupValidator.ENTRY_ENTITIES,
             BackupValidator.ENTRY_EVENT_ENTITIES,
             BackupValidator.ENTRY_SAG_VECTORS,
             BackupValidator.ENTRY_EXTRACTION_JOBS,
+            // B15.1（v9）：可选实体别名 entry（不提升 FORMAT_VERSION；旧包缺失=空）
+            BackupValidator.ENTRY_ENTITY_ALIASES,
         )
-        assertEquals("v2 的 7 个 entry + v3 的 5 个", 12, BackupValidator.KNOWN_ENTRIES.size)
+        assertEquals("v2 的 7 个 entry + v3 的 5 个 + B15.1 别名 1 个", 13, BackupValidator.KNOWN_ENTRIES.size)
         v3Entries.forEach { entry ->
             assertTrue("KNOWN_ENTRIES 缺少 v3 entry：$entry", entry in BackupValidator.KNOWN_ENTRIES)
         }

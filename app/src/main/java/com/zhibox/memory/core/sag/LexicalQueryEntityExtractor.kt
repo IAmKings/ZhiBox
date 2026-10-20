@@ -6,10 +6,14 @@ import com.zhibox.memory.data.db.EntityEntity
 /**
  * B10：离线词法查询实体抽取（零网络）——SAG 实体种子的默认实现。
  *
- * 两路召回（结果按 id 去重、score 降序、id 升序，确定性）：
+ * B15.1 起三路召回（结果按 id 去重、score 降序、id 升序，确定性）：
  * 1. **精确匹配**：query 归一化后与 `entity.normalizedName` 全等 → score=1.0，source="exact"；
- * 2. **FTS 召回**：query bigram OR MATCH `entity_fts`（与 B9 写入口径一致），按 rowid 命中顺序
- *    名次衰减 score=0.9-rank*0.01（下限 0.5），source="entity_fts"。
+ * 1b. **别名精确/子串**：query 与其子串候选同时解析 `entity_alias.normalizedAlias` →
+ *    canonical entity，source="entity_alias"（与 canonical 命中去重，canonical exact 优先）；
+ * 2. **FTS 召回**：query bigram OR MATCH `entity_fts`（entity FTS 已包含 aliases，B15.1），
+ *    按 rowid 命中顺序名次衰减 score=0.9-rank*0.01（下限 0.5），source="entity_fts"。
+ *
+ * 无别名时行为/排序与 v8 完全一致（多查空表，不改变结果）。
  *
  * 去噪：单字名与泛词（疑问/连接/空泛名词，见 [SagSupport]）不返回，避免任意问句触发大规模
  * 实体扩展；数量上限 [MAX_ENTITY_SEEDS]（Retriever 还会再按 budget.kSeed 截断）。
@@ -32,6 +36,14 @@ class LexicalQueryEntityExtractor(
             out[entity.id] = toQueryEntity(entity, score = 1.0, source = "exact")
         }
 
+        // 1a) 别名精确命中：alias 全局唯一 → 直接解析 canonical entity（source=entity_alias；
+        //     若 canonical 名称已命中（更高优先级 exact）则不重复覆盖）
+        runCatching { db.entityAliasDao().byNormalizedAlias(normalizedName) }.getOrNull()?.let { aliasRow ->
+            runCatching { db.entityDao().byId(aliasRow.entityId) }.getOrNull()?.let { entity ->
+                out.putIfAbsent(entity.id, toQueryEntity(entity, score = 1.0, source = "entity_alias"))
+            }
+        }
+
         // 1b) **查询子串精确命中**：自然语言问句不是实体名本身（"张三所在组织..."），
         //     必须从 query 的 n-gram 候选中回查 entity.normalizedName，再确认是该子串。
         //     仅做整句全等会让 query entity 退化为 FTS 泛召回，桥接扩展锚点跑偏。
@@ -44,6 +56,30 @@ class LexicalQueryEntityExtractor(
                 .forEach { entity ->
                     out.putIfAbsent(entity.id, toQueryEntity(entity, score = 1.0, source = "exact"))
                 }
+        }
+
+        // 1c) 别名子串命中：query 含某 alias（如"张三的公司" 含别名"张三"）→ canonical entity；
+        //     canonical/alias 精确命中已占用的实体不重复（putIfAbsent 保留更强来源）。
+        if (substringCandidates.isNotEmpty()) {
+            runCatching {
+                db.entityAliasDao().byNormalizedAliases(substringCandidates)
+                    .filter { alias ->
+                        alias.normalizedAlias.length >= MIN_ENTITY_NAME_LENGTH &&
+                            normalizedQuery.contains(alias.normalizedAlias)
+                    }
+            }.getOrDefault(emptyList()).let { matchedAliases ->
+                if (matchedAliases.isNotEmpty()) {
+                    val entityIds = matchedAliases.map { it.entityId }.distinct()
+                    runCatching { db.entityDao().byIds(entityIds) }
+                        .getOrDefault(emptyList())
+                        .forEach { entity ->
+                            out.putIfAbsent(
+                                entity.id,
+                                toQueryEntity(entity, score = 1.0, source = "entity_alias"),
+                            )
+                        }
+                }
+            }
         }
 
         // 2) entity_fts bigram OR 召回（名次衰减；与 B9 写入同一 bigram 口径）

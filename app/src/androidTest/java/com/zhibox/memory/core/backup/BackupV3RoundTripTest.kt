@@ -2,6 +2,8 @@ package com.zhibox.memory.core.backup
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.zhibox.memory.core.extraction.EntityAliasRepository
+import com.zhibox.memory.core.text.BigramTokenizer
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.AppKvEntity
 import com.zhibox.memory.data.db.ChatConversationEntity
@@ -12,6 +14,7 @@ import com.zhibox.memory.data.db.ChunkEntity
 import com.zhibox.memory.data.db.DocStatus
 import com.zhibox.memory.data.db.DocumentEntity
 import com.zhibox.memory.data.db.EmbeddingMetaEntity
+import com.zhibox.memory.data.db.EntityAliasEntity
 import com.zhibox.memory.data.db.EntityEntity
 import com.zhibox.memory.data.db.EventEntity
 import com.zhibox.memory.data.db.EventEntityRel
@@ -26,6 +29,7 @@ import com.zhibox.memory.data.db.SourceEntity
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -89,9 +93,9 @@ class BackupV3RoundTripTest {
             BackupValidator.ENTRY_VECTORS,
             BackupValidator.ENTRY_EVENTS, BackupValidator.ENTRY_ENTITIES,
             BackupValidator.ENTRY_EVENT_ENTITIES, BackupValidator.ENTRY_SAG_VECTORS,
-            BackupValidator.ENTRY_EXTRACTION_JOBS,
+            BackupValidator.ENTRY_EXTRACTION_JOBS, BackupValidator.ENTRY_ENTITY_ALIASES,
         )
-        assertEquals("v3 包应恰好包含 12 个已知 entry", expectedEntries, entries.keys)
+        assertEquals("v3 包应恰好包含 13 个已知 entry（含 B15.1 可选 entity_aliases）", expectedEntries, entries.keys)
 
         val preview = KnowledgeBackup.previewFromFile(context, pkg).getOrThrow()
         assertEquals("v3 导出", 3, preview.formatVersion)
@@ -143,6 +147,13 @@ class BackupV3RoundTripTest {
         assertEquals("张三", entity.name)
         assertEquals("person", entity.entityType)
         assertEquals("学生", entity.description)
+        // B15.1：别名与派生 entity_fts 均恢复（FTS 由导入后重建，文本含 alias）
+        val restoredAliases = db.entityAliasDao().byEntity(seed.entityId)
+        assertEquals("别名应随备份恢复", 1, restoredAliases.size)
+        assertEquals("小张同学", restoredAliases.single().alias)
+        assertEquals("小张同学", restoredAliases.single().normalizedAlias)
+        val aliasHits = db.entityDao().searchFts(BigramTokenizer.toOrMatchQuery("小张同学"), 10)
+        assertTrue("entity_fts 重建应包含别名：$aliasHits", seed.entityId in aliasHits)
         val links = db.eventEntityDao().byEvent(seed.eventId)
         assertEquals(1, links.size)
         assertEquals(1.0, links.single().weight, 0.0001)
@@ -288,6 +299,137 @@ class BackupV3RoundTripTest {
     }
 
     @Test
+    fun missingEntityAliasesEntryIsTreatedAsEmpty() = runBlocking {
+        seedLibrary()
+        val pkg = tmp("b8-v3-alias-full.zip")
+        KnowledgeBackup.exportToFile(context, pkg).getOrThrow()
+
+        val entries = readZip(pkg).toMutableMap()
+        entries.remove(BackupValidator.ENTRY_ENTITY_ALIASES)
+        val trimmed = tmp("b8-v3-no-alias.zip")
+        writeZip(trimmed, entries)
+
+        db.clearAllTables()
+        val imported = KnowledgeBackup.importFromFileForTest(context, trimmed)
+        assertTrue(
+            "缺可选 entity_aliases.jsonl 应视为空 entry 可导入：${imported.exceptionOrNull()?.message}",
+            imported.isSuccess,
+        )
+        assertEquals("无 alias entry 时别名表为空", 0, db.entityAliasDao().count())
+        assertEquals("其余 entity 数据仍恢复", 1, db.entityDao().count())
+        assertEquals("entity_fts 仍重建（无别名文本）", 1, db.entityDao().countFts())
+    }
+
+    @Test
+    fun orphanAliasEntityIdIsRejectedWithoutTouchingDb() = runBlocking {
+        val seed = seedLibrary()
+        val pkg = tmp("b8-v3-alias-orphan-src.zip")
+        KnowledgeBackup.exportToFile(context, pkg).getOrThrow()
+
+        val entries = readZip(pkg).toMutableMap()
+        val aliasText = entries.getValue(BackupValidator.ENTRY_ENTITY_ALIASES).toString(Charsets.UTF_8)
+        val corrupted = aliasText.replace(
+            "\"entityId\":${seed.entityId}",
+            "\"entityId\":999999",
+        )
+        assertTrue("fixture 应命中 alias entityId 替换：$aliasText", corrupted != aliasText)
+        entries[BackupValidator.ENTRY_ENTITY_ALIASES] = corrupted.toByteArray(Charsets.UTF_8)
+        val badPkg = tmp("b8-v3-alias-orphan.zip")
+        writeZip(badPkg, entries)
+
+        val before = counts()
+        val result = KnowledgeBackup.importFromFileForTest(context, badPkg)
+        assertTrue("别名 entityId 不在包内实体闭包必须拒绝导入", result.isFailure)
+        val message = result.exceptionOrNull()?.message.orEmpty()
+        assertTrue("错误应定位 entity_aliases.jsonl：$message", message.contains("entity_aliases.jsonl"))
+        assertTrue("错误应说明 entity 闭包：$message", message.contains("不在包内实体闭包"))
+        assertEquals("失败导入不得改动原库", before, counts())
+    }
+
+    @Test
+    fun duplicateNormalizedAliasIsRejectedWithoutTouchingDb() = runBlocking {
+        val seed = seedLibrary()
+        val pkg = tmp("b8-v3-alias-dup-src.zip")
+        KnowledgeBackup.exportToFile(context, pkg).getOrThrow()
+
+        val duplicateRows = buildString {
+            appendLine("""{"id":1,"entityId":${seed.entityId},"alias":"小张同学","normalizedAlias":"小张同学","createdAt":1}""")
+            appendLine("""{"id":2,"entityId":${seed.entityId},"alias":"小张同窗","normalizedAlias":"小张同学","createdAt":2}""")
+        }
+        val entries = readZip(pkg).toMutableMap()
+        entries[BackupValidator.ENTRY_ENTITY_ALIASES] = duplicateRows.toByteArray(Charsets.UTF_8)
+        val badPkg = tmp("b8-v3-alias-dup.zip")
+        writeZip(badPkg, entries)
+
+        val before = counts()
+        val result = KnowledgeBackup.importFromFileForTest(context, badPkg)
+        assertTrue("normalizedAlias 包内重复必须拒绝导入", result.isFailure)
+        val message = result.exceptionOrNull()?.message.orEmpty()
+        assertTrue("错误应说明 normalizedAlias 重复：$message", message.contains("normalizedAlias 重复"))
+        assertEquals("失败导入不得改动原库", before, counts())
+    }
+
+    @Test
+    fun tooLongAliasIsRejectedWithoutTouchingDb() = runBlocking {
+        val seed = seedLibrary()
+        val pkg = tmp("b8-v3-alias-long-src.zip")
+        KnowledgeBackup.exportToFile(context, pkg).getOrThrow()
+
+        val tooLong = "长".repeat(EntityAliasRepository.MAX_ALIAS_LENGTH + 1)
+        val rows = """{"id":1,"entityId":${seed.entityId},"alias":"$tooLong","normalizedAlias":"$tooLong","createdAt":1}""" + "\n"
+        val entries = readZip(pkg).toMutableMap()
+        entries[BackupValidator.ENTRY_ENTITY_ALIASES] = rows.toByteArray(Charsets.UTF_8)
+        val badPkg = tmp("b8-v3-alias-long.zip")
+        writeZip(badPkg, entries)
+
+        val before = counts()
+        val result = KnowledgeBackup.importFromFileForTest(context, badPkg)
+        assertTrue("alias 超长必须拒绝导入", result.isFailure)
+        val message = result.exceptionOrNull()?.message.orEmpty()
+        assertTrue("错误应说明 alias 长度：$message", message.contains("alias 长度非法"))
+        assertEquals("失败导入不得改动原库", before, counts())
+    }
+
+    @Test
+    fun aliasOfEntityOutsideExportClosureIsNotExported() = runBlocking {
+        seedLibrary()
+        val isolatedEntityId = db.entityDao().upsert(
+            EntityEntity(
+                normalizedName = "局外实体",
+                entityType = "person",
+                name = "局外实体",
+                description = "未关联任何事件",
+                createdAt = 700,
+            ),
+        )
+        db.entityAliasDao().upsertAll(
+            listOf(
+                EntityAliasEntity(
+                    entityId = isolatedEntityId,
+                    alias = "局外别名",
+                    normalizedAlias = "局外别名",
+                    createdAt = 701,
+                ),
+            ),
+        )
+
+        val pkg = tmp("b8-v3-alias-closure.zip")
+        KnowledgeBackup.exportToFile(context, pkg).getOrThrow()
+        val entries = readZip(pkg)
+        val aliasText = entries.getValue(BackupValidator.ENTRY_ENTITY_ALIASES).toString(Charsets.UTF_8)
+        assertTrue("包内应含闭包实体别名：$aliasText", aliasText.contains("小张同学"))
+        assertFalse("闭包外实体别名不得导出：$aliasText", aliasText.contains("局外别名"))
+        val entitiesText = entries.getValue(BackupValidator.ENTRY_ENTITIES).toString(Charsets.UTF_8)
+        assertFalse("闭包外实体不得进入 entities.jsonl：$entitiesText", entitiesText.contains("局外实体"))
+
+        db.clearAllTables()
+        val imported = KnowledgeBackup.importFromFileForTest(context, pkg)
+        assertTrue("闭包过滤后的包应可导入：${imported.exceptionOrNull()?.message}", imported.isSuccess)
+        assertEquals("只恢复包内 entity 的 1 条别名", 1, db.entityAliasDao().count())
+        assertEquals("闭包外实体未恢复", 1, db.entityDao().count())
+    }
+
+    @Test
     fun v2MinimalPackageStillImportsWithEmptySagLayer() = runBlocking {
         val pkg = tmp("b8-v2-minimal.zip")
         val meta = """{"format_version":2,"exported_at":1,"app":"zhibox-memory","spaces":[]}"""
@@ -313,6 +455,7 @@ class BackupV3RoundTripTest {
         assertEquals(0, db.entityDao().count())
         assertEquals(0, db.sagVectorDao().count())
         assertEquals(0, db.extractionJobDao().all().size)
+        assertEquals("v2 旧包无 entity_aliases entry → 别名表为空", 0, db.entityAliasDao().count())
         assertEquals("v2 包不触发 SAG FTS 重建（format<3）", 0, db.eventDao().countFts())
         assertEquals(0, db.entityDao().countFts())
     }
@@ -414,6 +557,16 @@ class BackupV3RoundTripTest {
                 EventEntityRel(eventId = supersededEventId, entityId = entityId, role = "person", weight = 0.5),
             ),
         )
+        db.entityAliasDao().upsertAll(
+            listOf(
+                EntityAliasEntity(
+                    entityId = entityId,
+                    alias = "小张同学",
+                    normalizedAlias = "小张同学",
+                    createdAt = 610,
+                ),
+            ),
+        )
         db.sagVectorDao().insertAll(
             listOf(
                 sagVector(SagOwnerType.EVENT.value, eventId, "event_content"),
@@ -485,6 +638,7 @@ class BackupV3RoundTripTest {
         val events: Int,
         val entities: Int,
         val eventEntities: Int,
+        val entityAliases: Int,
         val sagVectors: Int,
         val jobs: Int,
         val chatConversations: Int,
@@ -502,6 +656,7 @@ class BackupV3RoundTripTest {
         events = db.eventDao().count(),
         entities = db.entityDao().count(),
         eventEntities = db.eventEntityDao().count(),
+        entityAliases = db.entityAliasDao().count(),
         sagVectors = db.sagVectorDao().count(),
         jobs = db.extractionJobDao().all().size,
         chatConversations = db.chatDao().recentConversations(100).size,

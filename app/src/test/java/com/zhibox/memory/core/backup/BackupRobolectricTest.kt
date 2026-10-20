@@ -8,7 +8,14 @@ import com.zhibox.memory.data.db.ChunkEntity
 import com.zhibox.memory.data.db.DocStatus
 import com.zhibox.memory.data.db.DocumentEntity
 import com.zhibox.memory.data.db.EmbeddingMetaEntity
+import com.zhibox.memory.data.db.EntityAliasEntity
+import com.zhibox.memory.data.db.EntityEntity
+import com.zhibox.memory.data.db.EventEntity
+import com.zhibox.memory.data.db.EventEntityRel
+import com.zhibox.memory.data.db.EventStatus
 import com.zhibox.memory.data.db.SourceEntity
+import com.zhibox.memory.core.text.BigramTokenizer
+import java.util.zip.ZipInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -129,6 +136,90 @@ class BackupRobolectricTest {
             "B5_BACKUP_ROBOLECTRIC exported=$exported vectors=${db.embeddingDao().count()} " +
                 "chunks=${db.chunkDao().count()} fts=${db.chunkDao().ftsCount()} space=$supportedSpace",
         )
+    }
+
+    @Test
+    fun exportImport_roundTrip_restoresEntityAliasAndEntityFts() = runBlocking {
+        seedSmallLibrary()
+        val chunkId = db.chunkDao().page(limit = 1, offset = 0).single().id
+        val entityId = db.entityDao().upsert(
+            EntityEntity(
+                normalizedName = "张三",
+                entityType = "person",
+                name = "张三",
+                description = "学生",
+                createdAt = 10,
+            ),
+        )
+        val eventId = db.eventDao().upsert(
+            EventEntity(
+                chunkId = chunkId,
+                canonicalText = "张三在上海学习数学",
+                confidence = 0.9,
+                title = "张三在上海学习数学",
+                summary = "学习场景",
+                content = "张三在上海学习数学。",
+                language = "zh",
+                status = EventStatus.ACTIVE.value,
+                extractorVersion = "egemma-sag-extract-v1",
+                extractionVersion = "ev-alias-1",
+                promptVersion = "v1",
+                active = true,
+                createdAt = 11,
+            ),
+        )
+        db.eventEntityDao().upsertAll(
+            listOf(EventEntityRel(eventId = eventId, entityId = entityId, role = "person", weight = 1.0)),
+        )
+        db.entityAliasDao().upsertAll(
+            listOf(
+                EntityAliasEntity(
+                    entityId = entityId,
+                    alias = "小张同学",
+                    normalizedAlias = "小张同学",
+                    createdAt = 12,
+                ),
+            ),
+        )
+
+        val pkg = tmp("robolectric-backup-alias.zip")
+        KnowledgeBackup.exportToFile(app, pkg).getOrThrow()
+
+        // 导出端闭包：entity 被 event_entity 引用 → 其 alias 进包
+        val entries = readZipEntries(pkg)
+        val aliasBytes = entries[BackupValidator.ENTRY_ENTITY_ALIASES]
+        assertTrue("导出包应包含 entity_aliases.jsonl", aliasBytes != null)
+        val aliasText = aliasBytes!!.toString(Charsets.UTF_8)
+        assertTrue("alias 行应导出：$aliasText", aliasText.contains("小张同学"))
+        assertTrue("alias 只带包内 entity：$aliasText", aliasText.contains("\"entityId\":$entityId"))
+
+        withContext(Dispatchers.IO) { db.clearAllTables() }
+        val imported = KnowledgeBackup.importFromFileForTest(app, pkg)
+        assertTrue("含 alias 的 v3 包应可导入：${imported.exceptionOrNull()?.message}", imported.isSuccess)
+
+        val restored = db.entityAliasDao().byEntity(entityId)
+        assertEquals("alias 行应恢复", 1, restored.size)
+        assertEquals("小张同学", restored.single().alias)
+        assertEquals("小张同学", restored.single().normalizedAlias)
+        val entityFtsHits = db.entityDao().searchFts(BigramTokenizer.toOrMatchQuery("小张同学"), 10)
+        assertTrue("entity_fts 重建应包含 alias：$entityFtsHits", entityId in entityFtsHits)
+        println(
+            "B15_BACKUP_ALIAS_ROBOLECTRIC aliases=${db.entityAliasDao().count()} " +
+                "entities=${db.entityDao().count()} entityFts=${db.entityDao().countFts()}",
+        )
+    }
+
+    private fun readZipEntries(file: File): Map<String, ByteArray> {
+        val entries = LinkedHashMap<String, ByteArray>()
+        ZipInputStream(file.inputStream().buffered()).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                entries[entry.name] = zip.readBytes()
+                zip.closeEntry()
+                entry = zip.nextEntry
+            }
+        }
+        return entries
     }
 
     // ---- seed / 工具 ----
