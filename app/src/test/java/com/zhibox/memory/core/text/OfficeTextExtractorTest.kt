@@ -197,7 +197,7 @@ class OfficeTextExtractorTest {
 
     private fun pptxSlideXml(text: String): String = buildString {
         append("""<?xml version="1.0" encoding="UTF-8"?>""")
-        append("""<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">""")
+        append("""<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">""")
         append("<p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>")
         append(text)
         append("</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>")

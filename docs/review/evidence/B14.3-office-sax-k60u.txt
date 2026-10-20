@@ -1,0 +1,13 @@
+B14.3 Office SAX 真机 E2E（K60U 6D8H6TXSDYXC85PZ，debug v0.1.2 versionCode 3，2026-10-20）
+- Fixture: b143b_docx.docx / b143b_pptx.pptx / b143b_xlsx.xlsx（真实 python-docx/openpyxl/手工 PPTX 生成）
+- 方法：install debug + 370M 440M 模型；把 3 文件放入 files/import-staging；autostart_import 启动生产 ImportViewModel/IngestRepository。
+- DB 结果：
+  b143b_docx  docx-ooxml-v1 ready done
+  b143b_pptx  pptx-ooxml-v1 ready done
+  b143b_xlsx  xlsx-ooxml-v1 ready done
+- chunk 内容：
+  DOCX: "P1 Office 导入测试 | 张三在上海学习数学。| 李四在北京工作。"
+  PPTX: "P1 PPTX 标题 | 王五在深圳。"
+  XLSX: "姓名 城市 | 赵六 杭州"
+- 说明：首次导入时模型未安装（数据目录被清），job 以 MODEL_MISSING 失败；这是环境/模型问题，不是 SAX 解析失败。补模型后重跑 3/3 ready。
+- 解析器安全/取消/预算由 JVM OfficeSaxSecurityTest 12 例覆盖（XXE/DOCTYPE/畸形 XML/未闭合标签/取消/字符预算）。

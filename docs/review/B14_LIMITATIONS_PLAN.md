@@ -32,7 +32,7 @@
 ### 1.5 Office 正则解析的大小/预算限制
 - **方案（建议下一批做）**：用流式 SAX/线性 tokenizer 替换 `.*?` 正则；逐段 `ensureActive()`；保留 zip 条目/解压/字符预算；畸形 XML fuzz 测试；错误归类 `DOCUMENT_PARSE` 不自动重试。
 - **验收**：畸形 OOXML（大量未闭合标签）不 O(n²) 拖死 worker；取消及时；合法 DOCX/PPTX/XLSX 结果与当前一致。
-- **状态**：**B14.3 core 任务**；当前已有大小/条目预算作为临时防线，但不作为最终方案。
+- **状态**：**B14.3 已完成**（SAX 流式 + XXE/DOCTYPE 拒绝 + 取消/预算 + fuzz/设备 E2E；见 `B14_3_OFFICE_SAX_REPORT.md`）。
 
 ### 1.6 SAF / URL UI 点击待输入权限窗口
 - **现状**：K60U 开启 USB 调试后，SAF 选择器已可点击并成功暂存（本次实测）；`WebPageFetcher` 真实公网 HTTPS 抓取 1/1 通过；URL 文本输入受设备 IME 影响，尚未在 UI 完成端到端点击。

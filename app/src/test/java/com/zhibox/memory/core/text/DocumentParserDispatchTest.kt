@@ -1,6 +1,9 @@
 package com.zhibox.memory.core.text
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -207,6 +210,25 @@ class DocumentParserDispatchTest {
         assertFalse("不应再有'PDF 支持即将提供'过期文案", error.message!!.contains("即将提供"))
     }
 
+    // ---- B14.3：DocumentParser（Context+File）取消接线 ----
+
+    @Test
+    fun `context file parse honors cancellation before parsing`() {
+        val docxFile = File.createTempFile("cancel", ".docx").apply {
+            writeBytes(docx("Hello"))
+            deleteOnExit()
+        }
+        val cancelledParent = Job().apply { cancel() }
+        val error = runCatching {
+            runBlocking {
+                withContext(cancelledParent) {
+                    DocumentParser.parse(null, docxFile, null, docxFile.name)
+                }
+            }
+        }.exceptionOrNull()
+        assertTrue("取消应原样传播：$error", error is CancellationException)
+    }
+
     // ---- fixtures ----
 
     private fun docx(text: String): ByteArray = zipOf(
@@ -221,7 +243,7 @@ class DocumentParserDispatchTest {
 
     private fun slideXml(text: String): String =
         """<?xml version="1.0" encoding="UTF-8"?>""" +
-            """<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">""" +
+            """<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">""" +
             """<p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>$text</a:t></a:r></a:p>""" +
             """</p:txBody></p:sp></p:spTree></p:cSld></p:sld>"""
 

@@ -36,9 +36,9 @@ object DocumentParseErrorCodes {
  * - [parse]（Context + File 版本）是**导入流水线唯一入口**（suspend：PDF 需 PDFBox 初始化/逐页取消）；
  *   PDF 走 [PdfTextExtractor]，其余类型直接委托 InputStream 版本，行为完全一致；
  * - 未知/不支持类型抛可读 [DocumentParseException]（导入失败可重试/由用户换文件）；
- * - 安全/预算：Office 走 [OfficeTextExtractor] 的 zip 预算；HTML/txt 有输入字节上限；
- *   所有文本输出统一截断到 [TextExtractionLimits.MAX_TEXT_CHARS] 字符（防超大文档拖垮设备，
- *   截断语义在任务/发布说明中注明）。
+ * - 安全/预算：Office 走 [OfficeTextExtractor] 的 zip/SAX 预算（XML DTD/外部实体禁用；
+ *   **输出超过 [TextExtractionLimits.MAX_TEXT_CHARS] 为可读失败**，不 OOM/不静默截断）；
+ *   HTML/txt 有输入字节上限，txt/md/html 输出统一截断到上限（历史语义）。
  *
  * parserId 稳定值（写入 document.parserId）：
  * `txt-utf8-v1` / `md-utf8-v1` / `docx-ooxml-v1` / `pptx-ooxml-v1` / `xlsx-ooxml-v1` /
@@ -58,40 +58,58 @@ object DocumentParser {
      * - PDF 抛可读异常，请改用 [parse]（Context + File）。
      */
     fun parse(input: InputStream, mimeType: String? = null, fileName: String? = null): Parsed =
-        when (val kind = detectKind(mimeType, fileName)) {
-            Kind.TXT -> parsePlainText(input, "txt")
-            Kind.MD -> parsePlainText(input, "md")
-            Kind.HTML -> parseHtml(input)
-            Kind.DOCX -> Parsed(
-                capText(OfficeTextExtractor.extractDocx(input)),
-                "docx-ooxml-v1",
-            )
-            Kind.PPTX -> Parsed(
-                capText(OfficeTextExtractor.extractPptx(input)),
-                "pptx-ooxml-v1",
-            )
-            Kind.XLSX -> Parsed(
-                capText(OfficeTextExtractor.extractXlsx(input)),
-                "xlsx-ooxml-v1",
-            )
-            Kind.PDF -> throw DocumentParseException(
-                "PDF 解析需要 Context/文件入口（请通过应用内导入流程重试）",
-                PdfTextExtractor.PARSER_ID,
-                PdfExtractionErrorCodes.REQUIRES_CONTEXT,
-            )
-            Kind.LEGACY_OFFICE -> throw legacyOfficeException(mimeType, fileName.orEmpty())
-            Kind.UNSUPPORTED -> {
-                // 可选兜底：扩展名/MIME 未识别但文件头是 OLE 复合文档（旧 .doc/.ppt/.xls/.msg 等）
-                // → 明确 legacy Office 错误，而不是笼统"不支持"或当 txt 读出乱码。
-                val header = runCatching {
-                    readHeader(input, OLE_MAGIC.size)
-                }.getOrNull()
-                if (header != null && header.size == OLE_MAGIC.size && header.contentEquals(OLE_MAGIC)) {
-                    throw legacyOfficeException(mimeType, fileName.orEmpty(), detectedByMagic = true)
-                }
-                throw unsupportedException(mimeType, fileName.orEmpty())
+        parseInternal(
+            input = input,
+            kind = detectKind(mimeType, fileName),
+            mimeType = mimeType,
+            fileName = fileName,
+            onCheck = {},
+        )
+
+    /**
+     * 实际分派（B14.3：含 [onCheck] 取消回调）：Office SAX / txt / html 读取过程中周期性调用
+     * [onCheck]；suspend 入口注入协程取消检查，旧 [parse] 入口传空实现保持完全兼容。
+     */
+    private fun parseInternal(
+        input: InputStream,
+        kind: Kind,
+        mimeType: String?,
+        fileName: String?,
+        onCheck: () -> Unit,
+    ): Parsed = when (kind) {
+        Kind.TXT -> parsePlainText(input, "txt", onCheck)
+        Kind.MD -> parsePlainText(input, "md", onCheck)
+        Kind.HTML -> parseHtml(input, onCheck)
+        Kind.DOCX -> Parsed(
+            capText(OfficeTextExtractor.extractDocx(input, OfficeExtractionLimits.DEFAULT, onCheck)),
+            "docx-ooxml-v1",
+        )
+        Kind.PPTX -> Parsed(
+            capText(OfficeTextExtractor.extractPptx(input, OfficeExtractionLimits.DEFAULT, onCheck)),
+            "pptx-ooxml-v1",
+        )
+        Kind.XLSX -> Parsed(
+            capText(OfficeTextExtractor.extractXlsx(input, OfficeExtractionLimits.DEFAULT, onCheck)),
+            "xlsx-ooxml-v1",
+        )
+        Kind.PDF -> throw DocumentParseException(
+            "PDF 解析需要 Context/文件入口（请通过应用内导入流程重试）",
+            PdfTextExtractor.PARSER_ID,
+            PdfExtractionErrorCodes.REQUIRES_CONTEXT,
+        )
+        Kind.LEGACY_OFFICE -> throw legacyOfficeException(mimeType, fileName.orEmpty())
+        Kind.UNSUPPORTED -> {
+            // 可选兜底：扩展名/MIME 未识别但文件头是 OLE 复合文档（旧 .doc/.ppt/.xls/.msg 等）
+            // → 明确 legacy Office 错误，而不是笼统"不支持"或当 txt 读出乱码。
+            val header = runCatching {
+                readHeader(input, OLE_MAGIC.size)
+            }.getOrNull()
+            if (header != null && header.size == OLE_MAGIC.size && header.contentEquals(OLE_MAGIC)) {
+                throw legacyOfficeException(mimeType, fileName.orEmpty(), detectedByMagic = true)
             }
+            throw unsupportedException(mimeType, fileName.orEmpty())
         }
+    }
 
     /**
      * 导入流水线入口（P1-6）：按扩展名/MIME 分派；PDF 走 [PdfTextExtractor]（需要 Context，
@@ -119,7 +137,13 @@ object DocumentParser {
             )
         }
         currentCoroutineContext().ensureActive()
-        val parsed = file.inputStream().use { parse(it, mimeType, fileName) }
+        val job: kotlinx.coroutines.Job? = currentCoroutineContext()[kotlinx.coroutines.Job]
+        val onCheck: () -> Unit = {
+            if (job != null && !job.isActive) {
+                throw kotlinx.coroutines.CancellationException("document parse cancelled")
+            }
+        }
+        val parsed = file.inputStream().use { parseInternal(it, kind, mimeType, fileName, onCheck) }
         currentCoroutineContext().ensureActive()
         return parsed
     }
@@ -148,9 +172,9 @@ object DocumentParser {
 
     // ---- 纯文本 / HTML ----
 
-    private fun parsePlainText(input: InputStream, kind: String): Parsed {
+    private fun parsePlainText(input: InputStream, kind: String, onCheck: () -> Unit): Parsed {
         val parserId = "$kind-utf8-v1"
-        val bytes = readBoundedInput(input, TextExtractionLimits.MAX_TEXT_INPUT_BYTES)
+        val bytes = readBoundedInput(input, TextExtractionLimits.MAX_TEXT_INPUT_BYTES, onCheck)
             ?: throw DocumentParseException(
                 "文件过大（txt/md 超过 ${TextExtractionLimits.MAX_TEXT_INPUT_BYTES / (1024 * 1024)}MB）：" +
                     "请拆分后重试",
@@ -163,9 +187,9 @@ object DocumentParser {
         return Parsed(text, parserId)
     }
 
-    private fun parseHtml(input: InputStream): Parsed {
+    private fun parseHtml(input: InputStream, onCheck: () -> Unit): Parsed {
         val parserId = "html-text-v1"
-        val bytes = readBoundedInput(input, TextExtractionLimits.MAX_HTML_DOCUMENT_BYTES)
+        val bytes = readBoundedInput(input, TextExtractionLimits.MAX_HTML_DOCUMENT_BYTES, onCheck)
             ?: throw DocumentParseException(
                 "HTML 文件过大（超过 ${TextExtractionLimits.MAX_HTML_DOCUMENT_BYTES / (1024 * 1024)}MB）：" +
                     "请精简后重试",
@@ -182,11 +206,16 @@ object DocumentParser {
         return Parsed(capText(text), parserId)
     }
 
-    private fun readBoundedInput(input: InputStream, maxBytes: Int): ByteArray? {
+    private fun readBoundedInput(
+        input: InputStream,
+        maxBytes: Int,
+        onCheck: () -> Unit,
+    ): ByteArray? {
         val out = java.io.ByteArrayOutputStream()
         val buffer = ByteArray(8 * 1024)
         var total = 0
         while (true) {
+            onCheck()
             val read = input.read(buffer)
             if (read <= 0) break
             total += read
