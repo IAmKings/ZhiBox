@@ -403,6 +403,35 @@ private fun ExploreSection(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
+            // P1.3c：连续性能观测（最近/p50/p95/N 次 + 通道；失败保留最近成功值）
+            explorePerfUi(state.explorePerf)?.let { perf ->
+                Text(
+                    stringResource(
+                        R.string.graph_explore_perf,
+                        perf.lastMs,
+                        perf.p50Ms,
+                        perf.p95Ms,
+                        perf.count,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    stringResource(
+                        R.string.graph_explore_perf_channels,
+                        when (perf.channel) {
+                            ExplorePerfChannel.FTS -> stringResource(R.string.graph_explore_channel_fts)
+                            ExplorePerfChannel.LIKE -> stringResource(R.string.graph_explore_channel_like)
+                            ExplorePerfChannel.FTS_AND_LIKE ->
+                                stringResource(R.string.graph_explore_channel_both)
+                            ExplorePerfChannel.NONE ->
+                                stringResource(R.string.graph_explore_channel_none)
+                        },
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             ExploreCanvas(
                 graph = graph,
                 autoRotate = state.exploreAutoRotate,
@@ -548,11 +577,11 @@ private fun ExploreCanvas(
             }
         }
 
-        // P1.3b：节点文字标签（选中优先 + 近节点优先，限数量避免遮挡/性能问题）
+        // P1.3c：节点文字标签（实际文本 rect + padding 碰撞避让；选中优先，重叠/越界跳过）
         val labelIds = exploreLabelNodeIds(
             projected = projected,
             selectedNodeId = selectedNodeId,
-            limit = EXPLORE_LABEL_LIMIT,
+            limit = EXPLORE_LABEL_CANDIDATE_LIMIT,
         ).toHashSet()
         if (labelIds.isNotEmpty()) {
             val labelPaint = android.graphics.Paint().apply {
@@ -568,24 +597,49 @@ private fun ExploreCanvas(
                 textSize = 11.sp.toPx()
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
             }
-            projected.forEach { item ->
-                if (item.node.id !in labelIds) return@forEach
-                val radius = radiusById[item.node.id] ?: return@forEach
-                val label = item.node.label
-                val text = if (label.length > EXPLORE_LABEL_MAX_CHARS) {
-                    label.take(EXPLORE_LABEL_MAX_CHARS) + "…"
-                } else {
-                    label
+            val textById = HashMap<String, String>(labelIds.size)
+            val candidates = projected
+                .filter { it.node.id in labelIds }
+                .sortedWith(
+                    compareByDescending<ExploreProjection.ProjectedNode> {
+                        it.node.id == selectedNodeId
+                    }.thenBy { it.depth },
+                )
+                .mapNotNull { item ->
+                    val radius = radiusById[item.node.id] ?: return@mapNotNull null
+                    val isSelected = item.node.id == selectedNodeId
+                    val paint = if (isSelected) selectedLabelPaint else labelPaint
+                    val label = item.node.label
+                    val text = if (label.length > EXPLORE_LABEL_MAX_CHARS) {
+                        label.take(EXPLORE_LABEL_MAX_CHARS) + "…"
+                    } else {
+                        label
+                    }
+                    val metrics = paint.fontMetrics
+                    textById[item.node.id] = text
+                    ExploreLabelCandidate(
+                        nodeId = item.node.id,
+                        centerX = item.screenX,
+                        baselineY = item.screenY - radius - 4f,
+                        width = paint.measureText(text),
+                        height = (metrics.descent - metrics.ascent).coerceAtLeast(1f),
+                        isSelected = isSelected,
+                    )
                 }
-                val paint = if (item.node.id == selectedNodeId) {
-                    selectedLabelPaint
-                } else {
-                    labelPaint
-                }
+            val boxes = placeExploreLabels(
+                candidates = candidates,
+                canvasWidth = size.width,
+                canvasHeight = size.height,
+                limit = EXPLORE_LABEL_LIMIT,
+                paddingPx = EXPLORE_LABEL_PADDING_PX,
+            )
+            boxes.forEach { box ->
+                val text = textById[box.nodeId] ?: return@forEach
+                val paint = if (box.nodeId == selectedNodeId) selectedLabelPaint else labelPaint
                 drawContext.canvas.nativeCanvas.drawText(
                     text,
-                    item.screenX,
-                    item.screenY - radius - 4f,
+                    box.centerX,
+                    box.bottom,
                     paint,
                 )
             }
@@ -669,6 +723,8 @@ private fun ExploreSelectedCard(
 
 private const val EXPLORE_QUERY_DEBOUNCE_MS = 400L
 private const val EXPLORE_LABEL_LIMIT = 12
+private const val EXPLORE_LABEL_CANDIDATE_LIMIT = 24
+private const val EXPLORE_LABEL_PADDING_PX = 2f
 private const val EXPLORE_LABEL_MAX_CHARS = 18
 private const val EXPLORE_AUTO_ROTATE_STEP = 0.004
 private const val EXPLORE_DRAG_YAW_FACTOR = 0.01

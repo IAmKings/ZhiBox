@@ -281,6 +281,77 @@ class ExploreGraphRepositoryRobolectricTest {
         assertTrue("候选上限内仍有下一页", graph.hasMore)
     }
 
+    // ---- P1.3c：FTS+LIKE union / 性能监控 ----
+
+    @Test
+    fun ftsHitsAreMergedWithLikeCandidatesForSameQuery() = runBlocking {
+        val seed = seedLibrary()
+        SagFtsRebuilder.rebuildAll(db)
+        // 在 FTS 重建后新增 alias（entity_fts 尚未包含它）：FTS 只命中 e1，LIKE 可经 alias 命中 e2
+        db.entityAliasDao().upsertAll(
+            listOf(
+                EntityAliasEntity(
+                    entityId = seed.entityZhang,
+                    alias = "上海别名",
+                    normalizedAlias = "上海别名",
+                    createdAt = 50,
+                ),
+            ),
+        )
+        val graph = ExploreGraphRepository.load(db, query = "上海", maxEvents = 100)
+
+        assertTrue("FTS 命中的 e1 应在", graph.eventNodes.any { it.eventId == seed.eventShanghai })
+        assertTrue("FTS 未覆盖的 LIKE(alias) 命中的 e2 也应在（union）", graph.eventNodes.any { it.eventId == seed.eventMath })
+        assertEquals("union 去重后 totalEvents=2", 2, graph.totalEvents)
+        assertEquals(2, graph.eventNodes.size)
+    }
+
+    @Test
+    fun loadRecordsPerfMetricsWithoutQueryText() = runBlocking {
+        val seed = seedLibrary()
+        ExplorePerfMonitor.reset()
+
+        val blank = ExploreGraphRepository.load(db, maxEvents = 100)
+        val query = ExploreGraphRepository.load(db, query = "数学", maxEvents = 100)
+        val stats = ExplorePerfMonitor.stats()
+        val snapshot = ExplorePerfMonitor.snapshot()
+
+        assertEquals("每次成功 load 都记录", 2, stats.count)
+        assertTrue("耗时非负", stats.p50Ms >= 0 && stats.p95Ms >= 0 && stats.maxMs >= 0)
+        val blankSample = snapshot.first()
+        assertEquals("blank query 不走 FTS/LIKE 通道", false, blankSample.usedFts)
+        assertEquals(false, blankSample.usedLike)
+        assertEquals(blank.eventNodes.size, blankSample.pageSize)
+        assertEquals(blank.totalEvents, blankSample.total)
+        assertEquals(ExploreLoadResult.OK, blankSample.result)
+
+        val querySample = stats.last!!
+        assertEquals(query.eventNodes.size, querySample.pageSize)
+        assertEquals(query.totalEvents, querySample.total)
+        assertEquals(query.truncated, querySample.truncated)
+        assertTrue("非空 query 走 FTS 通道", querySample.usedFts)
+        assertTrue("union 合并 LIKE 通道", querySample.usedLike)
+        assertTrue("monitor 不含文本字段（编译期保证；运行时仅数值/布尔）", seed.entityShanghai > 0)
+
+        // 单字符 query：BigramTokenizer 会生成单字 gram → 仍走 FTS+LIKE union（可能 FTS 无命中）
+        ExplorePerfMonitor.reset()
+        ExploreGraphRepository.load(db, query = "上", maxEvents = 100)
+        val singleChar = ExplorePerfMonitor.stats().last!!
+        assertTrue("非空 query 必然尝试 LIKE（union/回退）", singleChar.usedLike)
+    }
+
+    @Test
+    fun ftsAndLikeOverlapIsDeduped() = runBlocking {
+        seedLibrary()
+        SagFtsRebuilder.rebuildAll(db)
+        // "上海" 同时经 event_fts(e1 title/content) 与 LIKE(e1 title/content + entity name) 命中 e1；
+        // union 必须去重为 1 条。
+        val graph = ExploreGraphRepository.load(db, query = "上海", maxEvents = 100)
+        assertEquals(1, graph.totalEvents)
+        assertEquals(1, graph.eventNodes.size)
+        assertEquals(1, graph.eventNodes.map { it.id }.toSet().size)
+    }
+
     // ---- 上限 ----
 
     @Test

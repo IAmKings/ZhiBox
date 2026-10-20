@@ -536,4 +536,12 @@
     <string name="graph_explore_page_out_of_range">本页无数据（页码可能已超出当前结果）；可回到第一页查看。</string>
     <string name="graph_explore_first_page">回到第一页</string>
     <string name="graph_explore_canvas_a11y_paged">3D 图谱：第 %1$d/%2$d 页，%3$d 个事件、%4$d 个实体、%5$d 条边；可切换到列表模式浏览全部。</string>
+
+    <!-- ==== P1.3c：Explore 标签碰撞避让 / 性能观测 ==== -->
+    <string name="graph_explore_perf">性能：最近 %1$d ms · p50 %2$d ms · p95 %3$d ms · %4$d 次</string>
+    <string name="graph_explore_perf_channels">最近通道：%1$s</string>
+    <string name="graph_explore_channel_fts">FTS</string>
+    <string name="graph_explore_channel_like">LIKE</string>
+    <string name="graph_explore_channel_both">FTS + LIKE</string>
+    <string name="graph_explore_channel_none">—</string>
 </resources>

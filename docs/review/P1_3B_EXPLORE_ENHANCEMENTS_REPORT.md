@@ -41,6 +41,10 @@
 
 - `dist/zhibox-0.1.2-f3ab9b8-release-signed.apk`（69,496,295 bytes，SHA-256 `b96f7ddcbccb602187e5939c17a1d46648e1695ab911f5b09f0fd7d4c0da73b3`；未发布/tag）。
 
-## 6. 后续
+## 6. P1.3c 后续增强
+
+- 标签碰撞避让、FTS+LIKE union、连续性能观测、5000 库基准已完成；见 `P1_3C_EXPLORE_PERF_REPORT.md`。
+
+## 7. 后续
 
 - 可做标签碰撞避让、FTS 部分命中与 LIKE union、signed RC clean install smoke/tag；P1 剩余 Agent/工具编排与质量评测。

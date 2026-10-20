@@ -20,8 +20,10 @@ import kotlinx.coroutines.withContext
  *   - `entity_fts`（B15.1 起文本含 alias）命中 entity → `event_entity` 关联事件；
  *   两路 event id 去重、按 active/source 过滤后按 id 升序分页；候选用有界上限
  *   （事件 5000 / 实体 2000），超限 `truncated=true`；
- * - FTS 无召回（空索引/旧库/单字查询无法生成 bigram）→ 回退旧 LIKE 路径
- *   （event.title/summary/content + entity.name/normalizedName + entity_alias.alias）。
+ * - **FTS 有命中仍合并 LIKE**（P1.3c union）：FTS event/entity 候选与有界 LIKE 候选
+ *   （event.title/summary/content + entity.name/normalizedName + entity_alias.alias）取并集、
+ *   去重后按 id 升序分页；任何候选源超限 → truncated；
+ * - FTS 无召回 / 无法生成 bigram（单字查询等）→ 仅 LIKE 路径（不静默空）。
  *
  * 展示/隐私：事件只 SELECT id/title/summary + documentId/sourceId（**不加载 content**；
  * content 只出现在 LIKE 回退的 WHERE 中）；entity 只取 name/entityType；图里不含 chunk 正文。
@@ -33,6 +35,8 @@ import kotlinx.coroutines.withContext
  * - `truncated` 只表示候选/实体/布局硬上限（分页还有页看 `hasMore`，不再因 total>单页误报）。
  *
  * 只读/取消：全部 SELECT；IO 线程 + 查询边界 ensureActive；CancellationException 原样抛。
+ * 每次成功 load（含空结果）追加一条脱敏 [ExploreLoadSample] 到 [ExplorePerfMonitor]
+ * （失败/取消不记录；无 query/正文文本）。
  */
 object ExploreGraphRepository {
 
@@ -46,6 +50,10 @@ object ExploreGraphRepository {
     /** FTS 实体候选有界上限（entity_fts 命中 → 关联事件；超出 → truncated）。 */
     @VisibleForTesting
     internal const val ENTITY_FTS_CANDIDATE_LIMIT: Int = 2_000
+
+    /** LIKE 回退/union 候选有界上限（超限 → truncated）。 */
+    @VisibleForTesting
+    internal const val LIKE_CANDIDATE_LIMIT: Int = 5_000
 
     private const val IN_QUERY_CHUNK = 500
 
@@ -63,31 +71,58 @@ object ExploreGraphRepository {
         val normalizedQuery = query.trim().takeIf { it.isNotEmpty() }
         val readable: SupportSQLiteDatabase = db.openHelper.readableDatabase
 
+        val startedAtNanos = System.nanoTime()
+        // 记录本查询实际使用的通道（供 ExplorePerfMonitor；不含 query 文本）
+        var usedFts = false
+        var usedLike = false
         val graph = if (normalizedQuery == null) {
             loadSqlPage(readable, normalizedSource, query = null, limit = limit, pageOffset = pageOffset)
         } else {
-            loadFtsPage(db, readable, normalizedSource, normalizedQuery, limit, pageOffset)
-                ?: loadSqlPage(readable, normalizedSource, query = normalizedQuery, limit = limit, pageOffset = pageOffset)
+            val grams = SagSupport.queryGrams(normalizedQuery)
+            if (grams.isEmpty()) {
+                usedLike = true // 无法生成 bigram：仅 LIKE
+                loadSqlPage(readable, normalizedSource, query = normalizedQuery, limit = limit, pageOffset = pageOffset)
+            } else {
+                usedFts = true
+                usedLike = true // union 始终合并 LIKE
+                loadUnionPage(db, readable, normalizedSource, normalizedQuery, grams, limit, pageOffset)
+                    ?: loadSqlPage(
+                        readable, normalizedSource, query = normalizedQuery, limit = limit, pageOffset = pageOffset,
+                    )
+            }
         }
         currentCoroutineContext().ensureActive()
+        val durationMs = ((System.nanoTime() - startedAtNanos) / 1_000_000L).coerceAtLeast(0L)
+        ExplorePerfMonitor.record(
+            ExploreLoadSample(
+                offset = pageOffset,
+                pageSize = graph.eventNodes.size,
+                result = if (graph.eventNodes.isEmpty()) ExploreLoadResult.EMPTY else ExploreLoadResult.OK,
+                total = graph.totalEvents,
+                durationMs = durationMs,
+                usedFts = usedFts,
+                usedLike = usedLike,
+                truncated = graph.truncated,
+            ),
+        )
         graph
     }
 
     // ---- FTS 路径 ----
 
     /**
-     * FTS 召回 + 分页；返回 null = FTS 无可用召回/无命中（调用方回退 LIKE）。
+     * FTS + LIKE 并集召回 + 分页（P1.3c）；返回 null = 无任何候选（调用方走纯 LIKE 分页兜底）。
      * 调用方负责 IO 线程与取消检查。
      */
-    private suspend fun loadFtsPage(
+    private suspend fun loadUnionPage(
         db: AppDatabase,
         readable: SupportSQLiteDatabase,
         sourceId: String?,
         query: String,
+        grams: List<String>,
         limit: Int,
         pageOffset: Int,
     ): ExploreGraph? {
-        val grams = SagSupport.queryGrams(query)
         val match = SagSupport.ftsOrMatch(grams) ?: return null
 
         var truncated = false
@@ -102,6 +137,15 @@ object ExploreGraphRepository {
         if (entityIds.isNotEmpty()) {
             candidateEventIds.addAll(queryEventIdsByEntityIds(readable, entityIds))
         }
+        // P1.3c：FTS 有命中仍合并 LIKE 候选（有界），覆盖索引口径外的子串/旧索引遗漏。
+        val likeCandidates = queryLikeCandidateEventIds(
+            readable = readable,
+            sourceId = sourceId,
+            query = query,
+            limit = LIKE_CANDIDATE_LIMIT + 1,
+        )
+        if (likeCandidates.size > LIKE_CANDIDATE_LIMIT) truncated = true
+        candidateEventIds.addAll(likeCandidates.take(LIKE_CANDIDATE_LIMIT))
         if (candidateEventIds.size > EVENT_FTS_CANDIDATE_LIMIT) truncated = true
         val candidates = candidateEventIds.sorted().take(EVENT_FTS_CANDIDATE_LIMIT)
         if (candidates.isEmpty()) return null
@@ -127,6 +171,27 @@ object ExploreGraphRepository {
             extraTruncated = truncated,
         )
         return graph
+    }
+
+    /**
+     * LIKE 候选事件 id（有界，P1.3c union 用）：active/source 过滤 + 旧 LIKE 条件，
+     * 只 SELECT e.id（content 仅出现在 WHERE），`LIMIT limit` 由调用方做超限探测。
+     */
+    private fun queryLikeCandidateEventIds(
+        readable: SupportSQLiteDatabase,
+        sourceId: String?,
+        query: String,
+        limit: Int,
+    ): List<Long> {
+        val where = buildWhere(sourceId, query)
+        return readable.query(
+            "SELECT DISTINCT e.id$FROM_EVENTS WHERE ${where.sql} ORDER BY e.id ASC LIMIT ?",
+            (where.args + limit).toTypedArray(),
+        ).use { cursor: Cursor ->
+            val ids = ArrayList<Long>()
+            while (cursor.moveToNext()) ids += cursor.getLong(0)
+            ids
+        }
     }
 
     /** entity_fts 命中的 entity → 其关联事件 id（有界；结果去重由调用方处理）。 */

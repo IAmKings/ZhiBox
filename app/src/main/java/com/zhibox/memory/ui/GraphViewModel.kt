@@ -6,6 +6,9 @@ import com.zhibox.memory.R
 import com.zhibox.memory.core.extraction.EntityAliasRepository
 import com.zhibox.memory.core.graph.ExploreGraph
 import com.zhibox.memory.core.graph.ExploreGraphRepository
+import com.zhibox.memory.core.graph.ExploreLoadSample
+import com.zhibox.memory.core.graph.ExplorePerfMonitor
+import com.zhibox.memory.core.graph.ExplorePerfStats
 import com.zhibox.memory.core.graph.ExploreProjection
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.EntityAliasEntity
@@ -100,6 +103,8 @@ data class GraphUiState(
     val explorePageOffset: Int = 0,
     /** P1.3b：单页事件上限（与 core load(maxEvents) 一致）。 */
     val explorePageSize: Int = EXPLORE_PAGE_SIZE,
+    /** P1.3c：连续性能观测（最近 64 次 load 的 p50/p95/max/last；失败不清空，保留最近成功值）。 */
+    val explorePerf: ExplorePerfStats? = null,
 )
 
 /**
@@ -485,6 +490,8 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
                         explorePageOffset = graph.pageOffset,
                         explorePageSize = graph.maxEvents,
                         exploreSelectedNodeId = if (keepSelection) it.exploreSelectedNodeId else null,
+                        // P1.3c：core 在每次成功 load（含空页）后记录；失败不清空最近成功指标
+                        explorePerf = ExplorePerfMonitor.stats(),
                     )
                 }
             } catch (e: CancellationException) {
@@ -796,4 +803,125 @@ internal fun exploreLabelNodeIds(
         result += item.node.id
     }
     return result.take(limit)
+}
+
+// ───────────────────────── P1.3c：标签碰撞排版（纯 JVM，可测试） ─────────────────────────
+
+/** P1.3c：一个候选标签（文本已测量；坐标/尺寸为 Canvas 像素）。 */
+data class ExploreLabelCandidate(
+    val nodeId: String,
+    /** 文本水平中心（通常为节点屏幕 x）。 */
+    val centerX: Float,
+    /** 文本基线 y（通常为节点屏幕 y - 半径 - 间距）。 */
+    val baselineY: Float,
+    val width: Float,
+    val height: Float,
+    val isSelected: Boolean = false,
+)
+
+/** P1.3c：最终放置的标签矩形（可绘制文本；baseline = bottom）。 */
+data class ExploreLabelBox(
+    val nodeId: String,
+    val left: Float,
+    val top: Float,
+    val right: Float,
+    val bottom: Float,
+) {
+    val centerX: Float get() = (left + right) / 2f
+}
+
+/**
+ * P1.3c：标签碰撞避让布局。
+ *
+ * 规则：
+ * - 选中标签**优先**放置（不受其它标签影响；若尺寸大于画布则跳过）；
+ * - 其余按传入顺序（调用方按 depth 近→远）尝试；与已放置矩形（外扩 [paddingPx]）重叠则跳过；
+ * - 越界先 clamp 到画布内（平移），clamp 后仍重叠则跳过；
+ * - 最多 [limit] 个；空/非法画布/limit<=0 返回空列表。
+ */
+internal fun placeExploreLabels(
+    candidates: List<ExploreLabelCandidate>,
+    canvasWidth: Float,
+    canvasHeight: Float,
+    limit: Int = 12,
+    paddingPx: Float = 2f,
+): List<ExploreLabelBox> {
+    if (limit <= 0 || canvasWidth <= 0f || canvasHeight <= 0f || candidates.isEmpty()) {
+        return emptyList()
+    }
+    val padding = paddingPx.coerceAtLeast(0f)
+    val ordered = candidates.filter { it.isSelected }.sortedBy { it.nodeId } +
+        candidates.filterNot { it.isSelected }
+    val placed = ArrayList<ExploreLabelBox>(limit)
+    for (candidate in ordered) {
+        if (placed.size >= limit) break
+        if (candidate.width <= 0f || candidate.height <= 0f) continue
+        if (candidate.width > canvasWidth || candidate.height > canvasHeight) continue
+        var left = candidate.centerX - candidate.width / 2f
+        var top = candidate.baselineY - candidate.height
+        var right = left + candidate.width
+        var bottom = top + candidate.height
+        // clamp 到画布内
+        if (left < 0f) {
+            right -= left
+            left = 0f
+        }
+        if (right > canvasWidth) {
+            left -= (right - canvasWidth)
+            right = canvasWidth
+        }
+        if (top < 0f) {
+            bottom -= top
+            top = 0f
+        }
+        if (bottom > canvasHeight) {
+            top -= (bottom - canvasHeight)
+            bottom = canvasHeight
+        }
+        if (left < 0f || top < 0f) continue
+        val box = ExploreLabelBox(
+            nodeId = candidate.nodeId,
+            left = left,
+            top = top,
+            right = right,
+            bottom = bottom,
+        )
+        val overlaps = placed.any { other -> rectsOverlap(box, other, padding) }
+        if (!overlaps) placed += box
+    }
+    return placed
+}
+
+private fun rectsOverlap(a: ExploreLabelBox, b: ExploreLabelBox, padding: Float): Boolean =
+    a.left - padding < b.right &&
+        a.right + padding > b.left &&
+        a.top - padding < b.bottom &&
+        a.bottom + padding > b.top
+
+/** P1.3c：性能行展示映射（通道标记便于 UI 本地化；无样本返回 null）。 */
+internal enum class ExplorePerfChannel { NONE, FTS, LIKE, FTS_AND_LIKE }
+
+internal data class ExplorePerfUi(
+    val lastMs: Long,
+    val p50Ms: Long,
+    val p95Ms: Long,
+    val count: Int,
+    val channel: ExplorePerfChannel,
+)
+
+internal fun explorePerfUi(stats: ExplorePerfStats?): ExplorePerfUi? {
+    val last: ExploreLoadSample = stats?.last ?: return null
+    val channel = when {
+        last.usedFts && last.usedLike -> ExplorePerfChannel.FTS_AND_LIKE
+        last.usedFts -> ExplorePerfChannel.FTS
+        last.usedLike -> ExplorePerfChannel.LIKE
+        else -> ExplorePerfChannel.NONE
+    }
+    return ExplorePerfUi(
+        lastMs = last.durationMs,
+        p50Ms = stats.p50Ms,
+        p95Ms = stats.p95Ms,
+        count = stats.count,
+        channel = channel,
+    )
 }
