@@ -1,0 +1,7 @@
+P1.1b 25 页扫描件 OCR E2E（K60U 6D8H6TXSDYXC85PZ，debug v0.1.2 versionCode 3，2026-10-20）
+- fixture: Pillow 生成 25 页 1240x1754 图片 PDF `/tmp/p11b_scan25.pdf`；pypdf extract_text=''（无文本层）。
+- 生产链路：staging→autostart_import→PdfTextExtractor 逐页文本层→PdfOcrExtractor 页级 OCR（OcrLimits.maxPages=0 全部页）→embedding。
+- DB: ('p11b_scan25','pdf-ocr-v1','ready', job done)
+- chunk 含 PAGE 1..25（第二个 chunk 出现 PAGE 19/20/21/22/23/24/25），证明不再截断前 20 页；OCR 2 页真实 ML Kit instrumentation 1/1 通过。
+- 质量：2400px/3x、行排序、旋转二遍已启用；OCR 对部分小字号尾部数字仍有误识，复杂多栏/手写仍受 ML Kit 模型限制。
+补充低分辨率+180°旋转：p11b_lowres.pdf（620x877、70px、旋转180°）→ pdf-ocr-v1 ready，chunk 识别出 "LOW RES ROTATI..."，旋转二遍/3x 放大生效。

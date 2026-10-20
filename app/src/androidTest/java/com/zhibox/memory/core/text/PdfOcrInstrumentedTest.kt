@@ -1,5 +1,7 @@
 package com.zhibox.memory.core.text
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
@@ -54,15 +56,22 @@ class PdfOcrInstrumentedTest {
                 val pageInfo = PdfDocument.PageInfo.Builder(1240, 1754, index + 1).create()
                 val page = document.startPage(pageInfo)
                 try {
-                    val canvas = page.canvas
-                    canvas.drawColor(Color.WHITE)
-                    val paint = Paint().apply {
-                        color = Color.BLACK
-                        textSize = 140f
-                        isAntiAlias = true
-                        typeface = Typeface.DEFAULT_BOLD
+                    val bitmap = Bitmap.createBitmap(1240, 1754, Bitmap.Config.ARGB_8888)
+                    try {
+                        val bitmapCanvas = Canvas(bitmap)
+                        bitmapCanvas.drawColor(Color.WHITE)
+                        val paint = Paint().apply {
+                            color = Color.BLACK
+                            textSize = 140f
+                            isAntiAlias = true
+                            typeface = Typeface.DEFAULT_BOLD
+                        }
+                        bitmapCanvas.drawText(text, 90f, 500f, paint)
+                        // 先画成位图再嵌入 PDF：无文本层，等价扫描件（直接 Canvas 会写文本层）。
+                        page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+                    } finally {
+                        bitmap.recycle()
                     }
-                    canvas.drawText(text, 90f, 500f, paint)
                 } finally {
                     document.finishPage(page)
                 }

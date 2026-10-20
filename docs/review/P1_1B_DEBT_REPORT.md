@@ -1,7 +1,7 @@
 # P1.1b 报告：OCR 全页/逐页与质量、PDF 密码进程重启恢复
 
 - **日期**：2026-10-20
-- **状态**：代码/JVM/编译完成；K60U 设备在本轮验证时断开，真实 ML Kit/Keystore 设备项待重连补跑
+- **状态**：**代码/JVM/真机验证完成**（K60U 重连后补跑；真实 ML Kit、25 页扫描件、Keystore/进程杀停恢复均通过）
 - **对应债务**：OCR 仅前 20 页 + 复杂版式/低分辨率质量有限；密码仅进程内、进程死亡重输
 
 ## 1. OCR 全页/逐页
@@ -37,13 +37,18 @@
 | JVM debug / release | **678 / 0**、**659 / 0** |
 | text | 16 类 141 tests / 0 failures |
 | lint | 0 errors / 55 warnings |
-| 设备 | 本轮 K60U 断开；真实 ML Kit/Keystore instrumentation 待重连补跑；此前 P1.1 单页 OCR 1/1 |
+| 设备 | K60U：真实 ML Kit OCR 2 页 instrumentation **1/1**；25 页扫描件真实导入 `pdf-ocr-v1` ready（含 PAGE 25）；Keystore **6/6**；密码重试后 0.7s 杀进程→重启自动恢复 ready |
 
-## 4. 签名候选
+## 4. 真机证据
+
+- [P1.1b-ocr-25p-k60u.txt](evidence/P1.1b-ocr-25p-k60u.txt)、[P1.1b-ocr-mlkit-instrumented-k60u.txt](evidence/P1.1b-ocr-mlkit-instrumented-k60u.txt)
+- [P1.1b-keystore-instrumented-k60u.txt](evidence/P1.1b-keystore-instrumented-k60u.txt)、[P1.1b-password-process-kill-k60u.txt](evidence/P1.1b-password-process-kill-k60u.txt)
+
+## 5. 签名候选
 
 - `dist/zhibox-0.1.2-fc8e8d7-release-signed.apk`（69,436,597 bytes，SHA-256 `7ce113779eff38169f8e3c38edcf12f43817a414245a4e5175732c90b5127c3b`；未发布/tag；设备 smoke 待 K60U 重连）。
 
-## 5. 后续
+## 6. 后续
 
 - 重连 K60U 后跑 `PdfOcrInstrumentedTest`、`PdfPasswordStoreKeystoreTest`，补 25 页真实扫描件导入/进程杀停恢复 E2E。
 - 手写/多栏如需更高精度，评估 PaddleOCR/RapidOCR 等离线引擎（会显著增加 APK/集成成本，需单列）。
