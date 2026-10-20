@@ -37,7 +37,11 @@
 - 备份回环 alias+FTS 恢复由 `BackupV3RoundTripTest` 设备执行通过。
 - 查询扩展 alias 精确/子串/FTS 由 JVM `LexicalQueryEntityAliasRobolectricTest` 覆盖。
 
-## 4. 风险/边界
+## 4. 签名候选
+
+- `dist/zhibox-0.1.2-a99925b-release-signed.apk`（69,458,798 bytes，SHA-256 `fc09e7c1aa7be7cabc3817857897f9f76e37322e2f0c0fea9f686f0bdaedf2b8`；未发布/tag）。
+
+## 5. 风险/边界
 
 - alias 只影响查询扩展/派生 FTS；不重写历史抽取，不自动从 LLM 生成（避免幻觉污染）。
 - 无 alias 的包仍写空 `entity_aliases.jsonl`（旧 App 跳过未知 entry，新 App 缺省空）。
