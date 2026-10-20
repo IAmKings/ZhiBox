@@ -36,7 +36,7 @@
 | K60U 非 UI instrumentation | **31/31** |
 | K60U PDF Android runtime instrumented | **2/2**（真实 PDFBox AAR 资源 + DocumentParser Context/File + 损坏 PDF 可读错误） |
 | K60U 真机导入 E2E（debug autostart staging） | **5/5 文档 ready**：PDF/DOCX/PPTX/XLSX/HTML 各 1；job done 5、chunk 5、SAG event 5；内容与 parserId 已核验（`evidence/B14-import-k60u-e2e.txt`、`B14-import-k60u.xml`） |
-| release 构建 | **signed RC**：`dist/zhibox-0.1.2-4bdcb25-release-signed.apk`（55,480,566 bytes，SHA-256 `01c5d8a720d31762f4347460c573ebfdd8d264113ece4ed754f317d7c647f21d`；apksigner PASS）；v0.1.1 49.39MB → v0.1.2 约 55.48MB（PDFBox assets/BC 增量约 +6MB） |
+| release 构建 | **signed RC**：`dist/zhibox-0.1.2-7f92776-release-signed.apk`（69,436,487 bytes，SHA-256 `686250ceb98489b8742aaa4ce4acf5e27af72a8d735b0bf3d66fd03930996726`；apksigner PASS）；v0.1.1 49.39MB → v0.1.2 约 69.44MB（PDFBox/BC + ML Kit OCR 引擎） |
 
 ## 4. 限制/未做
 
