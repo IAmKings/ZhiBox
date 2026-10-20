@@ -1,4 +1,4 @@
-B14 P1 导入设备 E2E（K60U 6D8H6TXSDYXC85PZ，debug v0.1.2 代码，2026-10-20）
+B14 P1 导入设备 E2E（K60U 6D8H6TXSDYXC85PZ，debug 包 versionName 0.1.1/versionCode 2 但代码含 P1 导入扩展 commit 227c215，2026-10-20）
 方法：用 debug autostart 入口（autostart_import）绕过被 HyperOS 禁止的 adb input，把 5 个 fixture 直接放入 app 私有 files/import-staging；启动后由生产 ImportViewModel/IngestRepository 自动导入。
 Fixture：p1_pdf.pdf / p1_docx.docx / p1_pptx.pptx / p1_xlsx.xlsx / p1_web.html
 结果（从 app DB 导出后 sqlite3 查询）：
