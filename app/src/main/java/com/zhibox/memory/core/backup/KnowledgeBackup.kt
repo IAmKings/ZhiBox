@@ -60,6 +60,7 @@ import java.util.zip.ZipOutputStream
  * 与 v1 的差异（P0-1b / P1-7 / data-layer P1-7）：
  * - 空间表补全 accelerator/quantization/modelRevision/normalization/active/createdAt；
  * - sources 补 uri、documents 补 sizeBytes、向量补 role/vectorNorm/createdAt（恢复后证据页可区分
+ *   来源 URL provenance（B14.2 可选 originUrl，旧包缺字段=null）；
  *   "原文未随备份迁移"与"文件损坏"；Phase 2 多角色向量不再被降级成 content）；
  * - 导入同时兼容 v1 包（缺失字段用默认值）。
  *
@@ -622,6 +623,8 @@ object KnowledgeBackup {
         .put("id", s.id).put("title", s.title).put("uri", s.uri)
         .put("mimeType", s.mimeType ?: JSONObject.NULL)
         .put("createdAt", s.createdAt).put("status", s.status)
+        // B14.2/v3 兼容：可选字段；null 用 JSON null（旧读取端/旧包缺字段均视为 null）
+        .put("originUrl", s.originUrl ?: JSONObject.NULL)
 
     private fun documentJson(d: DocumentEntity): JSONObject = JSONObject()
         .put("id", d.id).put("sourceId", d.sourceId).put("title", d.title)
@@ -926,6 +929,8 @@ object KnowledgeBackup {
                 createdAt = o.optLong("createdAt", 0L),
                 // B1-5 审查修复：恢复路径也只接受枚举；未知/损坏状态在写库前报错，避免绕过状态单源。
                 status = requireSourceStatus(o.optString("status", SourceStatus.ACTIVE.value), id).value,
+                // B14.2：v1/v2/v3 旧包可能没有 originUrl 字段 → optStringOrNull 返回 null（合法）。
+                originUrl = o.optStringOrNull("originUrl"),
             )
         }
     }

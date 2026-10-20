@@ -447,4 +447,8 @@
     <string name="import_url_invalid">请输入合法的 HTTPS 网址（http 不支持）</string>
     <string name="import_url_failed">网页抓取失败：%1$s</string>
     <string name="import_url_done">已抓取并暂存：%1$s</string>
+
+    <!-- ==== B14.2：网页来源 URL provenance ==== -->
+    <string name="sources_origin_link">网页来源：%1$s</string>
+    <string name="import_url_origin_failed">保存来源 URL 失败（已回滚暂存文件）：%1$s</string>
 </resources>

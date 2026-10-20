@@ -1,6 +1,7 @@
 package com.zhibox.memory.core.ingest
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.room.withTransaction
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -32,6 +33,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
@@ -60,6 +62,96 @@ data class ImportBatchResult(
 ) {
     /** 本次新登记数（UI 展示用便捷属性；不参与持久化）。 */
     val enqueuedCount: Int get() = documentIds.size
+}
+
+/**
+ * B14.2：staging 旁车 `<fileName>.origin` 与来源 URL 校验（导入侧，测试可见）。
+ *
+ * 约定：
+ * - 旁车与 staging 源文件**同目录同名**，内容为纯文本 URL（推荐 UTF-8，读取时 trim 空白/换行）；
+ * - 文件成功入库（[ImportResult.Enqueued]）或命中去重（[ImportResult.Duplicate]）→ 删除旁车；
+ * - 单文件登记异常/取消 → **保留**源文件与旁车（供下次重试，避免 URL provenance 丢失）；
+ * - 无旁车 = 无 URL（originUrl=null）；旁车 URL 无效（非 HTTPS/userinfo/超长/解析失败）=
+ *   视为无 URL，并立即删除该旁车（不阻断导入、不留脏旁车）；
+ * - 孤儿旁车（对应源文件不存在/不可导入/隐藏）在批次结束时清理。
+ */
+internal object SourceOriginUrls {
+
+    const val SIDECAR_SUFFIX: String = ".origin"
+
+    /** 来源 URL 上限（与采集侧/备份共识一致；超长视为无效）。 */
+    const val MAX_URL_LENGTH: Int = 2048
+
+    /** 旁车文件大小上限：仅存一个 URL，异常大文件直接视为无效并删除，避免读入垃圾。 */
+    const val MAX_SIDECAR_BYTES: Long = 8L * 1024L
+
+    /** 旁车文件路径：`<staging>/<fileName>.origin`（与源文件同目录）。 */
+    fun sidecarFor(stagingFile: File): File =
+        File(stagingFile.parentFile, stagingFile.name + SIDECAR_SUFFIX)
+
+    /**
+     * 归一化/校验来源 URL：仅接受 `https`、无 userinfo、host 非空、长度 ≤ [MAX_URL_LENGTH]。
+     * 返回 trim 后的原 URL；无效/空返回 null（不抛异常，便于"无效旁车按无 URL 处理"）。
+     * 允许 query/fragment/path/端口（端口仅数字，URI 解析拒绝非法值）。
+     */
+    fun normalize(raw: String?): String? {
+        val text = raw?.trim().orEmpty()
+        if (text.isEmpty() || text.length > MAX_URL_LENGTH) return null
+        return try {
+            val uri = URI(text)
+            if (!uri.scheme.equals("https", ignoreCase = true)) return null
+            if (uri.rawUserInfo != null) return null
+            // host 为空时用 authority 兜底：java.net.URI 不解析 IDN/Unicode host（如 https://例子.测试/x），
+            // 但仍能给出 authority；userinfo 已在上方拒绝，authority 为空才视为无主机。
+            if (uri.host.isNullOrBlank() && uri.authority.isNullOrBlank()) return null
+            text
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 读取旁车 URL：无旁车 → null；无效/超大 → 删除旁车并返回 null；
+     * 有效 → 返回归一化 URL（旁车由调用方在文件处理后 [consume]）。
+     */
+    fun read(stagingFile: File): String? {
+        val sidecar = sidecarFor(stagingFile)
+        if (!sidecar.isFile) return null
+        if (sidecar.length() > MAX_SIDECAR_BYTES) {
+            sidecar.delete()
+            return null
+        }
+        val raw = runCatching { sidecar.readText(Charsets.UTF_8) }.getOrNull()
+        val normalized = normalize(raw)
+        if (normalized == null) {
+            // 无效旁车：立即丢弃（否则每次导入都重复解析；且失败重试也拿不到有效 URL）
+            sidecar.delete()
+        }
+        return normalized
+    }
+
+    /** 源文件已成功入库/去重：消费旁车。 */
+    fun consume(stagingFile: File) {
+        sidecarFor(stagingFile).delete()
+    }
+
+    /**
+     * 清理孤儿旁车：对应 staging 源文件不存在、隐藏或扩展名不在导入白名单 → 删除旁车。
+     * @param isImportable 扩展名白名单判定（由 IngestRepository 提供，保持单一事实源）
+     */
+    fun cleanupOrphans(stagingDir: File, isImportable: (String) -> Boolean) {
+        if (!stagingDir.isDirectory) return
+        val files = stagingDir.listFiles() ?: return
+        files.asSequence()
+            // 隐藏旁车也清理：隐藏源文件不可导入 → 其旁车同样不该残留
+            .filter { it.isFile && it.name.endsWith(SIDECAR_SUFFIX) }
+            .forEach { sidecar ->
+                val baseName = sidecar.name.removeSuffix(SIDECAR_SUFFIX)
+                val baseFile = File(stagingDir, baseName)
+                val keep = baseFile.isFile && !baseName.startsWith(".") && isImportable(baseName)
+                if (!keep) sidecar.delete()
+            }
+    }
 }
 
 /**
@@ -205,7 +297,19 @@ class IngestRepository(
      */
     suspend fun importStaged(files: List<File>): ImportBatchResult = importStagedInternal(files)
 
-    private suspend fun importStagedInternal(files: List<File>?): ImportBatchResult =
+    /**
+     * B14.2 测试缝（@VisibleForTesting）：与 [importStaged] 相同的 staging 扫描/旁车/去重/清理流程，
+     * 但**不入队 Worker**——供 JVM Robolectric 在无 WorkManager 环境下验证旁车语义。
+     * 生产调用方（UI/Worker）只用 [importStaged]。
+     */
+    @VisibleForTesting
+    internal suspend fun importStagedForTest(files: List<File>): ImportBatchResult =
+        importStagedInternal(files, enqueueWorker = false)
+
+    private suspend fun importStagedInternal(
+        files: List<File>?,
+        enqueueWorker: Boolean = true,
+    ): ImportBatchResult =
         withContext(Dispatchers.IO) {
             // 双入队防护（实测两轮均出现 2×100 任务）：在途批次存在时不再扫描登记。
             // 但仍要确保 worker 存活（见下）——只防重复登记，不放弃唤醒。
@@ -213,7 +317,9 @@ class IngestRepository(
             var registered = 0
             try {
                 if (db.ingestJobDao().activeCount(JobStage.ACTIVE_VALUES) > 0) {
-                    ensureIngestWorker() // P1-4：有 job（可能因上轮异常而无人消费）→ 补入队
+                    // P1-4：有 job（可能因上轮异常而无人消费）→ 补入队；
+                    // B14.2 测试缝（enqueueWorker=false）下跳过，避免 JVM 无 WorkManager 环境崩溃。
+                    if (enqueueWorker) ensureIngestWorker()
                     return@withContext ImportBatchResult(emptyList(), 0)
                 }
                 // 目录扫描/过滤在 IO 线程内完成（无参入口不把扫描放进默认参数，见方法注释）
@@ -224,20 +330,29 @@ class IngestRepository(
                 val documentIds = ArrayList<String>(batchFiles.size)
                 var duplicateCount = 0
                 for (file in batchFiles) {
+                    // B14.2：读取同目录旁车（无效 URL 视为无 URL 并删除旁车；无旁车 → null）
+                    val originUrl = SourceOriginUrls.read(file)
                     try {
-                        when (val result = importFile(file)) {
+                        when (val result = importFile(file, originUrl)) {
                             is ImportResult.Enqueued -> {
                                 documentIds += result.documentId
                                 registered++
+                                // 已入库：消费旁车（源文件已由 importFile 删除/移入 documents）
+                                SourceOriginUrls.consume(file)
                             }
                             // B1-6：内容重复——staging 副本已由 importFile 删除，不登记、不产生 job；
                             // B3-13：计入 duplicateCount 供 UI 提示（不再静默吞掉）
-                            is ImportResult.Duplicate -> duplicateCount++
+                            is ImportResult.Duplicate -> {
+                                duplicateCount++
+                                // 去重命中同样消耗 staging 文件 → 旁车一并删除，不留脏旁车
+                                SourceOriginUrls.consume(file)
+                            }
                         }
                     } catch (c: CancellationException) {
-                        throw c // 取消必须向上传播（P1-2）：不能当单文件失败继续循环
+                        throw c // 取消必须向上传播（P1-2）：不能当单文件失败继续循环；文件+旁车保留
                     } catch (e: Exception) {
                         // 单文件登记失败：跳过继续（文件回滚失败则保留在 staging 供下次重试）。
+                        // B14.2：旁车**保留**，保证重试时仍能恢复来源 URL（取消同理）。
                         // 仓库约定不写运行日志（错误已结构化落库），仅跳过该文件。
                     } catch (e: Error) {
                         throw e // OOM 等不可恢复错误：不当作单文件失败吞掉
@@ -247,7 +362,15 @@ class IngestRepository(
             } finally {
                 stagingBusy.set(false)
                 // 只要本次登记过任何 job（含部分失败前已登记的），就必须保证 Worker 会执行
-                if (registered > 0) ensureIngestWorker()
+                if (registered > 0 && enqueueWorker) ensureIngestWorker()
+                // B14.2：批次结束清理孤儿旁车（无对应 staging 源文件/不可导入）。防御性执行：
+                // 清理失败绝不影响导入结果（旁车最多残留一个无效文本文件）。
+                runCatching {
+                    SourceOriginUrls.cleanupOrphans(
+                        stagingDir = File(filesDir, "import-staging"),
+                        isImportable = ::isImportableFileName,
+                    )
+                }
             }
         }
 
@@ -280,7 +403,7 @@ class IngestRepository(
      *
      * @return [ImportResult.Enqueued] 新登记；[ImportResult.Duplicate] 同内容文档已存在（不重复登记）。
      */
-    suspend fun importFile(staged: File): ImportResult = withContext(Dispatchers.IO) {
+    suspend fun importFile(staged: File, originUrl: String? = null): ImportResult = withContext(Dispatchers.IO) {
         // P1 审查修复：单文件公开入口也必须复用与批量入口相同的白名单/隐藏文件过滤，
         // 否则调用方可以把 .zip/.apk 等任意文件登记入库（processDocument 才失败）。
         require(staged.isFile && !staged.name.startsWith(".") && isImportableFileName(staged.name)) {
@@ -303,6 +426,8 @@ class IngestRepository(
         }
         val sizeBytes = staged.length()
 
+        // B14.2：直接 importFile 默认无 URL；传入值仍做一次校验（防止调用方绕过校验写脏数据）。
+        val normalizedOriginUrl = SourceOriginUrls.normalize(originUrl)
         val documentId = "doc_" + UUID.randomUUID().toString().replace("-", "").take(20)
         val sourceId = "src_" + UUID.randomUUID().toString().replace("-", "").take(20)
         val jobId = "job_" + UUID.randomUUID().toString().replace("-", "").take(20)
@@ -314,7 +439,15 @@ class IngestRepository(
         try {
             db.withTransaction {
                 db.sourceDao().upsert(
-                    SourceEntity(sourceId, staged.nameWithoutExtension, stored.absolutePath, null, now, SourceStatus.ACTIVE.value)
+                    SourceEntity(
+                        id = sourceId,
+                        title = staged.nameWithoutExtension,
+                        uri = stored.absolutePath,
+                        mimeType = null,
+                        createdAt = now,
+                        status = SourceStatus.ACTIVE.value,
+                        originUrl = normalizedOriginUrl,
+                    ),
                 )
                 db.documentDao().upsert(
                     // 命名参数（曾因位置错位把 "pending" 传给 parserId、status 恒为 processing，

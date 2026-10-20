@@ -27,7 +27,7 @@
 ### 1.4 URL 原始地址未写入 source/document
 - **方案（建议下一批做）**：schema **v8** 增加 `source.origin_url`（nullable）与索引；staging 旁车 JSON 保存 URL；`ImportViewModel.importUrl` 传入 `IngestRepository.importFile(originUrl=…)`；备份 v3 包含该字段；Sources/证据页显示可点击来源 URL。去重键：规范化 URL（scheme/host 小写、去 fragment、限长）。
 - **验收**：网页导入后 source.origin_url 可查、备份回环保留、重复 URL 不重复建 source；不把 URL 塞进 title/uri 的临时方案。
-- **状态**：入库前列为 **B14.2 数据层任务**（schema v8 + 迁移 + 备份测试）。
+- **状态**：**B14.2 已完成**（schema v8 `source.originUrl` + 迁移/备份/staging 旁车/Sources UI + K60U 真机 E2E；见 `B14_2_ORIGIN_URL_REPORT.md`）。
 
 ### 1.5 Office 正则解析的大小/预算限制
 - **方案（建议下一批做）**：用流式 SAX/线性 tokenizer 替换 `.*?` 正则；逐段 `ensureActive()`；保留 zip 条目/解压/字符预算；畸形 XML fuzz 测试；错误归类 `DOCUMENT_PARSE` 不自动重试。
@@ -38,7 +38,7 @@
 - **现状**：K60U 开启 USB 调试后，SAF 选择器已可点击并成功暂存（本次实测）；`WebPageFetcher` 真实公网 HTTPS 抓取 1/1 通过；URL 文本输入受设备 IME 影响，尚未在 UI 完成端到端点击。
 - **方案**：URL 输入补 `KeyboardType.Uri`/IME action；Compose UI 测试用 `performTextInput` 验证字段/按钮/回调，不依赖 adb 注入；真机 URL 导入用 autostart/测试数据旁路补一次（密码/网络开关）。SAF 文件选择器保持 `*/*` + 扩展名白名单。
 - **验收**：SAF 多选→staging→全部导入→ready；URL 输入→抓取→staging→导入；错误码可读；不需要 adb 输入权限也可通过 Compose 测试回归。
-- **状态**：**B14.1 已完成 URL 键盘/UI 测试代码**；K60U HyperOS 仍拒绝 Compose 测试宿主（`Process crashed`），SAF 真机已通过；待可用设备执行 UI test。
+- **状态**：**B14.1 已完成 URL 键盘/UI 测试代码 + JVM 兜底测试**；K60U HyperOS 仍拒绝 Compose instrumentation（`Process crashed`），SAF 真机已通过；URL 旁车/Sources 链接已用 autostart staging + UI dump 验证。
 
 ## 2. 执行顺序（不让限制混入下一步）
 

@@ -56,7 +56,8 @@
 - PDF owner-password-only 支持；user-password 仍 `PDF_ENCRYPTED`。
 - 旧 `.doc/.ppt/.xls`/legacy MIME/OLE magic 统一 `OFFICE_LEGACY_UNSUPPORTED` 可读错误。
 - URL 输入 `KeyboardType.Uri` + IME Go；新增 6 条 Compose UI 测试（K60U HyperOS 宿主限制，未执行）。
-- Android runtime 加密 PDF 2/2（K60U）；JVM 582/563；详见 `B14_1_FIX_REPORT.md`。
+- Android runtime 加密 PDF 2/2（K60U）；JVM 604/585；详见 `B14_1_FIX_REPORT.md`。
+- **B14.2**：schema v8 `source.originUrl` + staging 旁车 + Sources 链接；K60U DB/迁移/备份 **12/12**、origin E2E 通过；详见 `B14_2_ORIGIN_URL_REPORT.md`。
 
 ## 6. 后续
 

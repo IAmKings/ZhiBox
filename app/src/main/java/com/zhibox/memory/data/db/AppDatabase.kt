@@ -32,7 +32,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MessageCitationEntity::class,
         QueryTraceEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -584,6 +584,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * schema v7 → v8（B14.2）：`source` 增加 `originUrl`（来源 URL provenance，可空 TEXT）。
+         *
+         * 只加列、不回填、不联网：旧库所有行的 originUrl=NULL（表示"无来源 URL 信息"），
+         * 本地文件导入行为不变；新导入/备份恢复可写入 HTTPS URL。加列不涉及索引/外键，
+         * 不重写既有行，迁移后仍做外键自检 + 记录 schema_migrations=8。
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE source ADD COLUMN originUrl TEXT")
+                db.execSQL(
+                    "INSERT OR IGNORE INTO schema_migrations (`version`, `appliedAt`) " +
+                        "VALUES (8, ${System.currentTimeMillis()})",
+                )
+                db.query("PRAGMA foreign_key_check").use { violations ->
+                    check(!violations.moveToFirst()) { "schema v7→v8 迁移后存在外键违规" }
+                }
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -596,7 +616,7 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(
                         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                        MIGRATION_6_7,
+                        MIGRATION_6_7, MIGRATION_7_8,
                     )
                     .build().also { instance = it }
             }

@@ -33,6 +33,11 @@ data class SourceEntity(
     val mimeType: String?,
     val createdAt: Long,
     val status: String, // active / deleted
+    /**
+     * B14.2（schema v8）：来源 URL provenance（用户从网页/在线来源导入时的原始 URL）。
+     * 可为 null（本地文件导入/旧库升级/备份无该字段）；仅接受 HTTPS（写入端校验）。
+     */
+    val originUrl: String? = null,
 )
 
 @Entity(

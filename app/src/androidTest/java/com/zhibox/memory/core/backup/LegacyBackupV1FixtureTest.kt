@@ -82,6 +82,7 @@ class LegacyBackupV1FixtureTest {
         assertEquals("", source.uri)
         assertEquals("v1 原文", source.title)
         assertEquals("active", source.status)
+        assertNull("B14.2：v1 旧包缺 originUrl 字段 → null（不得报错）", source.originUrl)
         val document = db.documentDao().get("doc_v1")!!
         assertEquals(0L, document.sizeBytes)
         assertEquals("ready", document.status)

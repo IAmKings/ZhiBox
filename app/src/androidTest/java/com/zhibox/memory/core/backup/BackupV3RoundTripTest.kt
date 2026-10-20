@@ -111,6 +111,11 @@ class BackupV3RoundTripTest {
         assertTrue("v3 包应可导入：${imported.exceptionOrNull()?.message}", imported.isSuccess)
 
         assertEquals(1, db.sourceDao().all().size)
+        assertEquals(
+            "B14.2：备份恢复应保留 source.originUrl",
+            "https://example.com/b8-source?x=1",
+            db.sourceDao().get("src1")!!.originUrl,
+        )
         val doc = db.documentDao().get("doc1")!!
         assertEquals(DocStatus.READY.value, doc.status)
         assertEquals(2, db.chunkDao().count())
@@ -321,7 +326,9 @@ class BackupV3RoundTripTest {
     )
 
     private suspend fun seedLibrary(): Seed {
-        db.sourceDao().upsert(SourceEntity("src1", "B8 备份来源", "", null, 100, "active"))
+        db.sourceDao().upsert(
+            SourceEntity("src1", "B8 备份来源", "", null, 100, "active", originUrl = "https://example.com/b8-source?x=1"),
+        )
         db.documentDao().upsert(
             DocumentEntity(
                 id = "doc1", sourceId = "src1", title = "B8 备份文档", checksum = "sum-b8",

@@ -27,8 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -208,6 +210,25 @@ internal fun SourcesContent(
                                     )
                                 }
                             }
+                            // B14.2：URL 导入的网页来源 provenance（仅 https；长 URL 单行省略）
+                            val originUrl = src.originUrl
+                                ?.trim()
+                                ?.takeIf { it.startsWith("https://", ignoreCase = true) }
+                            if (originUrl != null) {
+                                val uriHandler = LocalUriHandler.current
+                                TextButton(
+                                    onClick = { runCatching { uriHandler.openUri(originUrl) } },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(
+                                        stringResource(R.string.sources_origin_link, originUrl),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
                             docsBySource[src.id]?.forEach { doc ->
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text("· ${doc.title}", style = MaterialTheme.typography.bodySmall)
@@ -267,13 +288,18 @@ private fun statusLabel(status: String): String = when (DocStatus.fromValue(stat
 
 // ───────────────────────── B3-7 @Preview（浅色/深色/空态/错误态） ─────────────────────────
 
-private fun previewSource(id: String, title: String) = SourceEntity(
+private fun previewSource(
+    id: String,
+    title: String,
+    originUrl: String? = null,
+) = SourceEntity(
     id = id,
     title = title,
     uri = "content://demo/$id",
     mimeType = "text/markdown",
     createdAt = 1_700_000_000_000,
     status = "active",
+    originUrl = originUrl,
 )
 
 private fun previewDocument(
@@ -293,7 +319,12 @@ private fun previewDocument(
 )
 
 private val previewSources = listOf(
-    previewSource("src_1", "蓝牙排查手册"),
+    // 长 URL 用于验证来源卡“网页来源”链接的单行省略
+    previewSource(
+        "src_1",
+        "蓝牙排查手册",
+        originUrl = "https://example.com/docs/bluetooth/troubleshooting/earbuds-connection-reset-and-firmware-guide",
+    ),
     previewSource("src_2", "端侧检索设计笔记"),
 )
 

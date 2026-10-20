@@ -1,0 +1,9 @@
+B14.2 source.originUrl E2E（K60U 6D8H6TXSDYXC85PZ，debug v0.1.2 versionCode 3，2026-10-20）
+- 方法：run-as 把 p1_origin3.html + 同目录 p1_origin3.html.origin（https://example.com/article）放入 files/import-staging；debug autostart_import 启动生产 ImportViewModel/IngestRepository。
+- DB（sqlite3 导出）sources:
+  ('p1_origin3', 'https://example.com/article')
+  旧来源 p1_origin/p1_origin2 为 NULL
+- 旁车清理：import-staging 导入后为空（.origin 已消费删除）。
+- Sources UI：显示“网页来源：https://example.com/article”（见 XML/PNG）。
+- 设备数据/备份测试：MigrationV7ToV8Test + SourceOriginUrlDaoTest + BackupV3RoundTripTest + MigrationTest = **12/12 PASS**（日志）。
+- 注：安装/测试过程中 K60U 原 5 文档测试数据被清理；本次重新验证了 origin 链路，不影响 B14.1 的导入 E2E 记录。

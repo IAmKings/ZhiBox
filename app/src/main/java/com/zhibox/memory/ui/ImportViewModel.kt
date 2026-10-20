@@ -433,21 +433,37 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
                 if (safeName == null) {
                     _errorMessage.value = str(R.string.import_url_failed, "标题无法生成合法文件名")
                 } else {
-                    withContext(Dispatchers.IO) {
-                        stagingDir.mkdirs()
-                        val target = uniqueStagingTarget(stagingDir, safeName)
-                        val temp = File(stagingDir, ".${target.name}.${System.nanoTime()}.part")
-                        try {
-                            temp.writeText(fetched.content)
-                            if (!temp.renameTo(target)) {
-                                throw IOException("暂存网页正文失败")
+                    try {
+                        withContext(Dispatchers.IO) {
+                            stagingDir.mkdirs()
+                            val target = uniqueStagingTarget(stagingDir, safeName)
+                            val temp = File(stagingDir, ".${target.name}.${System.nanoTime()}.part")
+                            try {
+                                temp.writeText(fetched.content)
+                                if (!temp.renameTo(target)) {
+                                    throw IOException("暂存网页正文失败")
+                                }
+                            } finally {
+                                temp.delete()
                             }
-                        } finally {
-                            temp.delete()
+                            // B14.2：正文成功后写 `<target>.origin` 旁车（UTF-8 单行原始 HTTPS URL，
+                            // 与 core SourceOriginUrls 约定同目录同名）；写旁车失败→**回滚删除正文**并
+                            // 报可读错误，避免“有文件无来源 URL”的半成品（旁车本体原子写由 helper 保证）。
+                            try {
+                                writeOriginSidecarAtomically(target, fetched.sourceUrl)
+                            } catch (e: Exception) {
+                                target.delete()
+                                throw OriginSidecarException(e)
+                            }
                         }
+                        _message.value = str(R.string.import_url_done, title)
+                        refreshStaging()
+                    } catch (e: OriginSidecarException) {
+                        _errorMessage.value = str(
+                            R.string.import_url_origin_failed,
+                            e.cause?.readableMessage() ?: "",
+                        )
                     }
-                    _message.value = str(R.string.import_url_done, title)
-                    refreshStaging()
                 }
             } finally {
                 _urlFetching.value = false
@@ -459,6 +475,8 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
         val title: String,
         val content: String,
         val suggestedFileName: String,
+        /** 原始请求 URL（单行 HTTPS；写 .origin 旁车用） */
+        val sourceUrl: String,
     )
 
     /** UI 侧可读抓取失败（携带 core 稳定错误码，message 可直接展示）。 */
@@ -466,6 +484,10 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
         val code: String,
         override val message: String,
     ) : Exception(message)
+
+    /** B14.2：旁车写入失败（正文已回滚删除，避免无 provenance 的半成品）。 */
+    private class OriginSidecarException(cause: Throwable) :
+        Exception(cause.message ?: "来源 URL 旁车写入失败", cause)
 
     /**
      * 网页抓取：调用 core [WebPageFetcher]（HTTPS-only / 15s 超时 / 2MB 上限 / 标题+正文）。
@@ -483,6 +505,7 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
                 // 保留标题 provenance（正文纯文本前加标题行；文件名用 suggestedFileName）
                 content = result.page.title.trim() + "\n\n" + result.page.text,
                 suggestedFileName = result.page.suggestedFileName,
+                sourceUrl = result.page.requestedUrl.trim(),
             )
             is WebPageResult.Failure -> throw WebPageFetchException(result.code, result.message)
         }
@@ -579,5 +602,38 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
 
         /** P1：staging 文件名主干最大长度（避免 ext4/SAF 长名失败）。 */
         const val MAX_STEM_CHARS = 100
+    }
+}
+
+/** B14.2：staging 旁车后缀（与 core `SourceOriginUrls.SIDECAR_SUFFIX` 的约定保持一致）。 */
+internal const val ORIGIN_SIDECAR_SUFFIX = ".origin"
+
+/** B14.2 旁车内容上限（单行 URL；与 core 旁车 8KB 读上限留余量）。 */
+internal const val MAX_ORIGIN_URL_LENGTH = 2048
+
+/**
+ * B14.2：在 staging 源文件**同目录**写 `<fileName>.origin` 旁车（UTF-8、单行原始 HTTPS URL）。
+ *
+ * 原子策略：先写同目录临时文件（以 `.` 开头，不会被 staging 扫描/导入）再 rename 到目标；
+ * 任一步失败 → 删除临时文件并抛出（不留下半写旁车）。调用方约定：旁车失败时删除正文源文件。
+ *
+ * 仅接受单行 `https://` URL（与 core SourceOriginUrls.normalize 的最低要求一致；更强的
+ * userinfo/host 校验由 core 读取侧兜底，无效旁车会被 core 删除并按无 URL 处理）。
+ */
+internal fun writeOriginSidecarAtomically(stagingFile: File, sourceUrl: String) {
+    val url = sourceUrl.trim()
+    require(url.isNotEmpty()) { "来源 URL 为空" }
+    require(url.length <= MAX_ORIGIN_URL_LENGTH) { "来源 URL 过长" }
+    require(url.startsWith("https://", ignoreCase = true)) { "仅支持 HTTPS 来源 URL" }
+    require(url.none { it == '\n' || it == '\r' }) { "来源 URL 必须为单行" }
+    val parent = stagingFile.parentFile ?: throw IOException("源文件无父目录")
+    val sidecar = File(parent, stagingFile.name + ORIGIN_SIDECAR_SUFFIX)
+    val temp = File(parent, "." + stagingFile.name + ORIGIN_SIDECAR_SUFFIX + ".tmp")
+    temp.delete()
+    try {
+        temp.writeText(url, Charsets.UTF_8)
+        if (!temp.renameTo(sidecar)) throw IOException("来源 URL 旁车 rename 失败")
+    } finally {
+        temp.delete()
     }
 }
