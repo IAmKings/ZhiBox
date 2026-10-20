@@ -8,7 +8,7 @@
 
 ### 1.1 扫描件 / 图片 PDF 无 OCR
 - **现状**：`PdfTextExtractor` 返回 `PDF_NO_TEXT`（可读、不重试）；不伪造“空成功”。
-- **方案**：新增可选 `PdfOcrFallback`（P1.1）：先用 PDF 文本层；空页才用 `PdfRenderer` 栅格化 + 端侧 OCR（ML Kit Text Recognition v2 或等价离线模型），逐页预算/取消；OCR 结果标记 `ocr=true` 写入 parserId/诊断；默认关闭，用户显式选择“尝试 OCR”。
+- **方案**：新增可选 `PdfOcrFallback`（P1.1）：先用 PDF 文本层；空页才用 `PdfRenderer` 栅格化 + 端侧 OCR（ML Kit Text Recognition v2 或等价离线模型），逐页预算/取消；OCR 结果标记 parserId=`pdf-ocr-v1`；**默认开启，可在设置关闭**（P1.1 已实现）。
 - **验收**：扫描 fixture（>0 页、无文本层）可抽正文；失败明确 `PDF_OCR_UNAVAILABLE/PDF_OCR_FAILED`；OCR 不引入网络（模型包离线校验）。
 - **状态**：**P1.1 已完成**（ML Kit 离线 OCR + 设置开关；见 `P1_1_OCR_PASSWORD_REPORT.md`）。
 
@@ -45,7 +45,7 @@
 1. **B14.1 小修**：owner-password PDF、legacy Office 明确错误、URL 输入 `KeyboardType.Uri` + UI 测试（低风险，直接关闭）。
 2. **B14.2 数据层**：`source.origin_url` schema v8 + 迁移/备份/UI（URL 溯源闭环）。
 3. **B14.3 解析硬化**：Office 流式解析 + 取消 + fuzz。
-4. **P1.1**（明确触发后）：OCR/用户密码 PDF；不提前引入大依赖。
+4. **P1.1 已完成**：ML Kit 离线 OCR（默认开，可关闭）+ user-password PDF 内存重试；见 `P1_1_OCR_PASSWORD_REPORT.md`。
 5. 上述完成后再进入 P1 下一项（Explore/3D 或实体别名/抽取质量）；P2 按原触发条件。
 
 ## 3. 技术债红线
