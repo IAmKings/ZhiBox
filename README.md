@@ -82,6 +82,7 @@ B11 在 B10 多跳检索证据上增加**单轮**带引用问答：先在本地�
 | `docs/review/P1_3_EXPLORE_3D_REPORT.md` | P1.3 Explore/3D 图谱首版报告 |
 | `docs/review/P1_3B_EXPLORE_ENHANCEMENTS_REPORT.md` | P1.3b Explore FTS/分页/标签/大库与无障碍报告 |
 | `docs/review/P1_3C_EXPLORE_PERF_REPORT.md` | P1.3c Explore 标签避让/FTS+LIKE/性能观测报告 |
+| `docs/product/UI_MODULE_FEATURE_INVENTORY.md` | UI 模块功能清单（UI 优化任务输入） |
 | `docs/review/P1_4_AGENT_EVAL_REPORT.md` | P1.4 Agent 工具编排/质量评测骨架报告 |
 | `docs/review/P1_4_QUALITY_EVAL_PLAN.md` | P1.4 真实质量评测协议 |
 | `docs/product/B12_USER_GUIDE.md` | B12 图谱/预算/抽取并发/备份/诊断/隐私用户指南 |
