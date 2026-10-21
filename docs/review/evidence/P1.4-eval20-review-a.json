@@ -1,8 +1,7 @@
 {
   "schema_version": 1,
   "reviewer": "A",
-  "reviewer_type": "independent_ai_review",
-  "method": "独立 AI 评审：仅基于 P1.4-eval20-k60u-results.json、agent_eval_cases.json 与合成语料 corpus1-3，逐条判断答案支持性、拒答正确性、引用有效性与路线契约；不运行产品、不修改原始结果，不展示 key/长正文。",
+  "method": "independent AI review",
   "source_results": "docs/review/evidence/P1.4-eval20-k60u-results.json",
   "source_cases": "scripts/eval/agent_eval_cases.json",
   "source_corpora": [
@@ -10,24 +9,23 @@
     "docs/review/evidence/P1.4-eval20-corpus2.txt",
     "docs/review/evidence/P1.4-eval20-corpus3.txt"
   ],
-  "prompt_version": "b16-agent-tools-v1",
   "reviewed_at": "2026-10-21",
   "cases": [
     {
       "id": "fact-single-hop",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": true,
-      "rationale": "答案（叶绿体/叶绿素）与 corpus1 一致，引用了 S1 且格式有效；工具路线为单次 search→final，符合期望。"
+      "rationale": "答案“叶绿体/叶绿素吸光”与 corpus1 逐句一致，引用 S1→chunk251 可回指该段。toolCalls 仅 search_knowledge，按协议忽略末尾 final 后与期望路由一致。"
     },
     {
       "id": "fact-multi-hop",
-      "support": "not_applicable",
+      "support": "unsupported",
       "refusal_correct": false,
       "citation_valid": "na",
       "route_ok": false,
-      "rationale": "运行 TIMEOUT、无答案；实际只调用 lookup_entities 并出现 AGENT_TOOL_ERROR，而期望两次 search→final；问题在 corpus2/3 中可回答，因此拒答不正确。"
+      "rationale": "answer 为空、TIMEOUT、warning=资料不足，但 corpus2 明确含“上海是中国的城市/张三在上海学习数学”，属有证据却未作答。实际只调用 lookup_entities（未做两次 search_knowledge），且 fallback=AGENT_TOOL_ERROR≠用例期望。"
     },
     {
       "id": "multiturn-pronoun",
@@ -35,119 +33,119 @@
       "refusal_correct": true,
       "citation_valid": "na",
       "route_ok": false,
-      "rationale": "运行 TIMEOUT、无答案（provider error）；history 只给出“张三在上海学习”，corpus 没有“后来去哪”的信息，拒答可接受；路线未完成，不符期望。"
+      "rationale": "answer 为空、TIMEOUT、warning=资料不足；corpus1-3 只有“张三在上海学习”，无“后来去向”，按现有 fixture 拒答是安全而非编造。但实际无 toolCalls（期望 search_knowledge），fallback=AGENT_PROVIDER_ERROR，且该用例的 S1 答案在本 fixture 下不可满足。"
     },
     {
       "id": "entity-route",
-      "support": "not_applicable",
+      "support": "unsupported",
       "refusal_correct": false,
       "citation_valid": "na",
       "route_ok": false,
-      "rationale": "运行 TIMEOUT、无答案；实际仅 lookup_entities 且工具错误，期望 lookup_entities→search→final；corpus2/3 有张三学习信息，拒答不正确。"
+      "rationale": "answer 为空、TIMEOUT；corpus2 有“张三在上海学习数学”可作答，实际只 lookup_entities 后即 no-evidence 拒答、未做 search_knowledge，属路由中断而非合理无证据（fallback=AGENT_TOOL_ERROR）。"
     },
     {
       "id": "entity-only-final-no-evidence",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致（张三学生、喜欢数学、在上海学习），引用有效；但实际调用 search（且 provider error），期望 lookup_entities→final，路线不符。"
+      "rationale": "答案三句可由 chunk253（张三…在上海学习）与 chunk252（张三在上海学习数学）支持，引用 S2/S3 token 合法。但用例期望 lookup_entities→final 且无引用/拒答，实际只走 search_knowledge 并产出引用，fallback=AGENT_PROVIDER_ERROR，契约不符。"
     },
     {
       "id": "refuse-no-tool-call",
       "support": "not_applicable",
       "refusal_correct": true,
       "citation_valid": "na",
-      "route_ok": "unknown",
-      "rationale": "运行 TIMEOUT、无答案；天气问题超出合成语料，拒答正确；无工具调用但未观察到 final，路线无法确认。"
+      "route_ok": true,
+      "rationale": "天气题按设计应直接 final 拒答：实际无 toolCalls，warning=资料不足、answer 为空，无编造。driver 因拒答不落 assistant 消息而等满 75s 记为 TIMEOUT，真实拒答耗时未采集。"
     },
     {
       "id": "fallback-unknown-tool",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用有效；但期望 AGENT_UNKNOWN_ACTION 回退，实际正常 search 并回答，回退/路线不符。"
+      "rationale": "该用例是未注册工具的确定性 fallback 契约，实际未触发 fallback（null），而是 search_knowledge 后作答；答案可由 corpus2/3 支持、引用合法，但 fallback 契约不成立。"
     },
     {
       "id": "fallback-bad-json",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用有效；期望 AGENT_BAD_JSON 回退，实际 AGENT_TOOL_ERROR 且先 search 再 lookup，回退/路线不符。"
+      "rationale": "期望 AGENT_BAD_JSON，实际 search+lookup 后正常作答，fallback=AGENT_TOOL_ERROR；答案“上海是中国的城市/有很多大学”分别由 chunk252/253 支持、引用合法，但回退码不符。"
     },
     {
       "id": "fallback-json-extra-field",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用有效；期望额外字段触发 AGENT_BAD_JSON，实际 AGENT_PROVIDER_ERROR，回退/路线不符。"
+      "rationale": "期望 AGENT_BAD_JSON，实际 fallback=AGENT_PROVIDER_ERROR 且产出正常答案（chunk252/253 支持、引用合法）；回退码不匹配，坏 JSON 场景未被真实 LLM 触发。"
     },
     {
       "id": "fallback-empty-input",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用有效；期望空 input 触发 AGENT_BAD_INPUT，实际 AGENT_TOOL_ERROR 且带 lookup，回退/路线不符。"
+      "rationale": "期望 AGENT_BAD_INPUT，实际 search+lookup 后作答，fallback=AGENT_TOOL_ERROR；答案可由 chunk252 支持、引用合法，但 fallback 码不符。"
     },
     {
       "id": "fallback-tool-error",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用有效；期望工具 error 触发 AGENT_TOOL_ERROR 回退，实际无 fallback、正常回答，契约不符。"
+      "rationale": "期望 AGENT_TOOL_ERROR 且证据为空，实际 search_knowledge 成功、fallback=null，并给出 chunk252/253 支持的答案；工具调用名匹配，但回退契约未触发。"
     },
     {
       "id": "fallback-tool-exception",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用有效；期望工具异常触发 AGENT_TOOL_EXCEPTION 回退，实际无 fallback、正常回答，契约不符。"
+      "rationale": "期望 AGENT_TOOL_EXCEPTION，实际 fallback=null、正常作答（chunk252 支持、引用合法）；异常注入场景未被触发。"
     },
     {
       "id": "fallback-max-tool-calls",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用有效；期望超出预算触发 AGENT_MAX_TOOL_CALLS，实际仅一次 search 后正常回答，回退/路线不符。"
+      "rationale": "期望第 3 次工具请求触发 AGENT_MAX_TOOL_CALLS，实际只 1 次 search、fallback=null 且正常作答；预算/回退契约未验证。"
     },
     {
       "id": "fallback-provider-error",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用有效；期望 AGENT_PROVIDER_ERROR 回退，实际 search 正常回答，回退/路线不符。"
+      "rationale": "期望 AGENT_PROVIDER_ERROR，实际 fallback=null、正常作答（chunk252/253 支持、引用合法）；provider 失败场景未触发。"
     },
     {
       "id": "fallback-not-configured",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
-      "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用有效；期望未配置（AGENT_NOT_CONFIGURED）回退，实际已调用 search，说明未按期望回退。"
+      "route_ok": "unknown",
+      "rationale": "本次 run 已配置 key，AGENT_NOT_CONFIGURED 这一零网络 fallback 不可能触发；实际正常作答（chunk252 支持、引用合法），故路由判 unknown 而非通过。"
     },
     {
       "id": "fallback-no-tools",
       "support": "support",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用有效；期望无工具（AGENT_NO_TOOLS）回退，实际调用 search+lookup 且 TOOL_ERROR，回退/路线不符。"
+      "rationale": "期望 AGENT_NO_TOOLS，实际 search+lookup 正常作答（chunk252 支持、引用合法），fallback=AGENT_TOOL_ERROR≠期望；无工具场景未触发。"
     },
     {
       "id": "fallback-empty-query",
       "support": "not_applicable",
-      "refusal_correct": "not_applicable",
+      "refusal_correct": null,
       "citation_valid": "na",
       "route_ok": false,
-      "rationale": "运行 TIMEOUT、无答案；空 query 期望 AGENT_EMPTY_QUERY 回退，实际调用工具且超时，路线不符；空问题无可评价的拒答语义。"
+      "rationale": "空白 query 期望 AGENT_EMPTY_QUERY 零调用短路，实际执行 search+lookup 后 TIMEOUT、answer 为空、warning=null、fallback=AGENT_TOOL_ERROR；属空输入未拦截的真实缺陷。"
     },
     {
       "id": "ref-dedupe-duplicate-evidence",
@@ -155,15 +153,15 @@
       "refusal_correct": true,
       "citation_valid": "na",
       "route_ok": false,
-      "rationale": "运行 TIMEOUT、无答案；corpus 没有“上海别名”信息，拒答可接受；期望两次 search→final，实际 lookup+工具错误，路线不符。"
+      "rationale": "问题问上海别名，但 corpus1-3 无任何别名信息，expectedCitationIds=[S1] 在该 fixture 下不可满足。实际 answer 空、TIMEOUT、warning=资料不足，拒答未编造（只 lookup_entities，未按期望两次 search）。"
     },
     {
       "id": "ref-citation-validity",
-      "support": "support",
-      "refusal_correct": "not_applicable",
+      "support": "partial",
+      "refusal_correct": null,
       "citation_valid": true,
       "route_ok": false,
-      "rationale": "答案与 corpus2/3 一致、引用 S2/S3 均有效；但期望 search→final，实际 search+lookup 且 AGENT_TOOL_ERROR，路线/回退不符。"
+      "rationale": "答案两点（张三在上海学习数学/学习）分别由 chunk252/253 支持，引用 S2/S3 合法。但把陈述称作“事件”、漏掉“上海是中国的城市/有很多大学”，且期望 S1/S2 与实际 S2/S3 不符、fallback=AGENT_TOOL_ERROR。"
     },
     {
       "id": "multiturn-entity-then-search",
@@ -171,31 +169,50 @@
       "refusal_correct": true,
       "citation_valid": "na",
       "route_ok": false,
-      "rationale": "运行 TIMEOUT、无答案（provider error）；corpus/history 没有别名信息，拒答可接受；期望 lookup→search→final，路线未完成。"
+      "rationale": "问“它的别名”，corpus 无别名信息，expectedCitationIds=[S1] 不可满足；实际只 search_knowledge 后 TIMEOUT、answer 空、warning=资料不足，拒答安全但未按期望 lookup_entities→search 路由。"
     }
   ],
   "summary": {
-    "total": 20,
+    "total_cases": 20,
     "answered": 13,
+    "empty_answers": 7,
     "timeout": 7,
-    "support": 13,
-    "partial": 0,
-    "unsupported": 0,
-    "not_applicable": 7,
+    "support": 12,
+    "partial": 1,
+    "unsupported": 2,
+    "not_applicable": 5,
     "correct_refusal": 4,
     "citation_valid": 13,
+    "citation_invalid": 0,
     "citation_na": 7,
-    "route_ok_true": 1,
-    "route_ok_false": 18,
+    "route_ok_true": 2,
+    "route_ok_false": 17,
     "route_ok_unknown": 1,
-    "support_rate_of_answered": 1.0,
-    "support_rate_all_cases": 0.65
+    "route_tool_sequence_match": 4,
+    "route_with_fallback_match": 2,
+    "expected_fallback_cases": 11,
+    "expected_fallback_matched": 0,
+    "no_evidence_refusal_cases": 2,
+    "no_evidence_refused": 1,
+    "quality_answer_cases": 9,
+    "quality_answer_cases_support": 2,
+    "quality_answer_cases_partial": 1,
+    "quality_answer_cases_unsupported": 2,
+    "quality_answer_cases_not_applicable": 4,
+    "support_rate_quality_cases": 0.222,
+    "support_rate_checked_quality_cases": 0.4,
+    "support_rate_all_cases": 0.6,
+    "answered_latency_ms_min": 9114,
+    "answered_latency_ms_max": 19262,
+    "timeout_wait_ms_min": 75158,
+    "timeout_wait_ms_max": 75284,
+    "citation_gate_on_expected_citation_cases": "2/2 answered valid; expected-citation match not computable without evidence snapshot (case 1 label match, case 19 S1 missing, case 5 unexpected citations)",
+    "fallback_gate": "0/11",
+    "route_gate": "tool-sequence 4/20; full route+fallback 2/20",
+    "quality_claim_allowed": false,
+    "support_but_contract_failed": 11,
+    "clean_pass_cases": 1
   },
   "quality_claim_allowed": false,
-  "notes": [
-    "仅 13/20 有答案、7 条 TIMEOUT；已答 13 条在合成语料下均支持（support_rate_of_answered=1.0），但总样本仅 20 且不支持率/人工双评缺失，不满足 20–50 题 + 人工双评 + support≥90% 的质量门禁。",
-    "工具路线/回退契约大面积不符：route_ok 仅 1 条 true（18 false/1 unknown），真实模型下 planner/fallback 行为不稳定，不能用 mock harness 的契约通过替代真实质量。",
-    "本评审为独立 AI 单评，不是人工双评；人工抽检窗口未完成，citation 的 evidence 内容映射未逐条核对（仅按引用格式/与答案一致性判定）。",
-    "结论：只能报告 20 题真实运行观察（13 成功/7 超时、13/13 已答正确），quality_claim_allowed=false，不得宣称 Agent/问答质量达标。"
-  ]
+  "notes": "仅基于 P1.4-eval20-k60u-results.json 与 corpus1-3 逐条复核，未改动结果。结果未附 evidence 快照，chunk↔语料映射由引用 token 反推：chunk251/252/253 分别对应 corpus1/2/3，引用合法性判断依赖该映射。20 例中 11 例（index 7-17：10 条 fallback-* 加 fallback-empty-query）是确定性回退契约用例，真实 LLM run 无法注入未注册工具/坏 JSON/无 key 等故障，实际 0/11 命中期望回退码；其中 7-16 仍产出了有据答案（按 support 定义计为 support），但属“支持但契约失败”，加上 case 5 共 11 条，只有 case 1 同时满足 support+route+citation。7 个 TIMEOUT 中 6 个带 warning=资料不足，且驱动在没有 assistant 消息落库时会固定等满 75s，故 75s 不是模型真实延迟；case 17 的空白 query 未被拦截，真实执行了 search+lookup。用例与合成语料不匹配：3 篇文档不含“上海别名/张三关联事件/后来去向”，case 18/20（别名）与 case 3/4 的 expectedCitationIds 不可满足或含义不明；case 5 的“无检索证据”前提在真实链路也不成立（普通检索总会先跑，故产出了引用答案，按答案质量记为 support，但违反该用例的拒答契约）。expectedCitationIds 依赖该次检索顺序，结果无 evidence 列表，case 19 期望 S1/S2 而实际 S2/S3，无法按协议验证 expected_citations=100%。结果文件是裸数组，缺 run.model/prompt_version/date/device/key_configured，也无 refused/manual_support；官方 scripts/eval/score_agent_eval.py 会抛 AttributeError（'list' object has no attribute 'get'），协议门禁无法机算。评审仅 1 名（评审 A，AI 独立评审），无第二评审/人工双评，样本 20、语料为合成 fixture；12 条 support 中 11 条属契约失败用例，按全部 20 题计 support=12/20=60%（若只算 9 个质量用例仅 2/9=22.2%），均远低于 90% 门禁且不满足人工双评，故 quality_claim_allowed=false，只能表述为“真实 run 已执行，但回答质量、路由/回退契约与引用门禁均未证实/未达标”，不得宣称真实质量达标。真实 key 已配置，但结果文件无 key_configured 字段，无法从证据侧确认该前置条件。"
 }

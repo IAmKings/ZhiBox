@@ -27,13 +27,14 @@
 
 | 评审 | support | partial | unsupported | not_applicable | 已答支持率 | 全样本支持率 |
 |---|---:|---:|---:|---:|---:|---:|
-| A | 13 | 0 | 0 | 7 | 100% | 65% |
+| A（最终独立复核） | 12 | 1 | 2 | 5 | 92.3% | 60% |
 | B | 12 | 1 | 0 | 7 | 92.3% | 60% |
 | **保守汇总（用于门禁）** | **12** | **1** | **0** | **7** | **92.3%** | **60%** |
 
 - 无伪造/越界引用；但引用内容映射未逐条人工核验（B 指出 expectedCitation 仅 1 条可确认）。
-- **可评估题支持率** 92.3%（保守），但 **全样本 60%**；7 条超时不能计为 support。
-- 仅 **1 条（fact-single-hop）** 同时满足 support + route + citation；多数 fallback/refusal 用例契约未通过。
+- **可评估已答支持率** 92.3%（12 support + 1 partial / 13），但 **全样本 60%**；7 条超时不能计为 support。
+- A 进一步按“纯质量用例”统计：9 条质量用例仅 **2 support + 1 partial**（22.2% support / 40% support+partial），其余属 fallback/拒答契约失败；仅 **1 条（fact-single-hop）** 同时满足 support + route + citation。
+- A/B 对 case2/4 的归类不同（A 判 unsupported、B 因超时判 not_applicable）；按门禁保守均不计为 support。
 
 ## 3. 质量门禁结论
 

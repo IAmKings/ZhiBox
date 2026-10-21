@@ -125,6 +125,6 @@ python3 -m py_compile scripts/eval/score_agent_eval.py
 ## 4. 本轮执行记录（2026-10-21，K60U）
 
 - 真实 20 题已采集：`docs/review/P1_4_EVAL20_SUMMARY.md`、`docs/review/evidence/P1.4-eval20-k60u-results.json`。
-- 结果：13 回答 / 7 超时（35%）；A/B 两位 **独立 AI 评审**（非人类）：保守 support 12 + partial 1（已答 92.3%，全样本 60%）、citation 13/13；route 1–2/20；fallback 0/11、拒答未按预期。
+- 结果：13 回答 / 7 超时（35%）；A/B 两位 **独立 AI 评审**（非人类）：保守 support 12 + partial 1（已答 92.3%，全样本 60%；纯质量用例仅 2/9）、citation 13/13；route 1–2/20；fallback 0/11、拒答未按预期。
 - 结论：`QUALITY_CLAIM_ALLOWED=false`；仍需 2 名人类评审与修复 35% 超时/空 query/错误分类等问题后重跑。
 - 评审文件：`evidence/P1.4-eval20-review-a.json`、`review-b.json`（AI review；不计入人工门禁）。
