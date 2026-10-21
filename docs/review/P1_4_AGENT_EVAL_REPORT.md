@@ -1,7 +1,7 @@
 # P1.4 报告：Agent/工具编排 v1 + 质量评测骨架
 
 - **日期**：2026-10-21
-- **状态**：Agent 工具编排代码/UI 完成（无真实 LLM key，未跑真实 Agent 质量）；质量评测离线骨架完成，真实评测受阻于 key/人工抽检
+- **状态**：Agent 工具编排/UI 与真实 20 题采集完成；planner/生成超时已修复；质量门禁仍受阻于人类双评与残余失败（QA-only 18→17 回答，3 无证据拒答/错误）
 - **原则**：不内置任意 Shell/网络/写工具；最终引用仍由 AnswerGenerator + CitationValidator 强制；mock 不得冒充真实质量。
 
 ## 1. Agent/工具编排 v1
@@ -32,6 +32,8 @@
 | K60U UI | Agent 开关/提示可见；无 LLM key 时不可用，普通链路不受影响 |
 | 真实 LLM 契约混合 20 题（K60U） | 13 回答 / 7 超时（35%）；12 support + 1 partial；fallback 契约 0/11；两位 AI 评审、无人类双评 → 质量声明禁止 |
 | **真实 LLM QA-only 20 题（K60U）** | **18 回答 / 2 超时（10%）**；**17 support + 1 partial**（已答 94.4%，全样本 85%）；citation 保守 17 valid/1 warning；仍仅 2 位 AI 评审、无人类双评 → 质量声明禁止 |
+| 超时修复复跑 | 17 回答 / 3 错误，无 75s 超时；p50 13.7s/max 20.3s |
+| 空内容自动重试复跑 | 17 回答 / 3 无证据拒答，无超时；p50 16.7s/max 29.4s；#2 重试仍未恢复 |
 | 真实 LLM（PJZ110，早期） | 2/8 样本；回答有引用/工具成功；仅作早期观察 |
 | 证据 | `P1.4-agent-toggle-k60u.*`、`P1.4-real-agent-pjz110.txt`、`P1.4-eval20-k60u-results.json`、QA20 结果/评审、`P1_4_EVAL20_SUMMARY.md`、`P1_4_QA20_SUMMARY.md` |
 
@@ -41,7 +43,7 @@
 
 ## 5. 阻塞/后续
 
-- 真实 LLM key 已连接；K60U 已采集 **20 题**（13 回答/7 超时），PJZ110 仅早期 2/8；K60U 结果见 `P1_4_EVAL20_SUMMARY.md`。
+- 真实 LLM key 已连接；K60U QA-only **20 题**：18 回答/2 超时（修复后无 75s 超时）；PJZ110 早期 2/8。结果见 `P1_4_QA20_SUMMARY.md`。
 - **人工抽检**：需 2 名人类评审按协议抽检 ≥max(10,20%)；当前仅两位 AI 评审，**不计入人工门禁**。
 - 取得完整 20–50 题与人工结果后再决定是否发布；当前 `QUALITY_CLAIM_ALLOWED=false`。
 - Agent 工具失败当前整体回退（不继续换工具）；真实路由质量需 B17 实测。

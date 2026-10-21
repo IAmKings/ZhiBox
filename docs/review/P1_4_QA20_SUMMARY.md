@@ -69,3 +69,13 @@
   - `qa-shanghai-universities`：无证据拒答（证据可答，检索/路由仍有问题）；
   - `qa-weather-refusal`：无证据拒答（预期行为）。
 - 结论：超时/挂起问题已修复；回答数较修复前的 18 略降（1 条 LLM_PARSE_ERROR + 1 条证据漏检），需继续修生成解析与检索召回；质量声明仍禁止（人类评审未完成）。
+
+## 7. 空内容自动重试后的复跑
+
+- 代码：生成失败码 `LLM_PARSE_ERROR` 自动重试一次（最多 2 次），重试期间显示“模型未返回内容，正在重试…”。
+- 结果：[P1.4-qa20-parseretry-k60u-results.json](evidence/P1.4-qa20-parseretry-k60u-results.json)
+- **17 回答 / 3 无证据拒答**，无 75s 超时；回答 p50 **16.7s** / max **29.4s**。
+  - `qa-photosynthesis-energy`：重试后仍转为 `NO_EVIDENCE_REFUSAL`（未恢复回答）；
+  - `qa-shanghai-universities`：无证据拒答（题面要求校名列表，语料仅“上海有很多大学”，拒答可解释；不再按检索漏检归因）；
+  - `qa-weather-refusal`：无证据拒答（预期）。
+- 结论：自动重试消除了超时，但未解决 #2 的空回答；仍需模型/提示词层排查；质量声明继续禁止（人类评审未完成）。

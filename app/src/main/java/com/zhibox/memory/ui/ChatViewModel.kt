@@ -25,6 +25,7 @@ import com.zhibox.memory.core.chat.OpenAiAnswerGenerator
 import com.zhibox.memory.core.chat.RoomChatRepository
 import com.zhibox.memory.core.extraction.SagAvailability
 import com.zhibox.memory.core.llm.KeystoreLlmConfigStore
+import com.zhibox.memory.core.llm.LlmErrorCode
 import com.zhibox.memory.core.llm.LlmQueryEntityExtractor
 import com.zhibox.memory.core.llm.LlmSagContextSelector
 import com.zhibox.memory.core.llm.LlmConfigStore
@@ -698,31 +699,49 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             var completed: AnswerEvent.Completed? = null
             var failed: AnswerEvent.Failed? = null
             // P1：history 仅作上下文，证据仍只来自本轮 evidence；生成器/提示词会再次剥离旧引用。
-            try {
-                withTimeout(GENERATION_TIMEOUT_MS) {
-                    answerGenerator.generate(
-                        AnswerRequest(query = query, evidence = evidence, history = history),
-                    ).collect { event ->
-                        when (event) {
-                            is AnswerEvent.Delta -> update { it.copy(streamingText = it.streamingText + event.text) }
-                            is AnswerEvent.Completed -> completed = event
-                            is AnswerEvent.Failed -> failed = event
-                            AnswerEvent.Stopped -> Unit
+            // 空内容/解析失败可能是临时模型输出异常；自动重试一次，再失败才提示用户。
+            var attempt = 0
+            while (attempt < GENERATION_MAX_ATTEMPTS) {
+                attempt++
+                try {
+                    withTimeout(GENERATION_TIMEOUT_MS) {
+                        answerGenerator.generate(
+                            AnswerRequest(query = query, evidence = evidence, history = history),
+                        ).collect { event ->
+                            when (event) {
+                                is AnswerEvent.Delta -> update { it.copy(streamingText = it.streamingText + event.text) }
+                                is AnswerEvent.Completed -> completed = event
+                                is AnswerEvent.Failed -> failed = event
+                                AnswerEvent.Stopped -> Unit
+                            }
                         }
                     }
+                } catch (e: TimeoutCancellationException) {
+                    // 生成器/网络挂起：给出可恢复错误，不让 UI 无限显示“生成中”。
+                    update {
+                        it.copy(
+                            streaming = false,
+                            streamingText = "",
+                            infoMessage = null,
+                            errorMessage = str(R.string.chat_generation_timeout),
+                            canRetry = true,
+                        )
+                    }
+                    return
                 }
-            } catch (e: TimeoutCancellationException) {
-                // 生成器/网络挂起：给出可恢复错误，不让 UI 无限显示“生成中”。
-                update {
-                    it.copy(
-                        streaming = false,
-                        streamingText = "",
-                        infoMessage = null,
-                        errorMessage = str(R.string.chat_generation_timeout),
-                        canRetry = true,
-                    )
+                val retryableParseFailure = failed?.code == LlmErrorCode.PARSE
+                if (retryableParseFailure && attempt < GENERATION_MAX_ATTEMPTS) {
+                    failed = null
+                    completed = null
+                    update {
+                        it.copy(
+                            streamingText = "",
+                            infoMessage = str(R.string.chat_generating_retry),
+                        )
+                    }
+                    continue
                 }
-                return
+                break
             }
             generateMs = System.currentTimeMillis() - generateStarted
             update { it.copy(infoMessage = null) }
@@ -986,6 +1005,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         /** 最终答案生成超时；超出后不落库，提示重试。 */
         const val GENERATION_TIMEOUT_MS: Long = 45_000
+
+        /** 空内容/解析失败自动重试总次数（含首次）。 */
+        const val GENERATION_MAX_ATTEMPTS: Int = 2
     }
 }
 

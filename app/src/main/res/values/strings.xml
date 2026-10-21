@@ -341,6 +341,7 @@
     <string name="chat_llm_not_configured">未配置 LLM：请先在设置中填写 API 配置。</string>
     <string name="chat_retrieving">检索证据中…</string>
     <string name="chat_generating">生成中…</string>
+    <string name="chat_generating_retry">模型未返回内容，正在重试…</string>
     <string name="chat_stopped_partial">已停止生成；未完成的回答不会保存。</string>
     <string name="chat_no_evidence">资料不足，无法回答：本轮没有检索到可引用证据。</string>
     <string name="chat_failed">问答失败：%1$s</string>

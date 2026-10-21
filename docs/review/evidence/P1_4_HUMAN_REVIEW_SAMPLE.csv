@@ -1,0 +1,11 @@
+﻿case_id,query,category,current_failureCode,sample_reason
+qa-photosynthesis-structure,光合作用主要发生在植物的哪个结构？,qa,,random_answered
+qa-wangwu-work,王五在哪里工作？,qa,,random_answered
+qa-zhaoliu-city,赵六在哪里生活？,qa,,random_answered
+qa-shanghai-universities,上海有哪些大学？,qa,TIMEOUT,failure_required
+qa-shanghai-events,上海这个城市在哪些事件里被提到？,qa,,random_answered
+qa-zhangsan-intro,简单介绍张三。,qa,,random_answered
+qa-weather-refusal,今天天气怎么样？,qa,TIMEOUT,failure_required
+qa-photosynthesis-where,光合作用主要发生在哪里？,qa,,random_answered
+qa-zhangsan-subject,张三学习什么？,qa,,random_answered
+qa-shanghai-location,上海在哪里？,qa,,random_answered
