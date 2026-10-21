@@ -1,0 +1,429 @@
+[
+  {
+    "index": 1,
+    "id": "fact-single-hop",
+    "query": "光合作用主要发生在植物的哪个结构？",
+    "expectedToolRoute": [
+      "search_knowledge",
+      "final"
+    ],
+    "expectedFallback": null,
+    "expectedCitationIds": [
+      "S1"
+    ],
+    "answer": "光合作用主要发生在植物的叶绿体中 [S1]。叶绿体含有叶绿素，可以吸收光能 [S1]。",
+    "citations": [
+      "S1:chunk251"
+    ],
+    "latencyMs": 19262,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": null,
+    "toolCalls": [
+      "search_knowledge"
+    ]
+  },
+  {
+    "index": 2,
+    "id": "fact-multi-hop",
+    "query": "上海这个城市在哪些事件里被提到？",
+    "expectedToolRoute": [
+      "search_knowledge",
+      "search_knowledge",
+      "final"
+    ],
+    "expectedFallback": null,
+    "expectedCitationIds": [
+      "S1",
+      "S2"
+    ],
+    "answer": "",
+    "citations": [],
+    "latencyMs": 75284,
+    "failureCode": "TIMEOUT",
+    "warning": "资料不足，无法回答：本轮没有检索到可引用证据。",
+    "agentFallbackReason": "AGENT_TOOL_ERROR",
+    "toolCalls": [
+      "lookup_entities"
+    ]
+  },
+  {
+    "index": 3,
+    "id": "multiturn-pronoun",
+    "query": "他后来去哪了？",
+    "expectedToolRoute": [
+      "search_knowledge",
+      "final"
+    ],
+    "expectedFallback": null,
+    "expectedCitationIds": [
+      "S1"
+    ],
+    "answer": "",
+    "citations": [],
+    "latencyMs": 75239,
+    "failureCode": "TIMEOUT",
+    "warning": "资料不足，无法回答：本轮没有检索到可引用证据。",
+    "agentFallbackReason": "AGENT_PROVIDER_ERROR",
+    "toolCalls": []
+  },
+  {
+    "index": 4,
+    "id": "entity-route",
+    "query": "张三关联了哪些事件？",
+    "expectedToolRoute": [
+      "lookup_entities",
+      "search_knowledge",
+      "final"
+    ],
+    "expectedFallback": null,
+    "expectedCitationIds": [
+      "S1"
+    ],
+    "answer": "",
+    "citations": [],
+    "latencyMs": 75198,
+    "failureCode": "TIMEOUT",
+    "warning": "资料不足，无法回答：本轮没有检索到可引用证据。",
+    "agentFallbackReason": "AGENT_TOOL_ERROR",
+    "toolCalls": [
+      "lookup_entities"
+    ]
+  },
+  {
+    "index": 5,
+    "id": "entity-only-final-no-evidence",
+    "query": "简单介绍张三",
+    "expectedToolRoute": [
+      "lookup_entities",
+      "final"
+    ],
+    "expectedFallback": null,
+    "expectedCitationIds": [],
+    "answer": "张三是一名学生，喜欢数学，在上海学习 [S2][S3]。",
+    "citations": [
+      "S2:chunk252",
+      "S3:chunk253"
+    ],
+    "latencyMs": 14187,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": "AGENT_PROVIDER_ERROR",
+    "toolCalls": [
+      "search_knowledge"
+    ]
+  },
+  {
+    "index": 6,
+    "id": "refuse-no-tool-call",
+    "query": "今天天气怎么样？",
+    "expectedToolRoute": [
+      "final"
+    ],
+    "expectedFallback": null,
+    "expectedCitationIds": [],
+    "answer": "",
+    "citations": [],
+    "latencyMs": 75158,
+    "failureCode": "TIMEOUT",
+    "warning": "资料不足，无法回答：本轮没有检索到可引用证据。",
+    "agentFallbackReason": null,
+    "toolCalls": []
+  },
+  {
+    "index": 7,
+    "id": "fallback-unknown-tool",
+    "query": "查一下上海的相关资料",
+    "expectedToolRoute": [],
+    "expectedFallback": "AGENT_UNKNOWN_ACTION",
+    "expectedCitationIds": [],
+    "answer": "根据现有资料：上海是中国的城市 [S2]；张三在上海学习数学 [S2]；张三是一名学生，喜欢数学，在上海学习 [S3]；上海有很多大学 [S3]。",
+    "citations": [
+      "S2:chunk252",
+      "S3:chunk253"
+    ],
+    "latencyMs": 13189,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": null,
+    "toolCalls": [
+      "search_knowledge"
+    ]
+  },
+  {
+    "index": 8,
+    "id": "fallback-bad-json",
+    "query": "上海在哪里？",
+    "expectedToolRoute": [],
+    "expectedFallback": "AGENT_BAD_JSON",
+    "expectedCitationIds": [],
+    "answer": "上海是中国的城市 [S2]，上海有很多大学 [S3]。",
+    "citations": [
+      "S2:chunk252",
+      "S3:chunk253"
+    ],
+    "latencyMs": 13699,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": "AGENT_TOOL_ERROR",
+    "toolCalls": [
+      "search_knowledge",
+      "lookup_entities"
+    ]
+  },
+  {
+    "index": 9,
+    "id": "fallback-json-extra-field",
+    "query": "上海在哪里？",
+    "expectedToolRoute": [],
+    "expectedFallback": "AGENT_BAD_JSON",
+    "expectedCitationIds": [],
+    "answer": "上海是中国的城市 [S2]。上海有很多大学 [S3]。",
+    "citations": [
+      "S2:chunk252",
+      "S3:chunk253"
+    ],
+    "latencyMs": 15228,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": "AGENT_PROVIDER_ERROR",
+    "toolCalls": [
+      "search_knowledge"
+    ]
+  },
+  {
+    "index": 10,
+    "id": "fallback-empty-input",
+    "query": "上海在哪里？",
+    "expectedToolRoute": [],
+    "expectedFallback": "AGENT_BAD_INPUT",
+    "expectedCitationIds": [],
+    "answer": "上海是中国的城市 [S2]。",
+    "citations": [
+      "S2:chunk252"
+    ],
+    "latencyMs": 13187,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": "AGENT_TOOL_ERROR",
+    "toolCalls": [
+      "search_knowledge",
+      "lookup_entities"
+    ]
+  },
+  {
+    "index": 11,
+    "id": "fallback-tool-error",
+    "query": "上海在哪里？",
+    "expectedToolRoute": [
+      "search_knowledge"
+    ],
+    "expectedFallback": "AGENT_TOOL_ERROR",
+    "expectedCitationIds": [],
+    "answer": "上海是中国的城市 [S2]。张三在上海学习 [S2][S3]。",
+    "citations": [
+      "S2:chunk252",
+      "S3:chunk253"
+    ],
+    "latencyMs": 10645,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": null,
+    "toolCalls": [
+      "search_knowledge"
+    ]
+  },
+  {
+    "index": 12,
+    "id": "fallback-tool-exception",
+    "query": "上海在哪里？",
+    "expectedToolRoute": [
+      "search_knowledge"
+    ],
+    "expectedFallback": "AGENT_TOOL_EXCEPTION",
+    "expectedCitationIds": [],
+    "answer": "上海是中国的城市 [S2]。",
+    "citations": [
+      "S2:chunk252"
+    ],
+    "latencyMs": 9114,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": null,
+    "toolCalls": [
+      "search_knowledge"
+    ]
+  },
+  {
+    "index": 13,
+    "id": "fallback-max-tool-calls",
+    "query": "上海在哪里？",
+    "expectedToolRoute": [
+      "search_knowledge",
+      "search_knowledge"
+    ],
+    "expectedFallback": "AGENT_MAX_TOOL_CALLS",
+    "expectedCitationIds": [],
+    "answer": "上海是中国的城市 [S2]。",
+    "citations": [
+      "S2:chunk252"
+    ],
+    "latencyMs": 10640,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": null,
+    "toolCalls": [
+      "search_knowledge"
+    ]
+  },
+  {
+    "index": 14,
+    "id": "fallback-provider-error",
+    "query": "上海在哪里？",
+    "expectedToolRoute": [],
+    "expectedFallback": "AGENT_PROVIDER_ERROR",
+    "expectedCitationIds": [],
+    "answer": "上海是中国的城市 [S2]。张三在上海学习 [S2][S3]，上海有很多大学 [S3]。",
+    "citations": [
+      "S2:chunk252",
+      "S3:chunk253"
+    ],
+    "latencyMs": 9629,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": null,
+    "toolCalls": [
+      "search_knowledge"
+    ]
+  },
+  {
+    "index": 15,
+    "id": "fallback-not-configured",
+    "query": "上海在哪里？",
+    "expectedToolRoute": [],
+    "expectedFallback": "AGENT_NOT_CONFIGURED",
+    "expectedCitationIds": [],
+    "answer": "上海是中国的城市 [S2]。",
+    "citations": [
+      "S2:chunk252"
+    ],
+    "latencyMs": 11652,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": null,
+    "toolCalls": [
+      "search_knowledge"
+    ]
+  },
+  {
+    "index": 16,
+    "id": "fallback-no-tools",
+    "query": "上海在哪里？",
+    "expectedToolRoute": [],
+    "expectedFallback": "AGENT_NO_TOOLS",
+    "expectedCitationIds": [],
+    "answer": "上海是中国的城市 [S2]。",
+    "citations": [
+      "S2:chunk252"
+    ],
+    "latencyMs": 12172,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": "AGENT_TOOL_ERROR",
+    "toolCalls": [
+      "search_knowledge",
+      "lookup_entities"
+    ]
+  },
+  {
+    "index": 17,
+    "id": "fallback-empty-query",
+    "query": "   ",
+    "expectedToolRoute": [],
+    "expectedFallback": "AGENT_EMPTY_QUERY",
+    "expectedCitationIds": [],
+    "answer": "",
+    "citations": [],
+    "latencyMs": 75197,
+    "failureCode": "TIMEOUT",
+    "warning": null,
+    "agentFallbackReason": "AGENT_TOOL_ERROR",
+    "toolCalls": [
+      "search_knowledge",
+      "lookup_entities"
+    ]
+  },
+  {
+    "index": 18,
+    "id": "ref-dedupe-duplicate-evidence",
+    "query": "上海有哪些别名？",
+    "expectedToolRoute": [
+      "search_knowledge",
+      "search_knowledge",
+      "final"
+    ],
+    "expectedFallback": null,
+    "expectedCitationIds": [
+      "S1"
+    ],
+    "answer": "",
+    "citations": [],
+    "latencyMs": 75171,
+    "failureCode": "TIMEOUT",
+    "warning": "资料不足，无法回答：本轮没有检索到可引用证据。",
+    "agentFallbackReason": "AGENT_TOOL_ERROR",
+    "toolCalls": [
+      "lookup_entities"
+    ]
+  },
+  {
+    "index": 19,
+    "id": "ref-citation-validity",
+    "query": "上海在哪些事件中被提到？",
+    "expectedToolRoute": [
+      "search_knowledge",
+      "final"
+    ],
+    "expectedFallback": null,
+    "expectedCitationIds": [
+      "S1",
+      "S2"
+    ],
+    "answer": "上海在以下事件中被提到：张三在上海学习数学 [S2]；张三在上海学习 [S3]。",
+    "citations": [
+      "S2:chunk252",
+      "S3:chunk253"
+    ],
+    "latencyMs": 13189,
+    "failureCode": null,
+    "warning": null,
+    "agentFallbackReason": "AGENT_TOOL_ERROR",
+    "toolCalls": [
+      "search_knowledge",
+      "lookup_entities"
+    ]
+  },
+  {
+    "index": 20,
+    "id": "multiturn-entity-then-search",
+    "query": "它的别名是什么？",
+    "expectedToolRoute": [
+      "lookup_entities",
+      "search_knowledge",
+      "final"
+    ],
+    "expectedFallback": null,
+    "expectedCitationIds": [
+      "S1"
+    ],
+    "answer": "",
+    "citations": [],
+    "latencyMs": 75159,
+    "failureCode": "TIMEOUT",
+    "warning": "资料不足，无法回答：本轮没有检索到可引用证据。",
+    "agentFallbackReason": "AGENT_PROVIDER_ERROR",
+    "toolCalls": [
+      "search_knowledge"
+    ]
+  }
+]

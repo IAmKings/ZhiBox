@@ -30,8 +30,9 @@
 | Agent core | 30 tests；全量 JVM 绿 |
 | B17 offline harness | 20/20 route、11/11 fallback、20/20 citation；contract_only=true |
 | K60U UI | Agent 开关/提示可见；无 LLM key 时不可用，普通链路不受影响 |
-| 真实 LLM（PJZ110） | key 已连接；**2/8 用例完成**后自动化超时停止；2 条回答均有引用（S2/S1+S2），Agent 工具检索/实体成功；不足以宣称质量达标 |
-| 证据 | `P1.4-agent-toggle-k60u.*`、`P1.4-agent-eval-k60u.txt`、`P1.4-real-agent-pjz110.txt`、results JSON/XML |
+| 真实 LLM 20 题（K60U） | **13 回答 / 7 超时（35%）**；保守 support 12+1 partial（已答 92.3%，全样本 60%）；citation 13/13；路由仅 1–2/20；两位 AI 评审、无人类双评 → 质量声明禁止 |
+| 真实 LLM（PJZ110，早期） | 2/8 样本；回答有引用/工具成功；仅作早期观察 |
+| 证据 | `P1.4-agent-toggle-k60u.*`、`P1.4-real-agent-pjz110.txt`、`P1.4-eval20-k60u-results.json`、评审 A/B JSON、`P1_4_EVAL20_SUMMARY.md` |
 
 ## 4. 签名候选
 
@@ -39,7 +40,7 @@
 
 ## 5. 阻塞/后续
 
-- 真实 LLM key 已连接（PJZ110），但真实 20–50 题采集未完成：本轮自动化在 case3 超时/挂起，已恢复官方 release APK，仅保留 2 条真实样本；需重跑稳定采集。
-- **人工抽检**：需 2 名评审按协议抽检 ≥max(10,20%)；当前 0 独立样本，2 条 AI 自检不得算 support。
+- 真实 LLM key 已连接；K60U 已采集 **20 题**（13 回答/7 超时），PJZ110 仅早期 2/8；K60U 结果见 `P1_4_EVAL20_SUMMARY.md`。
+- **人工抽检**：需 2 名人类评审按协议抽检 ≥max(10,20%)；当前仅两位 AI 评审，**不计入人工门禁**。
 - 取得完整 20–50 题与人工结果后再决定是否发布；当前 `QUALITY_CLAIM_ALLOWED=false`。
 - Agent 工具失败当前整体回退（不继续换工具）；真实路由质量需 B17 实测。

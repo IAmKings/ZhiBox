@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "format": "agent_eval_cases",
+  "description": "B17/P1.4 Agent 评测集（20 条）。离线 harness 只验证 route/fallback/evidence 去重/引用约束（契约回归），不代表真实回答质量；真实质量需用户 LLM key + 人工抽检（见 docs/review/P1_4_QUALITY_EVAL_PLAN.md）。",
+  "prompt_version": "b16-agent-tools-v1",
+  "not_for_real_quality_claim": true,
+  "cases": [
+    {
+      "id": "fact-single-hop",
+      "query": "光合作用主要发生在植物的哪个结构？",
+      "history": [],
+      "expectedToolRoute": [
+        "search_knowledge",
+        "final"
+      ],
+      "expectedFallback": null,
+      "expectedCitationIds": [
+        "S1"
+      ],
+      "notes": "事实题；单次检索→final，引用必须来自本轮 evidence"
+    },
+    {
+      "id": "fact-multi-hop",
+      "query": "上海这个城市在哪些事件里被提到？",
+      "history": [],
+      "expectedToolRoute": [
+        "search_knowledge",
+        "search_knowledge",
+        "final"
+      ],
+      "expectedFallback": null,
+      "expectedCitationIds": [
+        "S1",
+        "S2"
+      ],
+      "notes": "多跳；两次检索证据合并，按 chunkId 去重"
+    },
+    {
+      "id": "multiturn-pronoun",
+      "query": "他后来去哪了？",
+      "history": [
+        {
+          "role": "user",
+          "content": "张三在哪学习？"
+        },
+        {
+          "role": "assistant",
+          "content": "张三在上海学习。"
+        }
+      ],
+      "expectedToolRoute": [
+        "search_knowledge",
+        "final"
+      ],
+      "expectedFallback": null,
+      "expectedCitationIds": [
+        "S1"
+      ],
+      "notes": "多轮指代：history 只作上下文，不是证据"
+    },
+    {
+      "id": "entity-route",
+      "query": "张三关联了哪些事件？",
+      "history": [],
+      "expectedToolRoute": [
+        "lookup_entities",
+        "search_knowledge",
+        "final"
+      ],
+      "expectedFallback": null,
+      "expectedCitationIds": [
+        "S1"
+      ],
+      "notes": "实体工具→检索；实体观察不直接当引用"
+    },
+    {
+      "id": "entity-only-final-no-evidence",
+      "query": "简单介绍张三",
+      "history": [],
+      "expectedToolRoute": [
+        "lookup_entities",
+        "final"
+      ],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "仅实体观察、无检索证据：上层应拒答/提示无证据"
+    },
+    {
+      "id": "refuse-no-tool-call",
+      "query": "今天天气怎么样？",
+      "history": [],
+      "expectedToolRoute": [
+        "final"
+      ],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "知识库外问题：planner 直接 final，无证据 → 上层拒答"
+    },
+    {
+      "id": "fallback-unknown-tool",
+      "query": "查一下上海的相关资料",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": "AGENT_UNKNOWN_ACTION",
+      "expectedCitationIds": [],
+      "notes": "planner 输出未注册工具：确定性 fallback"
+    },
+    {
+      "id": "fallback-bad-json",
+      "query": "上海在哪里？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": "AGENT_BAD_JSON",
+      "expectedCitationIds": [],
+      "notes": "planner 输出非 JSON：确定性 fallback"
+    },
+    {
+      "id": "fallback-json-extra-field",
+      "query": "上海在哪里？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": "AGENT_BAD_JSON",
+      "expectedCitationIds": [],
+      "notes": "planner 输出额外字段（final 带 input）：违反封闭 schema → fallback"
+    },
+    {
+      "id": "fallback-empty-input",
+      "query": "上海在哪里？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": "AGENT_BAD_INPUT",
+      "expectedCitationIds": [],
+      "notes": "工具调用 input 为空 → fallback"
+    },
+    {
+      "id": "fallback-tool-error",
+      "query": "上海在哪里？",
+      "history": [],
+      "expectedToolRoute": [
+        "search_knowledge"
+      ],
+      "expectedFallback": "AGENT_TOOL_ERROR",
+      "expectedCitationIds": [],
+      "notes": "工具返回 errorCode → fallback，证据为空"
+    },
+    {
+      "id": "fallback-tool-exception",
+      "query": "上海在哪里？",
+      "history": [],
+      "expectedToolRoute": [
+        "search_knowledge"
+      ],
+      "expectedFallback": "AGENT_TOOL_EXCEPTION",
+      "expectedCitationIds": [],
+      "notes": "工具抛非取消异常 → fallback"
+    },
+    {
+      "id": "fallback-max-tool-calls",
+      "query": "上海在哪里？",
+      "history": [],
+      "expectedToolRoute": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "expectedFallback": "AGENT_MAX_TOOL_CALLS",
+      "expectedCitationIds": [],
+      "notes": "超过 2 次工具预算仍请求工具 → 不执行第 3 次，fallback"
+    },
+    {
+      "id": "fallback-provider-error",
+      "query": "上海在哪里？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": "AGENT_PROVIDER_ERROR",
+      "expectedCitationIds": [],
+      "notes": "planner provider 返回 Failure → fallback"
+    },
+    {
+      "id": "fallback-not-configured",
+      "query": "上海在哪里？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": "AGENT_NOT_CONFIGURED",
+      "expectedCitationIds": [],
+      "notes": "LLM 未配置：零网络，确定 fallback（普通检索可继续）"
+    },
+    {
+      "id": "fallback-no-tools",
+      "query": "上海在哪里？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": "AGENT_NO_TOOLS",
+      "expectedCitationIds": [],
+      "notes": "无注册工具：直接 fallback"
+    },
+    {
+      "id": "fallback-empty-query",
+      "query": "   ",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": "AGENT_EMPTY_QUERY",
+      "expectedCitationIds": [],
+      "notes": "空 query：不调用 provider"
+    },
+    {
+      "id": "ref-dedupe-duplicate-evidence",
+      "query": "上海有哪些别名？",
+      "history": [],
+      "expectedToolRoute": [
+        "search_knowledge",
+        "search_knowledge",
+        "final"
+      ],
+      "expectedFallback": null,
+      "expectedCitationIds": [
+        "S1"
+      ],
+      "notes": "两次工具返回同一 chunk：evidence 去重、引用唯一"
+    },
+    {
+      "id": "ref-citation-validity",
+      "query": "上海在哪些事件中被提到？",
+      "history": [],
+      "expectedToolRoute": [
+        "search_knowledge",
+        "final"
+      ],
+      "expectedFallback": null,
+      "expectedCitationIds": [
+        "S1",
+        "S2"
+      ],
+      "notes": "引用必须全部来自本轮 evidence，去重且顺序稳定"
+    },
+    {
+      "id": "multiturn-entity-then-search",
+      "query": "它的别名是什么？",
+      "history": [
+        {
+          "role": "user",
+          "content": "上海有什么？"
+        },
+        {
+          "role": "assistant",
+          "content": "上海是城市。"
+        }
+      ],
+      "expectedToolRoute": [
+        "lookup_entities",
+        "search_knowledge",
+        "final"
+      ],
+      "expectedFallback": null,
+      "expectedCitationIds": [
+        "S1"
+      ],
+      "notes": "多轮 + 实体 + 检索组合；引用只来自本轮 evidence"
+    }
+  ]
+}

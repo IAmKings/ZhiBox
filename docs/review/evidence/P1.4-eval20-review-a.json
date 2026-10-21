@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "reviewer": "A",
+  "reviewer_type": "independent_ai_review",
+  "method": "独立 AI 评审：仅基于 P1.4-eval20-k60u-results.json、agent_eval_cases.json 与合成语料 corpus1-3，逐条判断答案支持性、拒答正确性、引用有效性与路线契约；不运行产品、不修改原始结果，不展示 key/长正文。",
+  "source_results": "docs/review/evidence/P1.4-eval20-k60u-results.json",
+  "source_cases": "scripts/eval/agent_eval_cases.json",
+  "source_corpora": [
+    "docs/review/evidence/P1.4-eval20-corpus1.txt",
+    "docs/review/evidence/P1.4-eval20-corpus2.txt",
+    "docs/review/evidence/P1.4-eval20-corpus3.txt"
+  ],
+  "prompt_version": "b16-agent-tools-v1",
+  "reviewed_at": "2026-10-21",
+  "cases": [
+    {
+      "id": "fact-single-hop",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": true,
+      "rationale": "答案（叶绿体/叶绿素）与 corpus1 一致，引用了 S1 且格式有效；工具路线为单次 search→final，符合期望。"
+    },
+    {
+      "id": "fact-multi-hop",
+      "support": "not_applicable",
+      "refusal_correct": false,
+      "citation_valid": "na",
+      "route_ok": false,
+      "rationale": "运行 TIMEOUT、无答案；实际只调用 lookup_entities 并出现 AGENT_TOOL_ERROR，而期望两次 search→final；问题在 corpus2/3 中可回答，因此拒答不正确。"
+    },
+    {
+      "id": "multiturn-pronoun",
+      "support": "not_applicable",
+      "refusal_correct": true,
+      "citation_valid": "na",
+      "route_ok": false,
+      "rationale": "运行 TIMEOUT、无答案（provider error）；history 只给出“张三在上海学习”，corpus 没有“后来去哪”的信息，拒答可接受；路线未完成，不符期望。"
+    },
+    {
+      "id": "entity-route",
+      "support": "not_applicable",
+      "refusal_correct": false,
+      "citation_valid": "na",
+      "route_ok": false,
+      "rationale": "运行 TIMEOUT、无答案；实际仅 lookup_entities 且工具错误，期望 lookup_entities→search→final；corpus2/3 有张三学习信息，拒答不正确。"
+    },
+    {
+      "id": "entity-only-final-no-evidence",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致（张三学生、喜欢数学、在上海学习），引用有效；但实际调用 search（且 provider error），期望 lookup_entities→final，路线不符。"
+    },
+    {
+      "id": "refuse-no-tool-call",
+      "support": "not_applicable",
+      "refusal_correct": true,
+      "citation_valid": "na",
+      "route_ok": "unknown",
+      "rationale": "运行 TIMEOUT、无答案；天气问题超出合成语料，拒答正确；无工具调用但未观察到 final，路线无法确认。"
+    },
+    {
+      "id": "fallback-unknown-tool",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用有效；但期望 AGENT_UNKNOWN_ACTION 回退，实际正常 search 并回答，回退/路线不符。"
+    },
+    {
+      "id": "fallback-bad-json",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用有效；期望 AGENT_BAD_JSON 回退，实际 AGENT_TOOL_ERROR 且先 search 再 lookup，回退/路线不符。"
+    },
+    {
+      "id": "fallback-json-extra-field",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用有效；期望额外字段触发 AGENT_BAD_JSON，实际 AGENT_PROVIDER_ERROR，回退/路线不符。"
+    },
+    {
+      "id": "fallback-empty-input",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用有效；期望空 input 触发 AGENT_BAD_INPUT，实际 AGENT_TOOL_ERROR 且带 lookup，回退/路线不符。"
+    },
+    {
+      "id": "fallback-tool-error",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用有效；期望工具 error 触发 AGENT_TOOL_ERROR 回退，实际无 fallback、正常回答，契约不符。"
+    },
+    {
+      "id": "fallback-tool-exception",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用有效；期望工具异常触发 AGENT_TOOL_EXCEPTION 回退，实际无 fallback、正常回答，契约不符。"
+    },
+    {
+      "id": "fallback-max-tool-calls",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用有效；期望超出预算触发 AGENT_MAX_TOOL_CALLS，实际仅一次 search 后正常回答，回退/路线不符。"
+    },
+    {
+      "id": "fallback-provider-error",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用有效；期望 AGENT_PROVIDER_ERROR 回退，实际 search 正常回答，回退/路线不符。"
+    },
+    {
+      "id": "fallback-not-configured",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用有效；期望未配置（AGENT_NOT_CONFIGURED）回退，实际已调用 search，说明未按期望回退。"
+    },
+    {
+      "id": "fallback-no-tools",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用有效；期望无工具（AGENT_NO_TOOLS）回退，实际调用 search+lookup 且 TOOL_ERROR，回退/路线不符。"
+    },
+    {
+      "id": "fallback-empty-query",
+      "support": "not_applicable",
+      "refusal_correct": "not_applicable",
+      "citation_valid": "na",
+      "route_ok": false,
+      "rationale": "运行 TIMEOUT、无答案；空 query 期望 AGENT_EMPTY_QUERY 回退，实际调用工具且超时，路线不符；空问题无可评价的拒答语义。"
+    },
+    {
+      "id": "ref-dedupe-duplicate-evidence",
+      "support": "not_applicable",
+      "refusal_correct": true,
+      "citation_valid": "na",
+      "route_ok": false,
+      "rationale": "运行 TIMEOUT、无答案；corpus 没有“上海别名”信息，拒答可接受；期望两次 search→final，实际 lookup+工具错误，路线不符。"
+    },
+    {
+      "id": "ref-citation-validity",
+      "support": "support",
+      "refusal_correct": "not_applicable",
+      "citation_valid": true,
+      "route_ok": false,
+      "rationale": "答案与 corpus2/3 一致、引用 S2/S3 均有效；但期望 search→final，实际 search+lookup 且 AGENT_TOOL_ERROR，路线/回退不符。"
+    },
+    {
+      "id": "multiturn-entity-then-search",
+      "support": "not_applicable",
+      "refusal_correct": true,
+      "citation_valid": "na",
+      "route_ok": false,
+      "rationale": "运行 TIMEOUT、无答案（provider error）；corpus/history 没有别名信息，拒答可接受；期望 lookup→search→final，路线未完成。"
+    }
+  ],
+  "summary": {
+    "total": 20,
+    "answered": 13,
+    "timeout": 7,
+    "support": 13,
+    "partial": 0,
+    "unsupported": 0,
+    "not_applicable": 7,
+    "correct_refusal": 4,
+    "citation_valid": 13,
+    "citation_na": 7,
+    "route_ok_true": 1,
+    "route_ok_false": 18,
+    "route_ok_unknown": 1,
+    "support_rate_of_answered": 1.0,
+    "support_rate_all_cases": 0.65
+  },
+  "quality_claim_allowed": false,
+  "notes": [
+    "仅 13/20 有答案、7 条 TIMEOUT；已答 13 条在合成语料下均支持（support_rate_of_answered=1.0），但总样本仅 20 且不支持率/人工双评缺失，不满足 20–50 题 + 人工双评 + support≥90% 的质量门禁。",
+    "工具路线/回退契约大面积不符：route_ok 仅 1 条 true（18 false/1 unknown），真实模型下 planner/fallback 行为不稳定，不能用 mock harness 的契约通过替代真实质量。",
+    "本评审为独立 AI 单评，不是人工双评；人工抽检窗口未完成，citation 的 evidence 内容映射未逐条核对（仅按引用格式/与答案一致性判定）。",
+    "结论：只能报告 20 题真实运行观察（13 成功/7 超时、13/13 已答正确），quality_claim_allowed=false，不得宣称 Agent/问答质量达标。"
+  ]
+}
