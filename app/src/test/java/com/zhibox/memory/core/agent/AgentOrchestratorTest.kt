@@ -9,6 +9,7 @@ import com.zhibox.memory.core.llm.LlmConfig
 import com.zhibox.memory.core.llm.LlmConfigStore
 import com.zhibox.memory.core.llm.LlmStoreException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -383,6 +384,37 @@ class AgentOrchestratorTest {
         charEnd = 5,
         score = 0.9,
     )
+
+    @Test
+    fun `planner timeout falls back to provider error without hanging`() = runBlocking {
+        val hanging = object : LlmCompletionProvider {
+            override suspend fun complete(
+                config: LlmConfig,
+                systemPrompt: String,
+                userPrompt: String,
+                maxTokens: Int,
+            ): LlmCompletionResult {
+                delay(5_000)
+                return LlmCompletionResult.Success("{\"action\":\"final\"}", latencyMs = 1, model = "mock")
+            }
+        }
+        val orchestrator = AgentOrchestrator(
+            provider = hanging,
+            store = FakeStore(config),
+            tools = mapOf("search_knowledge" to FakeTool(
+                AgentToolSpec("search_knowledge", "检索"),
+                AgentToolResult("ok"),
+            )),
+            plannerTimeoutMs = 50,
+        )
+
+        val started = System.currentTimeMillis()
+        val result = orchestrator.plan("上海在哪里？")
+
+        assertTrue("应回退而非挂起", !result.usedAgent)
+        assertEquals(AgentFallbackReasons.PROVIDER_ERROR, result.fallbackReason)
+        assertTrue("应在超时上限附近返回", System.currentTimeMillis() - started < 2_000)
+    }
 
     private class FakeStore(
         private val config: LlmConfig?,

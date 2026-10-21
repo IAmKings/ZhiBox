@@ -43,6 +43,8 @@ import com.zhibox.memory.data.db.SourceStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -696,15 +698,31 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             var completed: AnswerEvent.Completed? = null
             var failed: AnswerEvent.Failed? = null
             // P1：history 仅作上下文，证据仍只来自本轮 evidence；生成器/提示词会再次剥离旧引用。
-            answerGenerator.generate(
-                AnswerRequest(query = query, evidence = evidence, history = history),
-            ).collect { event ->
-                when (event) {
-                    is AnswerEvent.Delta -> update { it.copy(streamingText = it.streamingText + event.text) }
-                    is AnswerEvent.Completed -> completed = event
-                    is AnswerEvent.Failed -> failed = event
-                    AnswerEvent.Stopped -> Unit
+            try {
+                withTimeout(GENERATION_TIMEOUT_MS) {
+                    answerGenerator.generate(
+                        AnswerRequest(query = query, evidence = evidence, history = history),
+                    ).collect { event ->
+                        when (event) {
+                            is AnswerEvent.Delta -> update { it.copy(streamingText = it.streamingText + event.text) }
+                            is AnswerEvent.Completed -> completed = event
+                            is AnswerEvent.Failed -> failed = event
+                            AnswerEvent.Stopped -> Unit
+                        }
+                    }
                 }
+            } catch (e: TimeoutCancellationException) {
+                // 生成器/网络挂起：给出可恢复错误，不让 UI 无限显示“生成中”。
+                update {
+                    it.copy(
+                        streaming = false,
+                        streamingText = "",
+                        infoMessage = null,
+                        errorMessage = str(R.string.chat_generation_timeout),
+                        canRetry = true,
+                    )
+                }
+                return
             }
             generateMs = System.currentTimeMillis() - generateStarted
             update { it.copy(infoMessage = null) }
@@ -965,6 +983,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         const val CONVERSATION_LIMIT = 50
         const val TITLE_MAX_CHARS = 24
         const val TRACE_KEEP = 50
+
+        /** 最终答案生成超时；超出后不落库，提示重试。 */
+        const val GENERATION_TIMEOUT_MS: Long = 45_000
     }
 }
 

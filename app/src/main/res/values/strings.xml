@@ -344,6 +344,7 @@
     <string name="chat_stopped_partial">已停止生成；未完成的回答不会保存。</string>
     <string name="chat_no_evidence">资料不足，无法回答：本轮没有检索到可引用证据。</string>
     <string name="chat_failed">问答失败：%1$s</string>
+    <string name="chat_generation_timeout">生成超时，请重试；本轮回答不会保存。</string>
     <string name="chat_conversation_missing">会话不存在</string>
     <string name="chat_no_result">未返回结果</string>
     <string name="chat_citation_label">引用 %1$s</string>

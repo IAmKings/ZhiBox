@@ -8,7 +8,7 @@
   "signed": true,
   "signing": "release keystore (same as v0.1.1; apksigner PASS)",
   "signerCertSha256": "b1d136badcc7e032a39d8504fb050f98f444017aeb5f5cfce66256afec1db1d1",
-  "status": "release candidate; not published/tagged; includes P1.4 Agent/eval scaffold; device install smoke pending",
+  "status": "release candidate for commit 5284e13; superseded by subsequent planner/generation timeout fixes; rebuild before publish/tag",
   "gitHeadAtBuild": "5284e13",
   "builtAt": "2026-10-21T01:05+08:00"
 }

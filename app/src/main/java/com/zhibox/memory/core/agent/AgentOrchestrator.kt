@@ -7,6 +7,8 @@ import com.zhibox.memory.core.llm.LlmCompletionResult
 import com.zhibox.memory.core.llm.LlmConfig
 import com.zhibox.memory.core.llm.LlmConfigStore
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 
 /**
  * P1.4 / B16：受控 Agent 工具规划器 v1（纯 JVM，不依赖 Android/DB）。
@@ -36,9 +38,15 @@ class AgentOrchestrator(
     private val tools: Map<String, AgentTool>,
     private val maxToolCalls: Int = DEFAULT_MAX_TOOL_CALLS,
     private val plannerMaxTokens: Int = DEFAULT_PLANNER_MAX_TOKENS,
+    /** 单次 planner 调用超时；超时按 PROVIDER_ERROR 确定性回退。 */
+    private val plannerTimeoutMs: Long = DEFAULT_PLANNER_TIMEOUT_MS,
+    /** 单次工具执行超时；超时按 TOOL_EXCEPTION 确定性回退。 */
+    private val toolTimeoutMs: Long = DEFAULT_TOOL_TIMEOUT_MS,
 ) {
 
     private val maxCalls: Int = maxToolCalls.coerceAtLeast(0)
+    private val plannerTimeout: Long = plannerTimeoutMs.coerceAtLeast(1L)
+    private val toolTimeout: Long = toolTimeoutMs.coerceAtLeast(1L)
     private val toolSpecs: List<AgentToolSpec> = tools.map { (name, tool) ->
         AgentToolSpec(name = name, description = AgentPrompt.safeToolDescription(tool.spec.description))
     }
@@ -84,12 +92,17 @@ class AgentOrchestrator(
                 remainingToolCalls = (maxCalls - calls.size).coerceAtLeast(0),
             )
             val completion = try {
-                provider.complete(
-                    config = config,
-                    systemPrompt = systemPrompt,
-                    userPrompt = userPrompt,
-                    maxTokens = plannerMaxTokens,
-                )
+                withTimeout(plannerTimeout) {
+                    provider.complete(
+                        config = config,
+                        systemPrompt = systemPrompt,
+                        userPrompt = userPrompt,
+                        maxTokens = plannerMaxTokens,
+                    )
+                }
+            } catch (e: TimeoutCancellationException) {
+                // planner 超时：不拖垮问答主流程，回退普通检索。
+                return fallback(AgentFallbackReasons.PROVIDER_ERROR, calls, observations)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -124,7 +137,10 @@ class AgentOrchestrator(
                     val tool = tools[plan.name]
                         ?: return fallback(AgentFallbackReasons.UNKNOWN_ACTION, calls, observations)
                     val toolResult = try {
-                        tool.execute(plan.input)
+                        withTimeout(toolTimeout) { tool.execute(plan.input) }
+                    } catch (e: TimeoutCancellationException) {
+                        calls += AgentToolCall(plan.name, plan.input, AgentFallbackReasons.TOOL_EXCEPTION)
+                        return fallback(AgentFallbackReasons.TOOL_EXCEPTION, calls, observations)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -166,6 +182,12 @@ class AgentOrchestrator(
 
         /** planner JSON 输出 token 上限。 */
         const val DEFAULT_PLANNER_MAX_TOKENS: Int = 256
+
+        /** planner 单次调用默认超时（毫秒）；防止 provider 挂起导致问答无限等待。 */
+        const val DEFAULT_PLANNER_TIMEOUT_MS: Long = 20_000
+
+        /** 工具单次执行默认超时（毫秒）；本地检索/DB 异常时不无限挂起。 */
+        const val DEFAULT_TOOL_TIMEOUT_MS: Long = 20_000
 
         /** 单条 observation 进入下一轮 prompt 的最大字符数。 */
         const val MAX_OBSERVATION_CHARS: Int = 500

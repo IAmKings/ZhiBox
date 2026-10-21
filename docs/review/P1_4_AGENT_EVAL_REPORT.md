@@ -25,7 +25,7 @@
 
 | 检查 | 结果 |
 |---|---|
-| JVM debug / release | **806 / 0**、**787 / 0** |
+| JVM debug / release | **807 / 0**、**788 / 0**（新增 planner timeout 单测） |
 | lint | 0 errors / 57 warnings, 2 hints |
 | Agent core | 30 tests；全量 JVM 绿 |
 | B17 offline harness | 20/20 route、11/11 fallback、20/20 citation；contract_only=true |
@@ -37,7 +37,7 @@
 
 ## 4. 签名候选
 
-- `dist/zhibox-0.1.2-5284e13-release-signed.apk`（69,524,581 bytes，SHA-256 `5a4080dde62f90817ed7042b25550d7e5ba725ec156f73b351d967095a0b938c`；未发布/tag）。
+- `dist/zhibox-0.1.2-5284e13-release-signed.apk`（69,524,581 bytes，SHA-256 `5a4080dde62f90817ed7042b25550d7e5ba725ec156f73b351d967095a0b938c`；未发布/tag）。**注意：该签名 RC 早于本轮 planner/生成超时修复，不能作为当前代码发布产物；发布前需重建并重跑门禁。**
 
 ## 5. 阻塞/后续
 

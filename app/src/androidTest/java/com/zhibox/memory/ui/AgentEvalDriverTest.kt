@@ -73,7 +73,7 @@ class AgentEvalDriverTest {
                 vm.setInput(case.query)
                 vm.send()
             }
-            val answer = if (case.query.isBlank()) null else waitForAssistant(db, before, 75_000)
+            val answer = if (case.query.isBlank()) null else waitForAssistant(vm, db, before, 75_000)
             val elapsed = System.currentTimeMillis() - started
             if (answer == null) {
                 instr.runOnMainSync { vm.stopGeneration() }
@@ -90,7 +90,14 @@ class AgentEvalDriverTest {
                 put("answer", answer?.first ?: "")
                 put("citations", JSONArray(answer?.second ?: emptyList<String>()))
                 put("latencyMs", elapsed)
-                put("failureCode", if (answer == null) "TIMEOUT" else (st.errorMessage?.let { "UI_ERROR" } ?: JSONObject.NULL))
+                put("failureCode", when {
+                    answer != null -> JSONObject.NULL
+                    // 无 evidence 时 UI 只置 warning、不落 assistant；这是合理拒答路径，不是产品错误。
+                    st.warning?.contains("资料不足") == true -> "NO_EVIDENCE_REFUSAL"
+                    st.errorMessage != null -> "PRODUCT_ERROR"
+                    else -> "TIMEOUT"
+                })
+                put("errorMessage", st.errorMessage ?: JSONObject.NULL)
                 put("warning", st.warning ?: JSONObject.NULL)
                 put("agentFallbackReason", st.agentFallbackReason ?: JSONObject.NULL)
                 put("toolCalls", JSONArray(st.agentToolCalls.map { it.name }))
@@ -139,9 +146,16 @@ class AgentEvalDriverTest {
             it.moveToFirst(); it.getInt(0)
         }
 
-    private suspend fun waitForAssistant(db: AppDatabase, before: Int, timeoutMs: Long): Pair<String, List<String>>? {
+    private suspend fun waitForAssistant(
+        vm: ChatViewModel,
+        db: AppDatabase,
+        before: Int,
+        timeoutMs: Long,
+    ): Pair<String, List<String>>? {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
+            // 产品侧生成/规划超时会提前结束 streaming 并给出 errorMessage；不再等满测试上限。
+            if (vm.state.value.errorMessage != null && !vm.state.value.streaming) return null
             val count = assistantCount(db)
             if (count > before) {
                 val row = db.openHelper.readableDatabase.query(

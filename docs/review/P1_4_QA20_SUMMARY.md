@@ -59,3 +59,13 @@
 - **遥测口径**：10/18 有回答仍带 `agentFallbackReason`；部分回答无工具调用却有引用，需澄清 fallback/引用注入语义。
 - **引用覆盖**：#12 有 2 句未标注引用告警；应由人工复核是否影响门禁。
 - **下一步**：修超时/告警分类 → 补 app build sha/解码参数 → 安排 2 名人类评审抽检 ≥10 题并回填 support → 再决定发布。
+
+## 6. 超时修复后的复跑（2026-10-21，K60U）
+
+- 代码修复：Agent planner 单次 20s 超时、工具 20s 超时、最终答案生成 45s 超时；超时不再无限“生成中”，给出可重试错误。
+- 复跑结果：[P1.4-qa20-timeoutfix-k60u-results.json](evidence/P1.4-qa20-timeoutfix-k60u-results.json)
+- 结果：**17 回答 / 3 错误**（无 75s 超时；错误在 5–25s 内返回）；回答 p50 **13.7s** / max **20.3s**。
+  - `qa-photosynthesis-energy`：`LLM_PARSE_ERROR`（未返回内容）；
+  - `qa-shanghai-universities`：无证据拒答（证据可答，检索/路由仍有问题）；
+  - `qa-weather-refusal`：无证据拒答（预期行为）。
+- 结论：超时/挂起问题已修复；回答数较修复前的 18 略降（1 条 LLM_PARSE_ERROR + 1 条证据漏检），需继续修生成解析与检索召回；质量声明仍禁止（人类评审未完成）。
