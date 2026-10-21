@@ -275,6 +275,9 @@ dependencies {
     androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
+    // P1.4 真机评测：UiAutomator（跨应用 UI 测试 + 中文 setText 输入；仅 androidTest → test APK，
+    // 不进入 app APK/release）。AAR 约 130KB + 传递 androidx.tracing。
+    androidTestImplementation(libs.androidx.test.uiautomator)
     androidTestImplementation(libs.kotlinx.coroutines.test)
     // B5：Compose UI instrumentation（真机 5 条：搜索命中/拒绝态/证据返回/来源空态/重建；
     // createComposeRule + createEmptyComposeRule + ActivityScenario.recreate）

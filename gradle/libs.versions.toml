@@ -51,6 +51,9 @@ documentfile = "1.0.1"
 roomTesting = "2.8.5"
 androidxTestCore = "1.6.1"
 androidxTestRunner = "1.6.2"
+# P1.4 真机评测：UiAutomator（跨应用 UI 测试 / 中文 setText 输入；Apache-2.0）。
+# 仅 androidTest classpath → 只进 test APK，不进 app APK/release。
+uiautomator = "2.3.0"
 junit = "4.13.2"
 coroutinesTest = "1.10.2"
 kotlinxSerialization = "1.8.1"
@@ -105,6 +108,8 @@ androidx-documentfile = { group = "androidx.documentfile", name = "documentfile"
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-core = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCore" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+# P1.4 真机评测：UiAutomator 2.3.0（仅 androidTest，Google Maven；AndroidX 官方 AAR）
+androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 # B4-1b：room-testing 2.8.5 GeneratedSerializer 需 1.8.1（见 app/build.gradle.kts 注释）
