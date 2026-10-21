@@ -42,9 +42,22 @@ class AgentEvalDriverTest {
         Assume.assumeTrue("首次联网 consent 未授予", vm.state.value.consentGranted)
         instr.runOnMainSync { vm.setAgentEnabled(true) }
 
-        val cases = readCases()
+        val suite = InstrumentationRegistry.getArguments().getString("suite") ?: "contract"
+        val cases = readCases(suite)
         val out = JSONArray()
-        val outFile = File(app.cacheDir, "agent_eval20.json").apply { delete() }
+        val outFile = File(app.cacheDir, "agent_eval_${suite}.json").apply { delete() }
+        val cfg = runCatching { com.zhibox.memory.core.llm.KeystoreLlmConfigStore(app).load() }.getOrNull()
+        val runMeta = JSONObject().apply {
+            put("suite", suite)
+            put("device", android.os.Build.MODEL)
+            put("android", android.os.Build.VERSION.RELEASE)
+            put("model", cfg?.model ?: JSONObject.NULL)
+            put("keyConfigured", cfg != null)
+            put("promptVersion", com.zhibox.memory.core.agent.AgentPrompt.PROMPT_VERSION)
+            put("date", java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.ROOT).format(java.util.Date()))
+            put("caseCount", cases.size)
+            put("fixture", "synthetic corpus1-3 (3 txt)")
+        }
 
         cases.forEachIndexed { idx, case ->
             if (vm.state.value.streaming) {
@@ -60,7 +73,7 @@ class AgentEvalDriverTest {
                 vm.setInput(case.query)
                 vm.send()
             }
-            val answer = waitForAssistant(db, before, 75_000)
+            val answer = if (case.query.isBlank()) null else waitForAssistant(db, before, 75_000)
             val elapsed = System.currentTimeMillis() - started
             if (answer == null) {
                 instr.runOnMainSync { vm.stopGeneration() }
@@ -86,7 +99,11 @@ class AgentEvalDriverTest {
             outFile.writeText(out.toString(2), Charsets.UTF_8)
             println("P1_4_AGENT_EVAL20 case=${idx + 1}/${cases.size} ms=$elapsed ok=${answer != null}")
         }
-        println("P1_4_AGENT_EVAL20_DONE cases=${out.length()} dir=${outFile.absolutePath}")
+        File(outFile.absolutePath + ".wrapper").writeText(
+            JSONObject().put("run", runMeta).put("cases", out).toString(2),
+            Charsets.UTF_8,
+        )
+        println("P1_4_AGENT_EVAL20_DONE suite=$suite cases=${out.length()} dir=${outFile.absolutePath}")
     }
 
     private data class CaseVal(
@@ -97,9 +114,10 @@ class AgentEvalDriverTest {
         val expectedCitationIds: List<String>,
     )
 
-    private fun readCases(): List<CaseVal> {
+    private fun readCases(suite: String): List<CaseVal> {
+        val asset = if (suite == "qa") "agent_qa_cases.json" else "agent_eval_cases.json"
         val raw = InstrumentationRegistry.getInstrumentation().context.assets
-            .open("agent_eval_cases.json").bufferedReader().use { it.readText() }
+            .open(asset).bufferedReader().use { it.readText() }
         val root = JSONObject(raw)
         val arr = root.getJSONArray("cases")
         return (0 until arr.length()).map { i ->
@@ -107,7 +125,7 @@ class AgentEvalDriverTest {
             CaseVal(
                 id = o.getString("id"),
                 query = o.getString("query"),
-                expectedToolRoute = o.getJSONArray("expectedToolRoute").toStringList(),
+                expectedToolRoute = if (o.isNull("expectedToolRoute")) emptyList() else o.getJSONArray("expectedToolRoute").toStringList(),
                 expectedFallback = if (o.isNull("expectedFallback")) null else o.getString("expectedFallback"),
                 expectedCitationIds = if (o.isNull("expectedCitationIds")) emptyList() else o.getJSONArray("expectedCitationIds").toStringList(),
             )

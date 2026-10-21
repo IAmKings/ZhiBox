@@ -30,9 +30,10 @@
 | Agent core | 30 tests；全量 JVM 绿 |
 | B17 offline harness | 20/20 route、11/11 fallback、20/20 citation；contract_only=true |
 | K60U UI | Agent 开关/提示可见；无 LLM key 时不可用，普通链路不受影响 |
-| 真实 LLM 20 题（K60U） | **13 回答 / 7 超时（35%）**；两位独立 AI 评审均 **12 support + 1 partial**（已答 92.3%，全样本 60%；纯质量用例仅 2/9）；citation 13/13；路由仅 1–2/20；无人类双评 → 质量声明禁止 |
+| 真实 LLM 契约混合 20 题（K60U） | 13 回答 / 7 超时（35%）；12 support + 1 partial；fallback 契约 0/11；两位 AI 评审、无人类双评 → 质量声明禁止 |
+| **真实 LLM QA-only 20 题（K60U）** | **18 回答 / 2 超时（10%）**；**17 support + 1 partial**（已答 94.4%，全样本 85%）；citation 保守 17 valid/1 warning；仍仅 2 位 AI 评审、无人类双评 → 质量声明禁止 |
 | 真实 LLM（PJZ110，早期） | 2/8 样本；回答有引用/工具成功；仅作早期观察 |
-| 证据 | `P1.4-agent-toggle-k60u.*`、`P1.4-real-agent-pjz110.txt`、`P1.4-eval20-k60u-results.json`、评审 A/B JSON、`P1_4_EVAL20_SUMMARY.md` |
+| 证据 | `P1.4-agent-toggle-k60u.*`、`P1.4-real-agent-pjz110.txt`、`P1.4-eval20-k60u-results.json`、QA20 结果/评审、`P1_4_EVAL20_SUMMARY.md`、`P1_4_QA20_SUMMARY.md` |
 
 ## 4. 签名候选
 

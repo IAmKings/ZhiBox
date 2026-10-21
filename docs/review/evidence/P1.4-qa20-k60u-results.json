@@ -1,0 +1,401 @@
+{
+  "run": {
+    "suite": "qa",
+    "device": "23078PND5G",
+    "android": "14",
+    "model": "deepseek-v4-flash",
+    "keyConfigured": true,
+    "promptVersion": "b16-agent-tools-v1",
+    "date": "2026-10-21T21:31:57+08:00",
+    "caseCount": 20,
+    "fixture": "synthetic corpus1-3 (3 txt)"
+  },
+  "cases": [
+    {
+      "index": 1,
+      "id": "qa-photosynthesis-structure",
+      "query": "光合作用主要发生在植物的哪个结构？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "光合作用主要发生在植物的叶绿体中 [S1]。叶绿体含有叶绿素，可以吸收光能 [S1]。",
+      "citations": [
+        "S1:chunk251"
+      ],
+      "latencyMs": 22862,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": null,
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 2,
+      "id": "qa-photosynthesis-energy",
+      "query": "光合作用需要什么？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "光合作用主要发生在植物的叶绿体中 [S1]。叶绿体含有叶绿素，可以吸收光能 [S1]。据此，光合作用需要叶绿体中的叶绿素所吸收的光能 [S1]。",
+      "citations": [
+        "S1:chunk251"
+      ],
+      "latencyMs": 17787,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": "AGENT_PROVIDER_ERROR",
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 3,
+      "id": "qa-shanghai-country",
+      "query": "上海是哪个国家的城市？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "上海是中国的城市 [S2]。",
+      "citations": [
+        "S2:chunk252"
+      ],
+      "latencyMs": 25460,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": null,
+      "toolCalls": [
+        "search_knowledge",
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 4,
+      "id": "qa-zhangsan-study",
+      "query": "张三在哪里学习？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "张三在上海学习 [S2][S3]。",
+      "citations": [
+        "S2:chunk252",
+        "S3:chunk253"
+      ],
+      "latencyMs": 14742,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": null,
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 5,
+      "id": "qa-lisi-work",
+      "query": "李四在哪里工作？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "李四在北京工作 [S2]。",
+      "citations": [
+        "S2:chunk252"
+      ],
+      "latencyMs": 17782,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": "AGENT_BAD_JSON",
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 6,
+      "id": "qa-wangwu-work",
+      "query": "王五在哪里工作？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "王五在深圳工作 [S2]。",
+      "citations": [
+        "S2:chunk252"
+      ],
+      "latencyMs": 16748,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": "AGENT_PROVIDER_ERROR",
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 7,
+      "id": "qa-zhaoliu-city",
+      "query": "赵六在哪里生活？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "赵六在杭州生活 [S2]。",
+      "citations": [
+        "S2:chunk252"
+      ],
+      "latencyMs": 9130,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": "AGENT_BAD_JSON",
+      "toolCalls": []
+    },
+    {
+      "index": 8,
+      "id": "qa-qianqi-study",
+      "query": "钱七在哪里学习？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "钱七在成都学习 [S2]。",
+      "citations": [
+        "S2:chunk252"
+      ],
+      "latencyMs": 12197,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": "AGENT_TOOL_ERROR",
+      "toolCalls": [
+        "search_knowledge",
+        "lookup_entities"
+      ]
+    },
+    {
+      "index": 9,
+      "id": "qa-zhangsan-like",
+      "query": "张三喜欢什么？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "张三喜欢数学 [S2]。",
+      "citations": [
+        "S2:chunk253"
+      ],
+      "latencyMs": 21841,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": null,
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 10,
+      "id": "qa-shanghai-universities",
+      "query": "上海有哪些大学？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "",
+      "citations": [],
+      "latencyMs": 75291,
+      "failureCode": "TIMEOUT",
+      "warning": "资料不足，无法回答：本轮没有检索到可引用证据。",
+      "agentFallbackReason": null,
+      "toolCalls": [
+        "search_knowledge",
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 11,
+      "id": "qa-zhangsan-identity",
+      "query": "张三是什么身份？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "张三是一名学生 [S2]。",
+      "citations": [
+        "S2:chunk253"
+      ],
+      "latencyMs": 18276,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": "AGENT_TOOL_ERROR",
+      "toolCalls": [
+        "search_knowledge",
+        "lookup_entities"
+      ]
+    },
+    {
+      "index": 12,
+      "id": "qa-shanghai-events",
+      "query": "上海这个城市在哪些事件里被提到？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "上海在证据中被提到的情况如下：\n\n- 上海是中国的城市 [S2]\n- 张三在上海学习数学 [S2]\n- 张三在上海学习 [S3]\n- 上海有很多大学 [S3]\n\n除上述内容外，证据中没有提到上海参与的其他事件。",
+      "citations": [
+        "S2:chunk252",
+        "S3:chunk253"
+      ],
+      "latencyMs": 12178,
+      "failureCode": null,
+      "warning": "回答中有 2 个句子未标注引用，已标记为未引用断言。",
+      "agentFallbackReason": "AGENT_TOOL_ERROR",
+      "toolCalls": [
+        "lookup_entities"
+      ]
+    },
+    {
+      "index": 13,
+      "id": "qa-zhangsan-intro",
+      "query": "简单介绍张三。",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "张三是学生 [S3]，喜欢数学 [S3]，在上海学习数学 [S2][S3]。",
+      "citations": [
+        "S2:chunk252",
+        "S3:chunk253"
+      ],
+      "latencyMs": 16243,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": "AGENT_TOOL_ERROR",
+      "toolCalls": [
+        "search_knowledge",
+        "lookup_entities"
+      ]
+    },
+    {
+      "index": 14,
+      "id": "qa-weather-refusal",
+      "query": "今天天气怎么样？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "",
+      "citations": [],
+      "latencyMs": 75159,
+      "failureCode": "TIMEOUT",
+      "warning": "资料不足，无法回答：本轮没有检索到可引用证据。",
+      "agentFallbackReason": null,
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 15,
+      "id": "qa-photosynthesis-where",
+      "query": "光合作用主要发生在哪里？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "光合作用主要发生在植物的叶绿体中 [S1]。叶绿体含有叶绿素，可以吸收光能 [S1]。",
+      "citations": [
+        "S1:chunk251"
+      ],
+      "latencyMs": 15242,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": null,
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 16,
+      "id": "qa-chloroplast-function",
+      "query": "叶绿体的作用是什么？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "叶绿体是光合作用的主要发生场所 [S1]。叶绿体含有叶绿素，可以吸收光能 [S1]。",
+      "citations": [
+        "S1:chunk251"
+      ],
+      "latencyMs": 14715,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": null,
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 17,
+      "id": "qa-zhangsan-subject",
+      "query": "张三学习什么？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "张三学习数学 [S2][S3]。",
+      "citations": [
+        "S2:chunk252",
+        "S3:chunk253"
+      ],
+      "latencyMs": 18286,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": null,
+      "toolCalls": [
+        "search_knowledge",
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 18,
+      "id": "qa-shanghai-features",
+      "query": "上海有什么？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "上海是中国的城市 [S2]，并且上海有很多大学 [S3]。",
+      "citations": [
+        "S2:chunk252",
+        "S3:chunk253"
+      ],
+      "latencyMs": 17774,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": "AGENT_PROVIDER_ERROR",
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 19,
+      "id": "qa-lisi-city",
+      "query": "李四的工作地点？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "李四的工作地点是北京 [S2]。",
+      "citations": [
+        "S2:chunk252"
+      ],
+      "latencyMs": 12660,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": "AGENT_PROVIDER_ERROR",
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    },
+    {
+      "index": 20,
+      "id": "qa-shanghai-location",
+      "query": "上海在哪里？",
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "answer": "上海是中国的城市 [S2]。张三在上海学习数学 [S2]，上海有很多大学 [S3]。",
+      "citations": [
+        "S2:chunk252",
+        "S3:chunk253"
+      ],
+      "latencyMs": 10646,
+      "failureCode": null,
+      "warning": null,
+      "agentFallbackReason": null,
+      "toolCalls": [
+        "search_knowledge"
+      ]
+    }
+  ]
+}

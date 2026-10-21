@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "reviewer": "B",
+  "method": "independent QA review (AI)",
+  "reviewed_at": "2026-10-21",
+  "run": {
+    "suite": "qa",
+    "device": "23078PND5G",
+    "android": "14",
+    "model": "deepseek-v4-flash",
+    "keyConfigured": true,
+    "promptVersion": "b16-agent-tools-v1",
+    "date": "2026-10-21T21:31:57+08:00",
+    "caseCount": 20,
+    "fixture": "synthetic corpus1-3 (3 txt)"
+  },
+  "inputs": [
+    "docs/review/evidence/P1.4-qa20-k60u-results.json",
+    "scripts/eval/agent_qa_cases.json",
+    "docs/review/evidence/P1.4-eval20-corpus1.txt",
+    "docs/review/evidence/P1.4-eval20-corpus2.txt",
+    "docs/review/evidence/P1.4-eval20-corpus3.txt",
+    "docs/review/P1_4_QUALITY_EVAL_PLAN.md"
+  ],
+  "rubric": {
+    "support": "基于合成语料逐条核对回答主张：全部可支撑=support；核心事实有据但有推断/未直接陈述=partial；错误或无据=unsupported；无回答（超时）=not_applicable。",
+    "citation_valid": "按 chunkId 映射语料（251=corpus1、252=corpus2、253=corpus3），核对每条引用是否支撑其所在回答主张；无回答=na。",
+    "refusal_correct": "对无证据/库外或应拒答场景判断拒答是否成立：库外题正确拒答且无编造=true；应可答却拒答/编造=false；非拒答场景=na。"
+  },
+  "cases": [
+    {
+      "id": "qa-photosynthesis-structure",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "S1(chunk251) 与语料1一致（叶绿体/叶绿素），完全支撑。"
+    },
+    {
+      "id": "qa-photosynthesis-energy",
+      "support": "partial",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "叶绿体含叶绿素/吸收光能有据；但“光合作用需要…光能”是语料未直接陈述的推断，属部分支撑。"
+    },
+    {
+      "id": "qa-shanghai-country",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "chunk252 明确“上海是中国的城市”，直接支撑。"
+    },
+    {
+      "id": "qa-zhangsan-study",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "“张三在上海学习”由 chunk252（学习数学）与 chunk253（在上海学习）共同支撑。"
+    },
+    {
+      "id": "qa-lisi-work",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "chunk252 明确“李四在北京工作”，直接支撑。"
+    },
+    {
+      "id": "qa-wangwu-work",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "chunk252 明确“王五在深圳工作”，直接支撑。"
+    },
+    {
+      "id": "qa-zhaoliu-city",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "chunk252 明确“赵六在杭州生活”；引用有效（注：该题无工具调用却有引用，遥测口径待澄清）。"
+    },
+    {
+      "id": "qa-qianqi-study",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "chunk252 明确“钱七在成都学习”，直接支撑。"
+    },
+    {
+      "id": "qa-zhangsan-like",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "chunk253 明确“张三…喜欢数学”，引用有效。"
+    },
+    {
+      "id": "qa-shanghai-universities",
+      "support": "not_applicable",
+      "citation_valid": "na",
+      "refusal_correct": "false",
+      "rationale": "语料3 明确“上海有很多大学”，本应可答；实际 75.3s 超时并以“资料不足”拒绝，拒答理由错误（应记失败）。"
+    },
+    {
+      "id": "qa-zhangsan-identity",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "chunk253 明确“张三是一名学生”，直接支撑。"
+    },
+    {
+      "id": "qa-shanghai-events",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "四条事实均有引用且受 chunk252/253 支撑；warning 的 2 句为叙述性过渡语、非事实断言。"
+    },
+    {
+      "id": "qa-zhangsan-intro",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "学生/喜欢数学/在上海学习数学均有 chunk253+chunk252 支撑。"
+    },
+    {
+      "id": "qa-weather-refusal",
+      "support": "not_applicable",
+      "citation_valid": "na",
+      "refusal_correct": "true",
+      "rationale": "知识库外语料题，最终空回答+“资料不足”提示，拒答语义正确（但以 75.2s 超时收场，可用性问题另记）。"
+    },
+    {
+      "id": "qa-photosynthesis-where",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "同结构题：chunk251 直接支撑叶绿体/叶绿素。"
+    },
+    {
+      "id": "qa-chloroplast-function",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "“叶绿体是光合作用主要发生场所/含叶绿素吸收光能”均为 chunk251 的直接等价表述。"
+    },
+    {
+      "id": "qa-zhangsan-subject",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "“张三学习数学”受 chunk252 支撑，chunk253 支撑其学习事实。"
+    },
+    {
+      "id": "qa-shanghai-features",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "“上海是中国的城市/有很多大学”分别由 chunk252/253 直接支撑。"
+    },
+    {
+      "id": "qa-lisi-city",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "chunk252 明确李四工作地点为北京，直接支撑。"
+    },
+    {
+      "id": "qa-shanghai-location",
+      "support": "support",
+      "citation_valid": "true",
+      "refusal_correct": "na",
+      "rationale": "核心回答“上海是中国的城市”由 chunk252 支撑；附带事实亦有 chunk252/253 支撑。"
+    }
+  ],
+  "summary": {
+    "answered": 18,
+    "support": 17,
+    "partial": 1,
+    "unsupported": 0,
+    "timeout": 2,
+    "citation_valid": 18,
+    "correct_refusal": 1,
+    "not_applicable": 2,
+    "support_rate_answered_pct": 94.4,
+    "support_rate_all_pct": 85.0,
+    "latency_ms": {
+      "answered_p50": 16496,
+      "answered_p90": 21841,
+      "answered_max": 25460,
+      "timeout_ms": [
+        75291,
+        75159
+      ]
+    }
+  },
+  "quality_claim_allowed": false,
+  "notes": [
+    "quality_claim_allowed=false：仅 2 位 AI 评审（A/B）、非人类双评，不满足协议 §4.6 的人工抽检/双评要求；20 题小样本 + 3 chunk 合成语料，support 结果不可外推真实知识库。",
+    "run 元数据齐全（suite=qa、model=deepseek-v4-flash、keyConfigured=true、promptVersion=b16-agent-tools-v1、date、device=23078PND5G、android=14、fixture=synthetic corpus1-3）；但缺 app version/build sha 与解码参数，且模型名为自报、无法在本评审内独立核验。",
+    "QA 套件 20 题的 expectedCitationIds 均为空、无固定工具路由，故“期望引用匹配/路由契约”类门禁不适用于本套件；本评审只判 support/引用有效性/拒答。",
+    "18 条有回答中 17 条 support、1 条 partial（光合作用“需要什么”：叶绿素吸收光能有据，但“需要光能”为语料未直接陈述的推断）；无 unsupported、无伪造/越界引用。",
+    "2 条超时：#10“上海有哪些大学”语料明确可答（chunk253）却 75.3s 超时并以“资料不足”拒答，拒答理由错误（refusal_correct=false，应算失败）；#14 库外天气题最终空回答+资料不足提示，拒答语义正确但以 75.2s 超时收场。",
+    "10/18 有回答仍带 agentFallbackReason（AGENT_PROVIDER_ERROR/AGENT_BAD_JSON/AGENT_TOOL_ERROR），而回答与引用均正常；#7 无工具调用却有 chunk252 引用——fallback/证据来源遥测口径未统一，建议评分前澄清（是否走了确定性 fallback 回答路径、引用由外层检索注入）。",
+    "延迟仅记录未设门禁：answered p50=16.5s、p90=21.8s、max=25.5s；超时约 75.2s（交互可用性需在结论中如实披露）。",
+    "本文件未写入 key、原始长正文或隐私内容；rationale 仅引用 chunkId 与结论。"
+  ]
+}

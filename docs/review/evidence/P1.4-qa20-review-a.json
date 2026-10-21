@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "reviewer": "A",
+  "reviewer_type": "independent_ai_review",
+  "method": "独立 AI 评审 A：仅基于 P1.4-qa20-k60u-results.json、agent_qa_cases.json 与合成语料 corpus1-3，逐题判断答案支持性、引用有效性与拒答合理性；不运行产品、不改原始结果、不展示 key/长正文。",
+  "source_results": "docs/review/evidence/P1.4-qa20-k60u-results.json",
+  "source_cases": "scripts/eval/agent_qa_cases.json",
+  "source_corpora": [
+    "docs/review/evidence/P1.4-eval20-corpus1.txt",
+    "docs/review/evidence/P1.4-eval20-corpus2.txt",
+    "docs/review/evidence/P1.4-eval20-corpus3.txt"
+  ],
+  "run": {
+    "suite": "qa",
+    "model": "deepseek-v4-flash",
+    "prompt_version": "b16-agent-tools-v1",
+    "date": "2026-10-21T21:31:57+08:00",
+    "device": "23078PND5G",
+    "key_configured": true,
+    "fixture": "synthetic corpus1-3 (3 txt)"
+  },
+  "reviewed_at": "2026-10-21",
+  "cases": [
+    {
+      "index": 1,
+      "id": "qa-photosynthesis-structure",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "叶绿体/叶绿素与 corpus1 一致；引用 S1 与答案 token 对应，引用有效。"
+    },
+    {
+      "index": 2,
+      "id": "qa-photosynthesis-energy",
+      "support": "partial",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "由“发生在叶绿体、叶绿素吸收光能”推断“需要光能”属合理推断，但语料未直接陈述“需要什么”；引用 S1 有效。"
+    },
+    {
+      "index": 3,
+      "id": "qa-shanghai-country",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "上海是中国的城市与 corpus2 一致；引用 S2 有效。"
+    },
+    {
+      "index": 4,
+      "id": "qa-zhangsan-study",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "张三在上海学习与 corpus2/3 一致；引用 S2/S3 均有效。"
+    },
+    {
+      "index": 5,
+      "id": "qa-lisi-work",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "李四在北京工作与 corpus2 一致；引用 S2 有效。"
+    },
+    {
+      "index": 6,
+      "id": "qa-wangwu-work",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "王五在深圳工作与 corpus2 一致；引用 S2 有效。"
+    },
+    {
+      "index": 7,
+      "id": "qa-zhaoliu-city",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "赵六在杭州生活与 corpus2 一致；引用 S2 有效。"
+    },
+    {
+      "index": 8,
+      "id": "qa-qianqi-study",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "钱七在成都学习与 corpus2 一致；引用 S2 有效。"
+    },
+    {
+      "index": 9,
+      "id": "qa-zhangsan-like",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "张三喜欢数学与 corpus3 一致；引用 S2 有效（答案 token 与 citations 对应）。"
+    },
+    {
+      "index": 10,
+      "id": "qa-shanghai-universities",
+      "support": "not_applicable",
+      "citation_valid": "na",
+      "refusal_correct": true,
+      "rationale": "TIMEOUT 无答案；corpus3 仅说“上海有很多大学”，没有可列举校名，拒答（资料不足）合理。"
+    },
+    {
+      "index": 11,
+      "id": "qa-zhangsan-identity",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "张三是学生与 corpus3 一致；引用 S2 有效。"
+    },
+    {
+      "index": 12,
+      "id": "qa-shanghai-events",
+      "support": "support",
+      "citation_valid": false,
+      "refusal_correct": "na",
+      "rationale": "答案中的事实均有 corpus2/3 支撑；但系统警告 2 个句子未标注引用（未被标记为未引用断言），引用覆盖不完整 → citation_valid=false。"
+    },
+    {
+      "index": 13,
+      "id": "qa-zhangsan-intro",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "学生、喜欢数学、在上海学习均与 corpus3/2 一致；引用 S2/S3 有效。"
+    },
+    {
+      "index": 14,
+      "id": "qa-weather-refusal",
+      "support": "not_applicable",
+      "citation_valid": "na",
+      "refusal_correct": true,
+      "rationale": "TIMEOUT 无答案；天气问题超出合成语料（无证据），拒答合理。"
+    },
+    {
+      "index": 15,
+      "id": "qa-photosynthesis-where",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "光合作用发生在叶绿体与 corpus1 一致；引用 S1 有效。"
+    },
+    {
+      "index": 16,
+      "id": "qa-chloroplast-function",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "叶绿体为光合作用场所、含叶绿素吸收光能与 corpus1 一致；引用 S1 有效。"
+    },
+    {
+      "index": 17,
+      "id": "qa-zhangsan-subject",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "张三学习数学与 corpus2/3 一致；引用 S2/S3 有效。"
+    },
+    {
+      "index": 18,
+      "id": "qa-shanghai-features",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "上海是城市、有很多大学与 corpus2/3 一致；引用 S2/S3 有效。"
+    },
+    {
+      "index": 19,
+      "id": "qa-lisi-city",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "李四工作地点北京与 corpus2 一致；引用 S2 有效。"
+    },
+    {
+      "index": 20,
+      "id": "qa-shanghai-location",
+      "support": "support",
+      "citation_valid": true,
+      "refusal_correct": "na",
+      "rationale": "上海是中国的城市（以及相关张三/大学陈述）均有 corpus 支撑；引用 S2/S3 有效，虽超出问题范围但无错误推断。"
+    }
+  ],
+  "summary": {
+    "cases_total": 20,
+    "answered": 18,
+    "timeout": 2,
+    "support": 17,
+    "partial": 1,
+    "unsupported": 0,
+    "not_applicable": 2,
+    "correct_refusal": 2,
+    "refusal_false": 0,
+    "refusal_na": 18,
+    "citation_valid": 17,
+    "citation_invalid": 1,
+    "citation_na": 2,
+    "support_rate_answered": 0.9444,
+    "support_rate_all_cases": 0.85,
+    "manual_sample_required": 10,
+    "human_reviewed": 0,
+    "ai_reviewers": 2
+  },
+  "quality_claim_allowed": false,
+  "notes": [
+    "仅 AI 评审 A（流程中共 2 位 AI 评审），不是人类双评/人工抽检；不满足协议 §3 人工抽检与 §5 support≥90% 的质量门禁。",
+    "18/20 有答案、2 条 TIMEOUT；已答中 17 条 support、1 条 partial（qa-photosynthesis-energy 属合理推断但语料未直接陈述“需要光能”）、0 unsupported。",
+    "引用：17 条 valid、1 条 invalid（qa-shanghai-events 系统警告 2 句未标注引用）、2 条 na（超时拒答无引用）。",
+    "拒答：2 条超时均为语料不足/超域拒答（上海大学名单、天气），判 correct_refusal；其余 18 条为已回答不适用拒答判定。",
+    "尽管 support_rate_answered≈94.4%，但样本仅 20 题、非人类双评、1 条 partial 与 1 条 citation 警告，且无法验证完整 evidence 正文映射 → quality_claim_allowed=false，不得宣称 Agent/问答质量达标。",
+    "结论：仅可报告真实 QA 运行观察（18 回答/2 超时、17 support/1 partial），不得作为质量发布依据。"
+  ]
+}

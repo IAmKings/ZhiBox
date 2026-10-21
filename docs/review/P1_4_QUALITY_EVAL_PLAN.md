@@ -128,3 +128,10 @@ python3 -m py_compile scripts/eval/score_agent_eval.py
 - 结果：13 回答 / 7 超时（35%）；A/B 两位 **独立 AI 评审**（非人类）：保守 support 12 + partial 1（已答 92.3%，全样本 60%；纯质量用例仅 2/9）、citation 13/13；route 1–2/20；fallback 0/11、拒答未按预期。
 - 结论：`QUALITY_CLAIM_ALLOWED=false`；仍需 2 名人类评审与修复 35% 超时/空 query/错误分类等问题后重跑。
 - 评审文件：`evidence/P1.4-eval20-review-a.json`、`review-b.json`（AI review；不计入人工门禁）。
+
+### QA-only 复跑（2026-10-21，K60U）
+
+- 套件：`scripts/eval/agent_qa_cases.json`（20 QA，非 fallback 契约）；含 run metadata。
+- 结果：18 回答 / 2 超时（10%）；评审 A/B 均 17 support + 1 partial（已答 94.4%，全样本 85%）；citation 保守 17 valid/1 warning。
+- 结论：`QUALITY_CLAIM_ALLOWED=false`——仍只有 2 位 AI 评审，缺人类双评/抽检；仍有超时与引用告警。
+- 汇总：`docs/review/P1_4_QA20_SUMMARY.md`。

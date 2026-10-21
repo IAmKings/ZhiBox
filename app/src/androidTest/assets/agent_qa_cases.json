@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "format": "agent_qa_eval",
+  "prompt_version": "b16-agent-tools-v1",
+  "cases": [
+    {
+      "id": "qa-photosynthesis-structure",
+      "suite": "qa",
+      "query": "光合作用主要发生在植物的哪个结构？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-photosynthesis-energy",
+      "suite": "qa",
+      "query": "光合作用需要什么？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-shanghai-country",
+      "suite": "qa",
+      "query": "上海是哪个国家的城市？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-zhangsan-study",
+      "suite": "qa",
+      "query": "张三在哪里学习？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-lisi-work",
+      "suite": "qa",
+      "query": "李四在哪里工作？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-wangwu-work",
+      "suite": "qa",
+      "query": "王五在哪里工作？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-zhaoliu-city",
+      "suite": "qa",
+      "query": "赵六在哪里生活？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-qianqi-study",
+      "suite": "qa",
+      "query": "钱七在哪里学习？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-zhangsan-like",
+      "suite": "qa",
+      "query": "张三喜欢什么？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-shanghai-universities",
+      "suite": "qa",
+      "query": "上海有哪些大学？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-zhangsan-identity",
+      "suite": "qa",
+      "query": "张三是什么身份？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-shanghai-events",
+      "suite": "qa",
+      "query": "上海这个城市在哪些事件里被提到？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-zhangsan-intro",
+      "suite": "qa",
+      "query": "简单介绍张三。",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-weather-refusal",
+      "suite": "qa",
+      "query": "今天天气怎么样？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-photosynthesis-where",
+      "suite": "qa",
+      "query": "光合作用主要发生在哪里？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-chloroplast-function",
+      "suite": "qa",
+      "query": "叶绿体的作用是什么？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-zhangsan-subject",
+      "suite": "qa",
+      "query": "张三学习什么？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-shanghai-features",
+      "suite": "qa",
+      "query": "上海有什么？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-lisi-city",
+      "suite": "qa",
+      "query": "李四的工作地点？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    },
+    {
+      "id": "qa-shanghai-location",
+      "suite": "qa",
+      "query": "上海在哪里？",
+      "history": [],
+      "expectedToolRoute": [],
+      "expectedFallback": null,
+      "expectedCitationIds": [],
+      "notes": "真实 QA 题；support 由人工/评审基于当前证据判断，不强制固定工具路线"
+    }
+  ]
+}
