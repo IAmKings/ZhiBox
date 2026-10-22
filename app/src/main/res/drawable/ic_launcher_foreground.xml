@@ -1,14 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  自适应启动图标前景层（B3-4）：
-  · 复用既有品牌 logo 矢量 @drawable/ic_launcher（盾牌 #3F6C51 + 对勾 #C2E8CF），
-    避免同一份 pathData 在两处漂移；
-  · 自适应图标画布为 108dp，按官方设计规范四周各留 18dp → 实际内容落在 72dp 安全区内，
-    圆形/圆角矩形/方形等任意系统蒙版裁切都不会切到 logo。
+  自适应启动图标前景层（新品牌 logo 落地）：
+  · 几何与配色来源：design/logo/ic_launcher_foreground.xml / design/logo/zhibox-icon.svg；
+    立方体三个面 #30332F / #222522 / #121412（obsidian #121212 的近邻色阶）、
+    呼吸节点 #2E7D32（breathing-green）+ 高光 #A0F399、Z 与描边 #FFFFFF（card-pure）；
+    品牌色定义见根目录 DESIGN.md「colors」。
+  · 画布 108dp / viewport 1024，即 1dp = 1024 / 108 ≈ 9.48 视口单位；
+    自适应图标「任意蒙版都完整可见」的安全区是画布中央直径 66dp 的圆（半径 33dp ≈ 313 视口单位）。
+  · 安全区内缩依据：立方体填充路径离画布中心最远的顶点是底部 (512,914)，外接半径约 403 视口单位
+    （经 clip-path 圆角 silhouette 收边后实际约 391），按 1.0 直接绘制必然越出 66dp 安全圆；
+    故用 group 以 (512,512) 为轴心缩放 0.76：403 × 0.76 ≈ 306 视口单位（32.3dp，实际渲染实测 31.2dp），
+    落在 33dp 安全半径内并留 ≥0.7dp 余量；此时立方体可见尺寸约 57dp × 64.6dp，
+    仍在 72dp 可见方区内，圆形/水滴形蒙版不会切边。
+  · 仅用原生 VectorDrawable 能力：clip-path 收出圆角轮廓、半透明叠加模拟 SVG 渐变/辉光，
+    不使用 filter / blur（VectorDrawable 不支持），保证 API 24+ 一致渲染。
 -->
-<inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@drawable/ic_launcher"
-    android:insetBottom="18dp"
-    android:insetLeft="18dp"
-    android:insetRight="18dp"
-    android:insetTop="18dp" />
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+
+    <!-- 0.76 内缩，pivot 固定画布中心 (512,512)，保证内容居中且不越出 66dp 安全圆 -->
+    <group
+        android:scaleX="0.76"
+        android:scaleY="0.76"
+        android:pivotX="512"
+        android:pivotY="512">
+
+        <!-- 立方体圆角六边形轮廓：与 zhibox-icon.svg 的 cubeClip 完全一致，仅作裁剪不绘制 -->
+        <clip-path android:pathData="M496,128 Q512,119 528,128 L835,306 Q853,317 853,338 V685 Q853,706 835,717 L530,893 Q512,903 494,893 L189,717 Q171,706 171,685 V338 Q171,317 189,306 Z" />
+
+        <!-- 立方体三面：顶面提亮、左面中间调、右面最暗 -->
+        <path android:fillColor="#30332F"
+            android:pathData="M512,118 L862,320 L512,523 L162,320 Z" />
+        <path android:fillColor="#222522"
+            android:pathData="M162,320 L512,523 V914 L162,711 Z" />
+        <path android:fillColor="#121412"
+            android:pathData="M862,320 L512,523 V914 L862,711 Z" />
+
+        <!-- 柔和面光：以低 alpha 填色替代 SVG linearGradient -->
+        <path android:fillColor="#FFFFFF" android:fillAlpha="0.045"
+            android:pathData="M512,118 L512,523 L162,320 Z" />
+        <path android:fillColor="#000000" android:fillAlpha="0.16"
+            android:pathData="M512,523 L862,320 V711 L512,914 Z" />
+        <path android:fillColor="#FFFFFF" android:fillAlpha="0.025"
+            android:pathData="M162,320 L512,523 L512,655 L162,453 Z" />
+
+        <!-- 结构倒角与接缝：极低 alpha 描边，避免暗色块糊成一团 -->
+        <path android:fillColor="#00000000" android:strokeColor="#F5F3EE"
+            android:strokeAlpha="0.16" android:strokeWidth="2.1"
+            android:strokeLineCap="round"
+            android:pathData="M512,129 L829,312" />
+        <path android:fillColor="#00000000" android:strokeColor="#F5F3EE"
+            android:strokeAlpha="0.10" android:strokeWidth="2.1"
+            android:strokeLineCap="round"
+            android:pathData="M512,129 L195,312" />
+        <path android:fillColor="#00000000" android:strokeColor="#B8BDB5"
+            android:strokeAlpha="0.14" android:strokeWidth="3"
+            android:pathData="M171,320 L512,516 L853,320" />
+        <path android:fillColor="#00000000" android:strokeColor="#A2ADA2"
+            android:strokeAlpha="0.11" android:strokeWidth="3"
+            android:pathData="M512,516 V895" />
+
+        <!-- 呼吸绿信号：从三面交汇点向三个方向收敛 -->
+        <path android:fillColor="#00000000" android:strokeColor="#2E7D32"
+            android:strokeAlpha="0.22" android:strokeWidth="3.8"
+            android:pathData="M426,467 L512,516 L603,464" />
+        <path android:fillColor="#00000000" android:strokeColor="#A0F399"
+            android:strokeAlpha="0.65" android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:pathData="M482,499 L512,516 L543,498" />
+        <path android:fillColor="#00000000" android:strokeColor="#2E7D32"
+            android:strokeAlpha="0.22" android:strokeWidth="3.2"
+            android:pathData="M512,516 V645" />
+        <path android:fillColor="#00000000" android:strokeColor="#A0F399"
+            android:strokeAlpha="0.52" android:strokeWidth="2.3"
+            android:pathData="M512,516 V553" />
+
+        <!-- 纯矢量呼吸节点（无 blur filter）：三层半透明圆由外向内叠加出辉光 -->
+        <path android:fillColor="#2E7D32" android:fillAlpha="0.12"
+            android:pathData="M512,481 A35,35 0,1 1,512 551 A35,35 0,1 1,512 481 Z" />
+        <path android:fillColor="#2E7D32" android:fillAlpha="0.42"
+            android:pathData="M512,499 A17,17 0,1 1,512 533 A17,17 0,1 1,512 499 Z" />
+        <path android:fillColor="#A0F399"
+            android:pathData="M512,504.5 A11.5,11.5 0,1 1,512 527.5 A11.5,11.5 0,1 1,512 504.5 Z" />
+        <path android:fillColor="#FFFFFF" android:fillAlpha="0.82"
+            android:pathData="M507.8,508.1 A3.2,3.2 0,1 1,507.8 514.5 A3.2,3.2 0,1 1,507.8 508.1 Z" />
+
+        <!-- 白色几何 Z：与源 SVG 的 monogram 路径逐字一致 -->
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M418,646 Q418,640 424,640 H600 Q606,640 606,646 V668 Q606,672 602,676 L481,774 H600 Q606,774 606,780 V800 Q606,806 600,806 H424 Q418,806 418,800 V778 Q418,774 423,770 L544,672 H424 Q418,672 418,666 Z" />
+    </group>
+</vector>

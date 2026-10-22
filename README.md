@@ -1,4 +1,4 @@
-# ZhiBox Memory（端侧个人知识记忆 MVP）
+# ZhiBox（智匣 · 端侧个人知识记忆 MVP）
 
 本地优先的 Android 端侧 RAG 记忆系统骨架：文档导入 → 分块 → 端侧 embedding → SQLite 检索 → 原文证据回溯，全程可离线。架构移植自 SAG 的检索数据模型思想（Kotlin 重写，非直接复用 Python 引擎）。
 

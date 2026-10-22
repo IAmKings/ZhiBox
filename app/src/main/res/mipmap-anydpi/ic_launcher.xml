@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  API 24–25 兜底启动图标（B3-4）：
-  minSdk=24，自适应图标要求 API 26+；此层用 layer-list 合成「品牌渐变底 + 居中 logo」
-  供 API 24–25 系统/启动器加载（密度无关 anydpi，随系统密度缩放）。
-  API 26+ 优先匹配 mipmap-anydpi-v26/ic_launcher.xml 的自适应图标。
+  API 24–25 兜底启动图标（密度无关 anydpi，随系统密度缩放）：
+  · minSdk=24，自适应图标要求 API 26+，此层用 layer-list 合成「新品牌浅纸色底 + 居中 logo」；
+  · 背景 = @drawable/ic_launcher_background（card-pure #FFFFFF → paper-cream #F7F5F0 渐变）；
+  · logo = @drawable/ic_launcher（新品牌立方体 + Z，1.0 满幅绘制，约占图标 78%）；
+    该矢量已去掉自适应图标的 0.76 安全区内缩，因为旧式图标不受系统蒙版裁切；
+  · 108dp 尺寸与矢量自身 intrinsic 一致，避免二次缩放；API 26+ 优先匹配
+    mipmap-anydpi-v26/ic_launcher.xml 的自适应图标，不会加载本文件。
 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@drawable/ic_launcher_background" />
     <item
         android:drawable="@drawable/ic_launcher"
         android:gravity="center"
-        android:width="36dp"
-        android:height="36dp" />
+        android:width="108dp"
+        android:height="108dp" />
 </layer-list>

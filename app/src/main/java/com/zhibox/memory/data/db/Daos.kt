@@ -147,10 +147,31 @@ interface DocumentDao {
     suspend fun byChecksum(checksum: String): List<DocumentEntity>
 }
 
+/**
+ * 首页时间线卡片预览投影（非实体表，只读）：每个文档的首块正文。
+ * 不参与 Room schema 校验与迁移。
+ */
+data class DocumentPreviewRow(
+    val documentId: String,
+    val content: String,
+)
+
 @Dao
 interface ChunkDao {
     @Insert
     suspend fun insertAll(chunks: List<ChunkEntity>): List<Long>
+
+    /**
+     * 首页时间线：每个文档的**首块**正文（卡片两行摘要）。
+     * 用相关子查询取 `MIN(ordinal)`，不假设 ordinal 从 0 开始；命中 documentId 索引。
+     */
+    @Query(
+        "SELECT c.documentId AS documentId, c.content AS content FROM chunk c " +
+            "WHERE c.ordinal = (" +
+            "SELECT MIN(c2.ordinal) FROM chunk c2 WHERE c2.documentId = c.documentId" +
+            ")",
+    )
+    fun observeFirstChunks(): Flow<List<DocumentPreviewRow>>
 
     @Insert
     suspend fun insertFts(rows: List<ChunkFtsEntity>)

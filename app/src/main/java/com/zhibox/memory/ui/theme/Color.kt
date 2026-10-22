@@ -1,100 +1,215 @@
 package com.zhibox.memory.ui.theme
 
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-// ZhiBox 固定色板（minSdk 24，不启用 Material You 动态取色）。
-// B3-3：补齐 Light/Dark 两套完整 role——此前 dark 只覆盖 6 个 role，其余落回 M3 基线紫，
-// 深色模式下 TopAppBar/Surface/错误色与自定义绿色系不协调。
-// 命名约定：Light 以基色命名，Dark 以 Dark 后缀；语义 role 在 Theme.kt 中映射。
+/**
+ * ZhiBox 品牌色板（UI 改版：暖纸极简 + 触感现代 / Warm Cream Paper Minimalism）。
+ *
+ * 令牌来源与取舍（三份设计物料曾互相冲突，这里固定唯一事实源）：
+ * - 品牌骨架（画布/墨色/呼吸绿/卡片/描边）：根目录 `DESIGN.md` 的 Colors 章节；
+ * - 组件级色值（徽标底/徽标字/药丸/时间戳）：`design/main_screen/code.html`（该文件是
+ *   `design/main_screen/screen.png` 的实际渲染源，像素级对齐截图）。
+ *
+ * 与参考稿的**刻意偏差**（可访问性修复，参考稿本身不达标）：
+ * 1. 时间戳/元信息由 `#9E948A`(对比度 2.98:1) 改为 [InkWarm400] `#736B63`(5.23:1)；
+ *    11px 正文文字需 ≥4.5:1。
+ * 2. 徽标文字色整体加深一档（见下方 Badge*Content），参考稿 3.16–4.05:1 不满足小字号 AA。
+ * 色相不变，仅压暗明度，视觉上仍是同一套暖色标签。
+ */
 
-// ---- Light ----
-val Primary = Color(0xFF3F6C51)
-val OnPrimary = Color(0xFFFFFFFF)
-val PrimaryContainer = Color(0xFFC2E8CF)
-val OnPrimaryContainer = Color(0xFF00210E)
-val Secondary = Color(0xFF516352)
-val OnSecondary = Color(0xFFFFFFFF)
-val SecondaryContainer = Color(0xFFD3E8D2)
-val OnSecondaryContainer = Color(0xFF0F1F12)
-val Tertiary = Color(0xFF3B6470)
-val OnTertiary = Color(0xFFFFFFFF)
-val TertiaryContainer = Color(0xFFBFE9F7)
-val OnTertiaryContainer = Color(0xFF001F27)
-val BackgroundLight = Color(0xFFF6FBF3)
-val OnBackgroundLight = Color(0xFF191D17)
-val SurfaceLight = Color(0xFFF6FBF3)
-val OnSurfaceLight = Color(0xFF191D17)
-val SurfaceVariantLight = Color(0xFFDCE5D9)
-val OnSurfaceVariantLight = Color(0xFF40493F)
-val OutlineLight = Color(0xFF70796E)
-val OutlineVariantLight = Color(0xFFC0C9BD)
-val ErrorLight = Color(0xFFBA1A1A)
-val OnErrorLight = Color(0xFFFFFFFF)
-val ErrorContainerLight = Color(0xFFFFDAD6)
-val OnErrorContainerLight = Color(0xFF410002)
-val InverseSurfaceLight = Color(0xFF2E322C)
-val InverseOnSurfaceLight = Color(0xFFEFF1EB)
-val InversePrimaryLight = Color(0xFFA6D1B5)
+// ── 品牌基色（DESIGN.md） ──────────────────────────────────────────
+/** 画布：暖米纸底（DESIGN.md `paper-cream`）。 */
+val PaperCream = Color(0xFFF7F5F0)
 
-// ---- Dark ----
-val PrimaryDark = Color(0xFFA6D1B5)
-val OnPrimaryDark = Color(0xFF0D3520)
-val PrimaryContainerDark = Color(0xFF2A4F37)
-val OnPrimaryContainerDark = Color(0xFFC2E8CF)
-val SecondaryDark = Color(0xFFB7CCB7)
-val OnSecondaryDark = Color(0xFF233426)
-val SecondaryContainerDark = Color(0xFF394B3C)
-val OnSecondaryContainerDark = Color(0xFFD3E8D2)
-val TertiaryDark = Color(0xFFA3CDDB)
-val OnTertiaryDark = Color(0xFF00363F)
-val TertiaryContainerDark = Color(0xFF224C57)
-val OnTertiaryContainerDark = Color(0xFFBFE9F7)
-val BackgroundDark = Color(0xFF101510)
-val OnBackgroundDark = Color(0xFFDFE4DC)
-val SurfaceDark = Color(0xFF101510)
-val OnSurfaceDark = Color(0xFFDFE4DC)
-val SurfaceVariantDark = Color(0xFF40493F)
-val OnSurfaceVariantDark = Color(0xFFC0C9BD)
-val OutlineDark = Color(0xFF8A9388)
-val OutlineVariantDark = Color(0xFF40493F)
-val ErrorDark = Color(0xFFFFB4AB)
-val OnErrorDark = Color(0xFF690005)
-val ErrorContainerDark = Color(0xFF93000A)
-val OnErrorContainerDark = Color(0xFFFFDAD6)
-val InverseSurfaceDark = Color(0xFFDFE4DC)
-val InverseOnSurfaceDark = Color(0xFF2E322C)
-val InversePrimaryDark = Color(0xFF3F6C51)
+/** 主强调/操作填充：曜石黑（DESIGN.md `obsidian`），用于激活药丸、发送键。 */
+val Obsidian = Color(0xFF121212)
 
-// ---- B3-3 审查修复：补齐 surfaceContainer*/surfaceDim/surfaceBright/surfaceTint/scrim/fixed roles ----
-// 原实现只映射 27 个 role，缺失的 surfaceContainer* 会让 M3 Card/FilledCard 回退基线紫色
-// （真机深色截图背景曾出现 #36343B 基线灰紫），与品牌绿色系冲突。
-val SurfaceDimLight = Color(0xFFD7E0D3)
-val SurfaceBrightLight = Color(0xFFF6FBF3)
-val SurfaceContainerLowestLight = Color(0xFFFFFFFF)
-val SurfaceContainerLowLight = Color(0xFFF0F6ED)
-val SurfaceContainerLight = Color(0xFFEAF2E7)
-val SurfaceContainerHighLight = Color(0xFFE4EDE1)
-val SurfaceContainerHighestLight = Color(0xFFDEE8DB)
-val SurfaceTintLight = Primary
-val Scrim = Color(0xFF000000)
-val PrimaryFixed = Color(0xFFC2E8CF)
-val PrimaryFixedDim = Color(0xFFA6D1B5)
-val OnPrimaryFixed = Color(0xFF00210E)
-val OnPrimaryFixedVariant = Color(0xFF264E33)
-val SecondaryFixed = Color(0xFFD3E8D2)
-val SecondaryFixedDim = Color(0xFFB7CCB7)
-val OnSecondaryFixed = Color(0xFF0F1F12)
-val OnSecondaryFixedVariant = Color(0xFF374A38)
-val TertiaryFixed = Color(0xFFBFE9F7)
-val TertiaryFixedDim = Color(0xFFA3CDDB)
-val OnTertiaryFixed = Color(0xFF001F27)
-val OnTertiaryFixedVariant = Color(0xFF234B56)
+/** 呼吸绿（DESIGN.md `breathing-green`）：仅用于离线就绪、活跃节点等状态语义。 */
+val BreathingGreen = Color(0xFF2E7D32)
 
-val SurfaceDimDark = Color(0xFF0B100B)
-val SurfaceBrightDark = Color(0xFF363C34)
-val SurfaceContainerLowestDark = Color(0xFF0B100B)
-val SurfaceContainerLowDark = Color(0xFF171C16)
-val SurfaceContainerDark = Color(0xFF1B211A)
-val SurfaceContainerHighDark = Color(0xFF252B24)
-val SurfaceContainerHighestDark = Color(0xFF30362E)
-val SurfaceTintDark = PrimaryDark
+/** 卡片/浮岛底色（DESIGN.md `card-pure`）。 */
+val CardPure = Color(0xFFFFFFFF)
+
+/** 极细描边（DESIGN.md `border-subtle`）。 */
+val BorderSubtle = Color(0xFFE5E1DA)
+
+// ── 文本层级（参考稿 warm-gray 阶） ───────────────────────────────
+/** 标题/正文主墨色（参考稿 `brand-dark` #1C1A18）。 */
+val Ink = Color(0xFF1C1A18)
+
+/** 次级正文（参考稿 warm-gray-500）。 */
+val InkSecondary = Color(0xFF736B63)
+
+/**
+ * 时间戳/元信息/脚注。
+ * 参考稿用 warm-gray-400 `#9E948A`（对白卡仅 2.98:1，不达 AA），此处压到
+ * warm-gray-500 `#736B63`（5.23:1）。需要更弱的地方用 [InkFaint]，但不得用于正文信息。
+ */
+val InkMeta = InkSecondary
+
+/** 仅装饰用极弱色（分隔线、禁用态、图标描边），禁止承载可读信息。 */
+val InkFaint = Color(0xFF9E948A)
+
+/** 正文段（卡片摘要）。 */
+val InkBody = Color(0xFF4A443E)
+
+/** 未激活药丸底色（参考稿 `#EFECE6`）。 */
+val PillInactive = Color(0xFFEFECE6)
+
+/** 未激活药丸文字（参考稿 `#4A443E`，8.14:1）。 */
+val PillInactiveText = Color(0xFF4A443E)
+
+/** 分隔线（参考稿 `#E8E3DA` 80% → 与画布混色后近似值）。 */
+val Divider = Color(0xFFE8E3DA)
+
+// ── 四类内容徽标（底 / 字） ───────────────────────────────────────
+/** 念头 / 灵感：杏色。文字由参考稿 #B87834(3.16:1) 压暗为 #95591C(4.90:1)。 */
+val BadgeNoteContainer = Color(0xFFF6EEE3)
+val BadgeNoteContent = Color(0xFF95591C)
+
+/** 知识库 / 端侧切片：青绿。文字 #2B8367 → #1F6B52(5.60:1)。 */
+val BadgeKnowledgeContainer = Color(0xFFE5F3EE)
+val BadgeKnowledgeContent = Color(0xFF1F6B52)
+
+/** 智盒探答 / 追溯：薰衣草紫。文字 #6854A4 已达标(5.26:1)，保留原值。 */
+val BadgeInsightContainer = Color(0xFFEFEAFC)
+val BadgeInsightContent = Color(0xFF6854A4)
+
+/** 网页快照 / 归档：赭石。文字 #8E7356 → #6E563E(5.87:1)。 */
+val BadgeSnapshotContainer = Color(0xFFF5ECE3)
+val BadgeSnapshotContent = Color(0xFF6E563E)
+
+/** 页脚标签：#灵感（参考稿 #B5732D → #96581F，5.14:1）。 */
+val TagInspirationContainer = Color(0xFFFAF3EC)
+val TagInspirationContent = Color(0xFF96581F)
+
+/** 页脚标签：#本地脱敏（mint）。 */
+val TagLocalContainer = Color(0xFFEDF7F2)
+val TagLocalContent = Color(0xFF2A6E51)
+
+/** 页脚标签：#置信度（淡紫）。 */
+val TagConfidenceContainer = Color(0xFFF3EFFF)
+val TagConfidenceContent = Color(0xFF6B57AE)
+
+/** 页脚标签：#知识归档（中性）。 */
+val TagArchiveContainer = Color(0xFFF3EFEA)
+val TagArchiveContent = Color(0xFF4A443E)
+
+// ── 暗色档（DESIGN.md 未定义暗色；按同一暖色相推导，满足项目「双主题」要求） ──
+val PaperCreamDark = Color(0xFF121212)
+val CardPureDark = Color(0xFF1B1A18)
+val BorderSubtleDark = Color(0xFF37332E)
+val InkDark = Color(0xFFEDEAE4)
+val InkSecondaryDark = Color(0xFFB8B2A9)
+val InkBodyDark = Color(0xFFD5CFC6)
+val PillInactiveDark = Color(0xFF2A2724)
+val PillInactiveTextDark = Color(0xFFD5CFC6)
+val DividerDark = Color(0xFF37332E)
+
+/**
+ * 设计系统扩展色（M3 ColorScheme 之外的品牌语义令牌）。
+ *
+ * M3 的 role 集合只覆盖通用语义；卡片底、极细描边、四类内容徽标属于 ZhiBox 特有语义，
+ * 通过 [LocalZhiBoxExtendedColors] 下发，feature 代码只消费令牌，不写裸色值。
+ * 明暗双档必须成对提供（项目规范：缺暗色变体视为 bug）。
+ */
+@Immutable
+data class ZhiBoxExtendedColors(
+    val paper: Color,
+    val card: Color,
+    /** 底部悬浮输入岛底色：浅色下与卡片同白，暗色下需比画布抬一档否则整条不可见。 */
+    val omniBar: Color,
+    val border: Color,
+    val ink: Color,
+    val inkSecondary: Color,
+    val inkBody: Color,
+    val inkMeta: Color,
+    val inkFaint: Color,
+    val divider: Color,
+    val pillInactive: Color,
+    val pillInactiveText: Color,
+    val badgeNoteContainer: Color,
+    val badgeNoteContent: Color,
+    val badgeKnowledgeContainer: Color,
+    val badgeKnowledgeContent: Color,
+    val badgeInsightContainer: Color,
+    val badgeInsightContent: Color,
+    val badgeSnapshotContainer: Color,
+    val badgeSnapshotContent: Color,
+    val tagInspirationContainer: Color,
+    val tagInspirationContent: Color,
+    val tagLocalContainer: Color,
+    val tagLocalContent: Color,
+    val tagConfidenceContainer: Color,
+    val tagConfidenceContent: Color,
+    val tagArchiveContainer: Color,
+    val tagArchiveContent: Color,
+)
+
+val LightExtendedColors = ZhiBoxExtendedColors(
+    paper = PaperCream,
+    card = CardPure,
+    omniBar = CardPure,
+    border = BorderSubtle,
+    ink = Ink,
+    inkSecondary = InkSecondary,
+    inkBody = InkBody,
+    inkMeta = InkMeta,
+    inkFaint = InkFaint,
+    divider = Divider,
+    pillInactive = PillInactive,
+    pillInactiveText = PillInactiveText,
+    badgeNoteContainer = BadgeNoteContainer,
+    badgeNoteContent = BadgeNoteContent,
+    badgeKnowledgeContainer = BadgeKnowledgeContainer,
+    badgeKnowledgeContent = BadgeKnowledgeContent,
+    badgeInsightContainer = BadgeInsightContainer,
+    badgeInsightContent = BadgeInsightContent,
+    badgeSnapshotContainer = BadgeSnapshotContainer,
+    badgeSnapshotContent = BadgeSnapshotContent,
+    tagInspirationContainer = TagInspirationContainer,
+    tagInspirationContent = TagInspirationContent,
+    tagLocalContainer = TagLocalContainer,
+    tagLocalContent = TagLocalContent,
+    tagConfidenceContainer = TagConfidenceContainer,
+    tagConfidenceContent = TagConfidenceContent,
+    tagArchiveContainer = TagArchiveContainer,
+    tagArchiveContent = TagArchiveContent,
+)
+
+val DarkExtendedColors = LightExtendedColors.copy(
+    paper = PaperCreamDark,
+    card = CardPureDark,
+    omniBar = Color(0xFF262320),
+    border = BorderSubtleDark,
+    ink = InkDark,
+    inkSecondary = InkSecondaryDark,
+    inkBody = InkBodyDark,
+    inkMeta = InkSecondaryDark,
+    inkFaint = Color(0xFF7A736B),
+    divider = DividerDark,
+    pillInactive = PillInactiveDark,
+    pillInactiveText = PillInactiveTextDark,
+    // 暗色下徽标底压成同色相深底，文字用亮色，保持语义色相可辨
+    badgeNoteContainer = Color(0xFF3A2C1B),
+    badgeNoteContent = Color(0xFFF0C08A),
+    badgeKnowledgeContainer = Color(0xFF17332A),
+    badgeKnowledgeContent = Color(0xFF9FD9C3),
+    badgeInsightContainer = Color(0xFF2A2540),
+    badgeInsightContent = Color(0xFFC3B4F0),
+    badgeSnapshotContainer = Color(0xFF332C22),
+    badgeSnapshotContent = Color(0xFFD9C3A6),
+    tagInspirationContainer = Color(0xFF3A2C1B),
+    tagInspirationContent = Color(0xFFF0C08A),
+    tagLocalContainer = Color(0xFF17332A),
+    tagLocalContent = Color(0xFF9FD9C3),
+    tagConfidenceContainer = Color(0xFF2A2540),
+    tagConfidenceContent = Color(0xFFC3B4F0),
+    tagArchiveContainer = Color(0xFF2A2724),
+    tagArchiveContent = Color(0xFFD5CFC6),
+)
+
+/** 扩展色令牌入口：`LocalZhiBoxExtendedColors.current` 或 `MaterialTheme.zhiBoxColors`。 */
+val LocalZhiBoxExtendedColors = staticCompositionLocalOf { LightExtendedColors }

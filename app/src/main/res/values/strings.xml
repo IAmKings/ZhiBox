@@ -1,20 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ZhiBox Memory</string>
+    <string name="app_name">ZhiBox</string>
 
     <!-- ==== 通用 ==== -->
     <string name="action_back">返回</string>
     <string name="action_cancel">取消</string>
     <string name="action_delete">删除</string>
 
-    <!-- ==== 首页（MainActivity / AppSkeleton） ==== -->
-    <string name="home_title">ZhiBox · 离线个人知识库</string>
-    <string name="home_summary">导入 → 端侧嵌入 → 本地检索，全程飞行模式可用</string>
-    <string name="home_open_search">检索</string>
-    <string name="home_open_import">导入</string>
-    <string name="home_open_sources">来源</string>
-    <string name="home_open_settings">设置</string>
-    <string name="home_open_diagnostics">实验/诊断</string>
 
     <!-- ==== 检索（SearchScreen） ==== -->
     <string name="search_title">离线检索</string>
@@ -323,7 +315,6 @@
     <string name="search_hit_event_tag">事件 #%1$d</string>
 
     <!-- ==== B11：带引用问答（Chat） ==== -->
-    <string name="home_open_chat">问答</string>
     <string name="chat_title">带引用问答</string>
     <string name="chat_mode_section">检索模式</string>
     <string name="chat_mode_auto">自动</string>
@@ -573,4 +564,58 @@
     <string name="chat_agent_fallback_tool_exception">工具执行异常</string>
     <string name="chat_agent_fallback_tool_error">工具执行失败</string>
     <string name="chat_agent_fallback_max_calls">超出工具调用上限</string>
+
+    <!-- ==== UI-HOME 首页时间线（UI 改版：暖纸极简） ==== -->
+    <string name="home_brand_title">智匣</string>
+    <string name="home_brand_wordmark" translatable="false">ZHIBOX</string>
+    <string name="home_status_offline_ready">端侧离线运行就绪</string>
+    <string name="home_action_search">搜索知识库</string>
+    <string name="home_action_more">更多设置</string>
+
+    <string name="home_filter_all">全部</string>
+    <string name="home_filter_note">念头</string>
+    <string name="home_filter_image">图片</string>
+    <string name="home_filter_document">文档 / 切片</string>
+    <string name="home_filter_graph">图谱</string>
+
+    <string name="home_group_today">今天</string>
+    <string name="home_group_yesterday">昨天</string>
+    <string name="home_group_earlier">更早</string>
+
+    <string name="home_card_type_note">念头</string>
+    <string name="home_card_type_image">图片</string>
+    <string name="home_card_type_document">端侧切片</string>
+    <string name="home_card_type_snapshot">网页存档</string>
+
+    <string name="home_tag_note">#灵感</string>
+    <string name="home_tag_image">#图片</string>
+    <string name="home_tag_document">#本地脱敏</string>
+    <string name="home_tag_archive">#知识归档</string>
+
+    <string name="home_status_processing">处理中</string>
+    <string name="home_status_failed">失败</string>
+    <string name="home_status_cancelled">已取消</string>
+
+    <string name="home_untitled">未命名文档</string>
+    <string name="home_source_unknown">未知来源</string>
+
+    <string name="home_meta_line">%1$s · %2$s</string>
+    <string name="home_meta_line_status">%1$s · %2$s · %3$s</string>
+    <string name="home_omni_placeholder">随时记下灵感与离线知识沉淀</string>
+    <string name="home_omni_attachment">添加附件</string>
+    <string name="home_omni_clear">清空内容</string>
+    <string name="home_omni_send">记录灵感</string>
+    <string name="home_footnote">3 个月前的内容可在搜索中查看</string>
+
+    <string name="home_empty_title">还没有内容</string>
+    <string name="home_empty_message">导入第一份文档，开始你的离线知识库</string>
+    <string name="home_filter_empty_title">该分类暂无内容</string>
+    <string name="home_filter_empty_message">试试其他分类，或先导入更多文档</string>
+    <string name="home_go_import">去导入</string>
+    <string name="home_loading">正在加载时间线…</string>
+    <string name="home_error_title">时间线加载失败</string>
+    <string name="home_more_sources">来源</string>
+    <string name="home_more_chat">带引用问答</string>
+    <string name="home_more_settings">设置</string>
+    <string name="home_more_diagnostics">实验 / 诊断</string>
 </resources>

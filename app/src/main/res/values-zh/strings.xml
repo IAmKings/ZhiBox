@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  简体中文应用名（UI 改版后的品牌命名）：
+  · 英文名 ZhiBox（values/strings.xml 默认值，其它语言回落它）；
+  · 中文名 智匣（本文件；繁体用 values-zh-rTW 可另加）。
+  只覆盖 app_name 一项，其余文案沿用 values/（当前产品文案本身为中文）。
+-->
+<resources>
+    <string name="app_name">智匣</string>
+</resources>

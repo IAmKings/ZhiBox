@@ -24,10 +24,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -56,9 +58,19 @@ import java.util.Locale
 @Composable
 fun SearchScreen(
     onBack: () -> Unit = {},
+    /** 首页输入岛提交的检索词：进入检索屏时预填一次（空串表示沿用上次输入）。 */
+    initialQuery: String = "",
     viewModel: SearchViewModel = viewModel(),
 ) {
     val query by viewModel.query.collectAsStateWithLifecycle()
+    // applied 存 Bundle：证据页覆盖层返回会重新进入本组合，避免二次覆盖用户已改的输入
+    var initialQueryApplied by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!initialQueryApplied && initialQuery.isNotBlank()) {
+            viewModel.onQueryChange(initialQuery)
+            initialQueryApplied = true
+        }
+    }
     val running by viewModel.running.collectAsStateWithLifecycle()
     val loadingModel by viewModel.loadingModel.collectAsStateWithLifecycle()
     val mode by viewModel.mode.collectAsStateWithLifecycle()

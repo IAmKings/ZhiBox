@@ -150,6 +150,10 @@ android {
         // 报告由 CI 归档；不启用 baseline（避免把新问题藏进基线文件）
         htmlReport = true
         xmlReport = true
+        // 应用名按语言区分：values/strings.xml = ZhiBox（默认），values-zh/strings.xml = 智匣。
+        // 其余约 550 条文案目前只有中文；开启 MissingTranslation 会要求 values-zh 补齐全部条目
+        // 而一次性报 530 个 error。产品做完整多语言时，删除本行并补齐 values-zh。
+        disable += "MissingTranslation"
     }
 
     testOptions {

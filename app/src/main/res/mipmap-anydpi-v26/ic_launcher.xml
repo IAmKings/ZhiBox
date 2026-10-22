@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 自适应启动图标（B3-4）：Android 8.0（API 26）+ 系统蒙版裁切；含 Android 13+ 主题化图标单色层 -->
+<!--
+  自适应启动图标（Android 8.0 / API 26+，最终形状由系统蒙版裁切）：
+  · background：新品牌浅纸色渐变（DESIGN.md 的 card-pure #FFFFFF → paper-cream #F7F5F0），
+    为深色立方体提供足够对比度（顶面 11.8:1 起）；
+  · foreground：新品牌 logo（深色立方体 + 呼吸绿节点 + 白色 Z，geometry 来自 design/logo/），
+    内部已按 66dp 安全圆做 0.76 内缩；
+  · monochrome：Android 13+ 主题化图标单色层，evenOdd 镂空 Z，无渐变/filter。
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />

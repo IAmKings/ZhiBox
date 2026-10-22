@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  圆形图标兜底背景（B3-4）：仅用于 API 24–25 的 android:roundIcon 旧式图标
-  （API 26+ 走 mipmap-anydpi-v26 自适应图标，由系统蒙版裁切，不需要此圆形底）。
-  同 ic_launcher_background 的品牌浅绿渐变，形状为圆形。
+  圆形图标兜底背景（仅用于 API 24–25 的 android:roundIcon 旧式图标，
+  API 26+ 走 mipmap-anydpi-v26 自适应图标，由系统蒙版裁切，不需要此圆形底）：
+  · 色值与渐变同 ic_launcher_background：DESIGN.md 的 paper-cream #F7F5F0 与 card-pure #FFFFFF；
+  · 形状为圆形（oval），供 mipmap-anydpi/ic_launcher_round.xml 的 layer-list 合成使用；
+  · 该圆形底为 108dp 画布内切椭圆，前景立方体（约 78% 画布）完全落在椭圆内，不会露出尖角。
 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
     <gradient
         android:angle="315"
-        android:endColor="#C2E8CF"
-        android:startColor="#F6FBF3"
+        android:endColor="#F7F5F0"
+        android:startColor="#FFFFFF"
         android:type="linear" />
 </shape>

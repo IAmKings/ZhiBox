@@ -23,7 +23,8 @@ class ComposeRecreateSmokeTest {
 
     @Test
     fun recreate_后首页仍可渲染() {
-        val homeTitle = composeRule.activity.getString(R.string.home_title)
+        // UI 改版后首页品牌标题为「智匣」（原 home_title 开发骨架卡片已移除）
+        val homeTitle = composeRule.activity.getString(R.string.home_brand_title)
         composeRule.waitForIdle()
         composeRule.onNodeWithText(homeTitle).assertIsDisplayed()
 

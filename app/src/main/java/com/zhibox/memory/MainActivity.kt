@@ -5,31 +5,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.zhibox.memory.ui.BenchmarkScreen
 import com.zhibox.memory.ui.ChatScreen
+import com.zhibox.memory.ui.HomeScreen
 import com.zhibox.memory.ui.ImportScreen
 import com.zhibox.memory.ui.SearchScreen
 import com.zhibox.memory.ui.SettingsScreen
@@ -77,6 +60,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             ZhiBoxTheme {
                 var screen by rememberSaveable { mutableStateOf(autoStart.initialScreen()) }
+                // UI 改版：首页输入岛提交的检索词 → 检索屏预填（空串表示不预填）
+                var pendingSearchQuery by rememberSaveable { mutableStateOf("") }
                 // B3-11：AutoStart 在本 Activity 生命周期内只交给 BenchmarkScreen 消费一次；
                 // 离开实验屏即清空，避免「首页 → 实验/诊断」二次进入时重放 autostart 实验。
                 var pendingAutoStart by remember { mutableStateOf(autoStart) }
@@ -88,6 +73,7 @@ class MainActivity : ComponentActivity() {
                     pendingAutoStart = AutoStart()
                     pendingImport = false
                     pendingImportCancel = false
+                    pendingSearchQuery = ""
                     screen = "home"
                 }
                 BackHandler(enabled = screen != "home") { goHome() }
@@ -104,24 +90,34 @@ class MainActivity : ComponentActivity() {
                         onBack = goHome,
                         onOpenSettings = { screen = "settings" },
                     )
-                    "search" -> SearchScreen(onBack = goHome)
+                    "search" -> SearchScreen(
+                        onBack = goHome,
+                        initialQuery = pendingSearchQuery,
+                    )
                     "chat" -> ChatScreen(onBack = goHome)
                     "sources" -> SourcesScreen(
                         onBack = goHome,
                         onOpenImport = { screen = "import" },
                     )
                     "settings" -> SettingsScreen(onBack = goHome)
-                    else -> AppSkeleton(
-                        onOpenBenchmark = if (isDebug) {
+                    else -> HomeScreen(
+                        // 首页输入岛/搜索图标 → 检索屏；query 为空时沿用检索屏上次输入
+                        onOpenSearch = { query ->
+                            pendingSearchQuery = query
+                            screen = "search"
+                        },
+                        onOpenImport = { screen = "import" },
+                        onOpenChat = { screen = "chat" },
+                        onOpenSources = { screen = "sources" },
+                        onOpenSettings = { screen = "settings" },
+                        // P0-3：仅 debug 构建暴露实验/诊断入口（收进首页「更多」菜单）
+                        onOpenDiagnostics = if (isDebug) {
                             { screen = "benchmark" }
                         } else {
                             null
                         },
-                        onOpenImport = { screen = "import" },
-                        onOpenSearch = { screen = "search" },
-                        onOpenChat = { screen = "chat" },
-                        onOpenSources = { screen = "sources" },
-                        onOpenSettings = { screen = "settings" },
+                        // 文档详情屏尚未落地：先落到来源页（见 HomeScreen 顶部注释）
+                        onOpenDocument = { screen = "sources" },
                     )
                 }
             }
@@ -224,81 +220,5 @@ data class AutoStart(
         anyBenchmark -> "benchmark"
         import || importCancel -> "import"
         else -> "home"
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-fun AppSkeleton(
-    onOpenBenchmark: (() -> Unit)? = null,
-    onOpenImport: () -> Unit = {},
-    onOpenSearch: () -> Unit = {},
-    onOpenChat: () -> Unit = {},
-    onOpenSources: () -> Unit = {},
-    onOpenSettings: () -> Unit = {},
-) {
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.app_name)) })
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.home_title),
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            Card {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        stringResource(R.string.home_summary),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Button(onClick = onOpenSearch) {
-                            Text(stringResource(R.string.home_open_search))
-                        }
-                        Button(onClick = onOpenImport) {
-                            Text(stringResource(R.string.home_open_import))
-                        }
-                        Button(onClick = onOpenChat) {
-                            Text(stringResource(R.string.home_open_chat))
-                        }
-                        Button(onClick = onOpenSources) {
-                            Text(stringResource(R.string.home_open_sources))
-                        }
-                        Button(onClick = onOpenSettings) {
-                            Text(stringResource(R.string.home_open_settings))
-                        }
-                        // P0-3：release 构建不渲染实验/诊断入口（onOpenBenchmark == null）
-                        onOpenBenchmark?.let { open ->
-                            Button(onClick = open) {
-                                Text(stringResource(R.string.home_open_diagnostics))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AppSkeletonPreview() {
-    ZhiBoxTheme {
-        AppSkeleton()
     }
 }

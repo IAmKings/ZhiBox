@@ -1,14 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 应用图标矢量源（B3-4 起作为 adaptive icon foreground 复用；非临时占位） -->
+<!--
+  API 24–25 旧式启动图标的 logo 层（无自适应蒙版，故不做安全区内缩）：
+  · 用途：被 mipmap-anydpi/ic_launcher.xml 与 mipmap-anydpi/ic_launcher_round.xml 的 layer-list
+    以「背景层 + 本矢量」方式合成（API 26+ 改走 mipmap-anydpi-v26 自适应图标，不会用到本文件）；
+  · 几何与配色来源：design/logo/ic_launcher_foreground.xml / zhibox-icon.svg，
+    色值见根目录 DESIGN.md（obsidian #121212、breathing-green #2E7D32、card-pure #FFFFFF）；
+  · 与 ic_launcher_foreground.xml 的唯一差别：这里按 1.0 满幅绘制（立方体可见高约 78% 画布），
+    因为旧式图标没有蒙版安全区约束，不需要 0.76 内缩；两者 pathData 逐字一致，
+    若立方体几何有调整必须同步修改两处。
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="48dp"
-    android:height="48dp"
-    android:viewportWidth="48"
-    android:viewportHeight="48">
-    <path
-        android:fillColor="#3F6C51"
-        android:pathData="M24,4 L40,12 L40,28 C40,36 33,42 24,44 C15,42 8,36 8,28 L8,12 Z" />
-    <path
-        android:fillColor="#C2E8CF"
-        android:pathData="M15,22 L21,28 L33,16 L36,19 L21,34 L12,25 Z" />
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+
+    <!-- 立方体圆角六边形轮廓：与 zhibox-icon.svg 的 cubeClip 一致，仅作裁剪 -->
+    <clip-path android:pathData="M496,128 Q512,119 528,128 L835,306 Q853,317 853,338 V685 Q853,706 835,717 L530,893 Q512,903 494,893 L189,717 Q171,706 171,685 V338 Q171,317 189,306 Z" />
+
+    <!-- 立方体三面 -->
+    <path android:fillColor="#30332F"
+        android:pathData="M512,118 L862,320 L512,523 L162,320 Z" />
+    <path android:fillColor="#222522"
+        android:pathData="M162,320 L512,523 V914 L162,711 Z" />
+    <path android:fillColor="#121412"
+        android:pathData="M862,320 L512,523 V914 L862,711 Z" />
+
+    <!-- 柔和面光（低 alpha 填色替代 SVG 渐变） -->
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.045"
+        android:pathData="M512,118 L512,523 L162,320 Z" />
+    <path android:fillColor="#000000" android:fillAlpha="0.16"
+        android:pathData="M512,523 L862,320 V711 L512,914 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.025"
+        android:pathData="M162,320 L512,523 L512,655 L162,453 Z" />
+
+    <!-- 倒角与接缝 -->
+    <path android:fillColor="#00000000" android:strokeColor="#F5F3EE"
+        android:strokeAlpha="0.16" android:strokeWidth="2.1"
+        android:strokeLineCap="round"
+        android:pathData="M512,129 L829,312" />
+    <path android:fillColor="#00000000" android:strokeColor="#F5F3EE"
+        android:strokeAlpha="0.10" android:strokeWidth="2.1"
+        android:strokeLineCap="round"
+        android:pathData="M512,129 L195,312" />
+    <path android:fillColor="#00000000" android:strokeColor="#B8BDB5"
+        android:strokeAlpha="0.14" android:strokeWidth="3"
+        android:pathData="M171,320 L512,516 L853,320" />
+    <path android:fillColor="#00000000" android:strokeColor="#A2ADA2"
+        android:strokeAlpha="0.11" android:strokeWidth="3"
+        android:pathData="M512,516 V895" />
+
+    <!-- 呼吸绿信号 -->
+    <path android:fillColor="#00000000" android:strokeColor="#2E7D32"
+        android:strokeAlpha="0.22" android:strokeWidth="3.8"
+        android:pathData="M426,467 L512,516 L603,464" />
+    <path android:fillColor="#00000000" android:strokeColor="#A0F399"
+        android:strokeAlpha="0.65" android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M482,499 L512,516 L543,498" />
+    <path android:fillColor="#00000000" android:strokeColor="#2E7D32"
+        android:strokeAlpha="0.22" android:strokeWidth="3.2"
+        android:pathData="M512,516 V645" />
+    <path android:fillColor="#00000000" android:strokeColor="#A0F399"
+        android:strokeAlpha="0.52" android:strokeWidth="2.3"
+        android:pathData="M512,516 V553" />
+
+    <!-- 呼吸节点（纯矢量三层叠加，无 filter） -->
+    <path android:fillColor="#2E7D32" android:fillAlpha="0.12"
+        android:pathData="M512,481 A35,35 0,1 1,512 551 A35,35 0,1 1,512 481 Z" />
+    <path android:fillColor="#2E7D32" android:fillAlpha="0.42"
+        android:pathData="M512,499 A17,17 0,1 1,512 533 A17,17 0,1 1,512 499 Z" />
+    <path android:fillColor="#A0F399"
+        android:pathData="M512,504.5 A11.5,11.5 0,1 1,512 527.5 A11.5,11.5 0,1 1,512 504.5 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.82"
+        android:pathData="M507.8,508.1 A3.2,3.2 0,1 1,507.8 514.5 A3.2,3.2 0,1 1,507.8 508.1 Z" />
+
+    <!-- 白色几何 Z -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M418,646 Q418,640 424,640 H600 Q606,640 606,646 V668 Q606,672 602,676 L481,774 H600 Q606,774 606,780 V800 Q606,806 600,806 H424 Q418,806 418,800 V778 Q418,774 423,770 L544,672 H424 Q418,672 418,666 Z" />
 </vector>
