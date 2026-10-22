@@ -15,7 +15,7 @@
 | minSdk | 24 | 仅 arm64-v8a |
 | AGP | 8.13.2 | 本批次不升级（AGP 9.x 需整体迁移） |
 | Kotlin / KSP | 2.4.21 / 2.3.12 | 配对；Kotlin 2.5 与 KSP 2.3.12 未配对 |
-| R8 | 9.1.29 | Kotlin 2.4 metadata 最低兼容版；在 `settings.gradle.kts` 覆盖 AGP 内置版本 |
+| R8 | 9.1.29 | Kotlin 2.4 metadata 最低兼容版；版本在 `libs.versions.toml`，由 root `build.gradle.kts` 的 buildscript 覆盖 AGP 内置版本 |
 | Compose BOM | 2026.06.01 | compose 1.11.4；2026.09.00 需 compileSdk 37 + AGP 9.1.0，不可用 |
 | core-ktx | 1.18.0 | 1.19.x 需 compileSdk 37 + AGP 9.1.0，不可用 |
 | lifecycle | 2.10.0 | 2.11.0 的 viewmodel-compose 需 compileSdk 37 + AGP 9.1.0，不可用 |
@@ -276,3 +276,14 @@ Manifest / 安全（P0-3、P1-10 回归）
 | `Dependency requires compileSdk 37 / AGP 9.1.0` | 依赖版本超出兼容上限（见第 0 节表格），回退到兼容版本或整体迁移 AGP 9.x + compileSdk 37 |
 | Gradle wrapper sha256 校验失败 | 镜像包与官方不一致：切换官方 `services.gradle.org` 源，勿删除校验 |
 | release 崩溃但 debug 正常 | 用对应 commit 的 `mapping.txt` 反混淆；核对 proguard keep（MediaPipe/LiteRT-LM/Room/WorkManager）是否覆盖新依赖 |
+
+---
+
+## 9. 2026-10-22 质量修复后 RC 状态
+
+- 重建产物：`dist/zhibox-0.1.2-a28a3f8-release-signed.apk`
+- gitHead：`a28a3f8`；size：70,164,019 bytes
+- SHA-256：`46cb20eaab2cf9700f8952cea47c1c2158d7c88ffae6b781032d91a0683e1619`
+- apksigner：PASS；signer cert SHA-256 `b1d136ba…1db1d1`（与 v0.1.1 同 release key）
+- 设备 smoke：K60U 上用 **debug-key 重签的等价 release 包** 启动通过（保留 debug app 签名/数据）；官方签名包尚未在设备 clean install。
+- 结论：**仍不是已完成 clean-install 验收的发布包**；未 tag/未发布。官方签名包需在可清理的 ARM 设备或取得数据备份/卸载许可后做一次 clean-install smoke。

@@ -1,14 +1,21 @@
 {
-  "name": "zhibox-0.1.2-5284e13-release-signed.apk",
-  "path": "dist/zhibox-0.1.2-5284e13-release-signed.apk",
+  "name": "zhibox-0.1.2-a28a3f8-release-signed.apk",
+  "path": "dist/zhibox-0.1.2-a28a3f8-release-signed.apk",
   "versionName": "0.1.2",
   "versionCode": 3,
-  "sizeBytes": 69524581,
-  "sha256": "5a4080dde62f90817ed7042b25550d7e5ba725ec156f73b351d967095a0b938c",
-  "signed": true,
-  "signing": "release keystore (same as v0.1.1; apksigner PASS)",
+  "sizeBytes": 70164019,
+  "sha256": "46cb20eaab2cf9700f8952cea47c1c2158d7c88ffae6b781032d91a0683e1619",
+  "gitHead": "a28a3f8",
+  "signedBy": "release keystore (same as v0.1.1)",
   "signerCertSha256": "b1d136badcc7e032a39d8504fb050f98f444017aeb5f5cfce66256afec1db1d1",
-  "status": "release candidate for commit 5284e13; superseded by subsequent planner/generation timeout fixes; rebuild before publish/tag",
-  "gitHeadAtBuild": "5284e13",
-  "builtAt": "2026-10-21T01:05+08:00"
+  "apksigner": "PASS",
+  "status": "signed RC rebuilt and apksigner-verified; functional smoke passed with debug-key re-signed equivalent on K60U; official signed clean-install smoke pending",
+  "qualityClaimAllowed": false,
+  "notes": "Official release signature verified by apksigner. Device smoke used a debug-key re-signed copy to preserve K60U debug app signature/data; official signed clean install still pending. No tag/publish.",
+  "smoke": {
+    "device": "K60U 6D8H6TXSDYXC85PZ",
+    "artifact": "debug-key re-signed equivalent of app-release.apk",
+    "result": "launch PASS; versionName=0.1.2/versionCode=3; official signature install blocked by debug app signature/data preservation",
+    "restored": "debug app reinstalled after smoke"
+  }
 }
