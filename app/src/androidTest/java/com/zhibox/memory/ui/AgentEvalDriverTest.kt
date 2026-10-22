@@ -3,6 +3,7 @@ package com.zhibox.memory.ui
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
 import com.zhibox.memory.data.db.AppDatabase
 import kotlinx.coroutines.delay
@@ -25,6 +26,7 @@ import java.io.File
  * - 结果写 target cacheDir/agent_eval20.json（可 run-as 拉取）；无 key 时 Assume skip。
  */
 @RunWith(AndroidJUnit4::class)
+@LargeTest
 class AgentEvalDriverTest {
 
     @Test
