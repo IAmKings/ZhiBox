@@ -24,7 +24,7 @@
 
 - `KnowledgeBackup.exportZip` 改用 Room **reader connection + DEFERRED 读事务**（`useReaderConnection` + `Transactor`），避免整个导出占用写事务；仍保持分页流式写入。
 - 导出 guard 仍覆盖 ingest/re-embed（`JobStage.ACTIVE_VALUES`）与 SAG extraction（`ExtractionJobStatus.ACTIVE_VALUES`）。
-- 回归：`export_refusesActiveExtractionJob`、新增 `export_refusesActiveIngestJob`、原有导出回环/备份测试。
+- 回归：`export_refusesActiveExtractionJob`、新增 `export_refusesActiveIngestJob`、`export_refusesActiveReembeddingJob`、`generatedLargeLibrary_exportImport_roundTripsCounts`（50 docs/200 chunks）、原有导出回环/备份测试。
 
 ## 回归测试补充
 
@@ -35,8 +35,8 @@
 
 ## 最终门禁
 
-- `:app:testDebugUnitTest`：**835/0**
-- `:app:testReleaseUnitTest`：**816/0**
+- `:app:testDebugUnitTest`：**838/0**
+- `:app:testReleaseUnitTest`：**819/0**
 - `:app:lintDebug`：**0 errors**
 - `:app:compileDebugAndroidTestKotlin`：通过
 - `:app:assembleRelease`：通过

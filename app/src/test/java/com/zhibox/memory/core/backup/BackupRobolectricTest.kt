@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.ChunkEmbeddingEntity
 import com.zhibox.memory.data.db.ChunkEntity
+import com.zhibox.memory.data.db.ChunkFtsEntity
 import com.zhibox.memory.data.db.DocStatus
 import com.zhibox.memory.data.db.DocumentEntity
 import com.zhibox.memory.data.db.EmbeddingMetaEntity
@@ -288,6 +289,28 @@ class BackupRobolectricTest {
     }
 
     @Test
+    fun export_refusesActiveReembeddingJob() = runBlocking {
+        seedSmallLibrary()
+        db.ingestJobDao().upsert(
+            IngestJobEntity(
+                id = "active-reembed",
+                sourceId = "src_rt",
+                documentId = "doc_rt",
+                stage = JobStage.EMBEDDING.value,
+                progress = 20,
+                error = null,
+                createdAt = 10,
+                updatedAt = 10,
+            ),
+        )
+
+        val result = KnowledgeBackup.exportToFile(app, tmp("blocked-reembed.zip"))
+
+        assertFalse(result.isSuccess)
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("重嵌入"))
+    }
+
+    @Test
     fun export_refusesActiveExtractionJob() = runBlocking {
         seedSmallLibrary()
         val chunkId = db.chunkDao().page(limit = 1, offset = 0).single().id
@@ -310,6 +333,31 @@ class BackupRobolectricTest {
         assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("抽取"))
     }
 
+    @Test
+    fun generatedLargeLibrary_exportImport_roundTripsCounts() = runBlocking {
+        seedGeneratedLibrary(documentCount = 50, chunksPerDocument = 4)
+        val docsBefore = db.documentDao().all().size
+        val chunksBefore = db.chunkDao().allChunks().size
+        val pkg = tmp("generated-large.zip")
+
+        val exportedVectors = KnowledgeBackup.exportToFile(app, pkg).getOrThrow()
+        assertEquals(docsBefore * 4, exportedVectors)
+        assertEquals(200, exportedVectors)
+
+        withContext(Dispatchers.IO) { db.clearAllTables() }
+        val outcome = KnowledgeBackup.importFromFileForTest(
+            context = app,
+            src = pkg,
+            rebuildSagFts = {},
+        ).getOrThrow()
+
+        assertEquals(200, outcome.restoredCount)
+        assertEquals(docsBefore, db.documentDao().all().size)
+        assertEquals(chunksBefore, db.chunkDao().allChunks().size)
+        assertEquals(200, db.embeddingDao().vectorsForSpace(supportedSpace).size)
+        assertTrue(KnowledgeBackup.previewFromFile(app, pkg).getOrThrow().sourceCount > 0)
+    }
+
     private fun readZipEntries(file: File): Map<String, ByteArray> {
         val entries = LinkedHashMap<String, ByteArray>()
         ZipInputStream(file.inputStream().buffered()).use { zip ->
@@ -324,6 +372,63 @@ class BackupRobolectricTest {
     }
 
     // ---- seed / 工具 ----
+
+    private suspend fun seedGeneratedLibrary(documentCount: Int, chunksPerDocument: Int) {
+        withContext(Dispatchers.IO) {
+            db.withTransaction {
+                db.sourceDao().upsert(SourceEntity("src_gen", "生成来源", "file:///gen.txt", "text/plain", 1, "active"))
+                val docs = (0 until documentCount).map { i ->
+                    DocumentEntity(
+                        id = "doc_gen_$i", sourceId = "src_gen", title = "生成文档 $i",
+                        checksum = "gen-$i", parserId = "txt-utf8-v1", createdAt = i.toLong(),
+                        status = DocStatus.READY.value, sizeBytes = 64,
+                    )
+                }
+                db.documentDao().upsertAll(docs)
+                db.embeddingDao().upsertMeta(
+                    EmbeddingMetaEntity(
+                        id = supportedSpace,
+                        providerId = "mediapipe-universal",
+                        modelId = "embeddinggemma-2-text-vision-440m",
+                        modelRevision = "abcdef123456",
+                        dimensions = 2,
+                        normalization = "l2",
+                        taskTemplate = "app-prefix-v1",
+                        createdAt = 3,
+                        active = true,
+                        accelerator = "gpu",
+                        quantization = "f32",
+                    ),
+                )
+                val chunks = (0 until documentCount).flatMap { d ->
+                    (0 until chunksPerDocument).map { c ->
+                        ChunkEntity(
+                            documentId = "doc_gen_$d", ordinal = c,
+                            content = "生成文档 $d 第 $c 段内容", charStart = c * 8,
+                            charEnd = c * 8 + 8, tokenEstimate = 8,
+                        )
+                    }
+                }
+                val ids = db.chunkDao().insertAll(chunks)
+                db.chunkDao().insertFts(
+                    ids.mapIndexed { index, id ->
+                        ChunkFtsEntity(
+                            chunkId = id,
+                            bigramContent = BigramTokenizer.toFtsText(chunks[index].content),
+                        )
+                    },
+                )
+                db.embeddingDao().insertAll(
+                    ids.map { id ->
+                        ChunkEmbeddingEntity(
+                            chunkId = id, embeddingSpaceId = supportedSpace, role = "content",
+                            vectorBlob = blob, vectorNorm = 1.0, createdAt = 4,
+                        )
+                    },
+                )
+            }
+        }
+    }
 
     private suspend fun seedSmallLibrary() {
         withContext(Dispatchers.IO) {
