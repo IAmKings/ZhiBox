@@ -18,7 +18,7 @@
   - FTS 来源查询按来源分批并去重/限量；
   - 流式向量通道新增按来源分页查询 `vectorsForSpaceSourcesPage`，不再依赖全量 chunkId HashSet 过滤；
   - 矩阵路径仍用分批得到的 allowed chunk ids，保持先 eligibility 后 topK。
-- 回归：`SearchVisibilityTest.sourceScopedVectorPageFiltersBeforePaging`、`SearchLimitsTest` 纯函数用例。
+- 回归：`SearchServiceSourceScopeTest`（真实 `SearchService.search` + fake provider，验证全库高分候选不会饿死范围内命中）、`SearchVisibilityTest.sourceScopedVectorPageFiltersBeforePaging`、`SearchLimitsTest` 纯函数用例。
 
 ## 已修复 R5（一致导出）
 
@@ -31,12 +31,12 @@
 - `snapshotFailureLeavesLiveDatabaseUnchanged`：快照目录不可写时导入失败且 DB 行数不变（R1 AC）。
 - `sourceScopedVectorPageFiltersBeforePaging`：来源分页向量查询只返回范围内 chunk（R2）。
 - `warningDetail` 断言：SAG 重建失败保留可诊断原因（R3）。
-- Compose UI 可移植测试移至 `src/testDebug`，避免 release unit test 因缺少 debug 宿主 manifest 失败；debug 841/0、release 799/0。
+- 4 个 Compose UI 套件恢复到 `androidTest`（保留 `ComposeRecreateSmokeTest`），恢复 R6 原文要求；`compileDebugAndroidTestKotlin` 通过。
 
 ## 最终门禁
 
-- `:app:testDebugUnitTest`：**841/0**
-- `:app:testReleaseUnitTest`：**799/0**
+- `:app:testDebugUnitTest`：**835/0**
+- `:app:testReleaseUnitTest`：**816/0**
 - `:app:lintDebug`：**0 errors**
 - `:app:compileDebugAndroidTestKotlin`：通过
 - `:app:assembleRelease`：通过
@@ -45,7 +45,7 @@
 ## 未处理（保留）
 
 - R2 仍需真实 `SearchService.search` 端到端“越界高分候选不能饿死范围内命中”用例（当前为纯函数 + DAO 级）。
-- R5 并发写入下的事务一致性压力测试未补。
+- R5 并发写入压力测试暂未补，记录风险豁免：已有 activity guard（extraction/ingest）回归 + reader 读事务；缺少长时间并发压力证据。发布前需在真机做一次导出期间并发导入/抽取的手工压力验证，或补确定性测试后再签字。
 - R1 “newest valid” 目前只做 entry 结构存在性检查，内容损坏快照预览时才报错。
-- R6 部分 UI 测试从 androidTest 迁到 JVM，与 spec 原文“UI 保留 androidTest”仍有偏差；已按可移植测试目标先行。
+- R6 已恢复：4 个 Compose UI 套件回到 `androidTest`，androidTest 编译通过；但仅编译、未在 CI 真机执行（原 ARM 限制）。
 - R4 merged manifest 已由 Lead 实测含两代规则；spec 文档未追加自动比较断言。

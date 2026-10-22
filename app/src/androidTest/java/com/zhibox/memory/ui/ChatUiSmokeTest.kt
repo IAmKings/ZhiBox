@@ -12,7 +12,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
-import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.zhibox.memory.R
 import com.zhibox.memory.core.chat.ChatCitation
 import com.zhibox.memory.core.chat.ChatConversation
@@ -27,12 +28,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
 /**
- * B11 Chat Compose 冒烟测试（Robolectric，避免真机输入法/前台切换干扰 Compose 同步）。
+ * B11 Chat Compose 冒烟测试（instrumentation / 真机 PJZ110，`am instrument`）。
  *
  * 只渲染无状态 [ChatContent] + fake [ChatUiState]：**不启动 ViewModel、不访问 DB/LLM/网络**，
  * 用例间无顺序依赖。覆盖 6 条主链路：
@@ -45,15 +43,13 @@ import org.robolectric.annotation.GraphicsMode
  *
  * 断言前对消息区（LazyColumn）先 `performScrollToNode`，避免小屏/长文案导致节点未组合或不可见。
  */
-@RunWith(RobolectricTestRunner::class)
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "w407dp-h853dp-xxhdpi")
+@RunWith(AndroidJUnit4::class)
 class ChatUiSmokeTest {
 
     @get:Rule
     val composeRule = createComposeRule()
 
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+    private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun str(id: Int, vararg args: Any): String = context.getString(id, *args)
 
