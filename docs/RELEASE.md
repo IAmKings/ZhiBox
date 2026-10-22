@@ -285,5 +285,6 @@ Manifest / 安全（P0-3、P1-10 回归）
 - gitHead：`a28a3f8`；size：70,164,019 bytes
 - SHA-256：`46cb20eaab2cf9700f8952cea47c1c2158d7c88ffae6b781032d91a0683e1619`
 - apksigner：PASS；signer cert SHA-256 `b1d136ba…1db1d1`（与 v0.1.1 同 release key）
-- 设备 smoke：K60U 上用 **debug-key 重签的等价 release 包** 启动通过（保留 debug app 签名/数据）；官方签名包尚未在设备 clean install。
-- 结论：**仍不是已完成 clean-install 验收的发布包**；未 tag/未发布。官方签名包需在可清理的 ARM 设备或取得数据备份/卸载许可后做一次 clean-install smoke。
+- 设备 smoke：官方 signed RC 已在 PJZ110 上用 `adb install -r` 覆盖升级（同 release key，保留数据/LLM），主页/检索/设置/问答入口 smoke 通过；K60U 上曾用 debug-key 重签等价包启动通过。
+- 未做：clean install/uninstall（需可清理设备）；官方签名 **clean-install** smoke 仍待补。
+- 结论：**仍是 RC，不是完成 clean-install 验收的正式发布包**；未 tag/未发布。Agent 质量声明仍为 false。

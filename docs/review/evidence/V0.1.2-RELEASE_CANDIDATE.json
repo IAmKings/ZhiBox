@@ -9,13 +9,16 @@
   "signedBy": "release keystore (same as v0.1.1)",
   "signerCertSha256": "b1d136badcc7e032a39d8504fb050f98f444017aeb5f5cfce66256afec1db1d1",
   "apksigner": "PASS",
-  "status": "signed RC rebuilt and apksigner-verified; functional smoke passed with debug-key re-signed equivalent on K60U; official signed clean-install smoke pending",
+  "status": "signed RC rebuilt and upgraded in place on PJZ110 successfully; official-signature upgrade smoke pass; clean-install smoke pending",
   "qualityClaimAllowed": false,
-  "notes": "Official release signature verified by apksigner. Device smoke used a debug-key re-signed copy to preserve K60U debug app signature/data; official signed clean install still pending. No tag/publish.",
+  "notes": "Official signed RC upgrade-smoke passed on PJZ110; clean-install smoke still requires a disposable/wipeable ARM device. No tag/publish. Agent quality claim remains false.",
   "smoke": {
-    "device": "K60U 6D8H6TXSDYXC85PZ",
-    "artifact": "debug-key re-signed equivalent of app-release.apk",
-    "result": "launch PASS; versionName=0.1.2/versionCode=3; official signature install blocked by debug app signature/data preservation",
-    "restored": "debug app reinstalled after smoke"
+    "device": "PJZ110 1fc6056b",
+    "artifact": "dist/zhibox-0.1.2-a28a3f8-release-signed.apk",
+    "install": "adb install -r Success (same release signature; data/LLM preserved)",
+    "version": "0.1.2 (3)",
+    "result": "launch/home/search/settings/chat PASS; existing corpus + settings rendered",
+    "notPerformed": "clean install/uninstall; destructive import/delete/restore",
+    "evidence": "docs/review/evidence/V0.1.2-rc-pjz110-smoke.txt"
   }
 }

@@ -1,0 +1,15 @@
+PJZ110 official signed RC smoke (2026-10-22/23)
+- Device: PJZ110 1fc6056b (OP5D0DL1), prior app versionName=0.1.2/versionCode=3, installed 2026-10-21.
+- Artifact: dist/zhibox-0.1.2-a28a3f8-release-signed.apk
+- SHA-256: 46cb20eaab2cf9700f8952cea47c1c2158d7c88ffae6b781032d91a0683e1619
+- Signer SHA-256: b1d136ba...1db1d1 (same release key as prior app); apksigner PASS.
+- Install: `adb install -r` Success (same-signature upgrade, no uninstall; app data/LLM config preserved).
+- Post-install: versionName=0.1.2, versionCode=3; lastUpdate 2026-10-22 23:59:20.
+- UI smoke:
+  - Home timeline renders existing corpus docs (pjz_eval_corpus1-3) and brand 智匣/ZHIBOX;
+  - Search screen opens, modes/chips render;
+  - More sheet shows 来源/带引用问答/设置;
+  - Settings: embedding path/model/共享目录 render, LLM section (API key masked, SAG/问答/网络/privacy) renders;
+  - Chat screen opens, source scope and Agent toggle render; existing conversations visible.
+- Not performed: clean install/uninstall (would lose app data/LLM Keystore); clean-install smoke still pending on disposable device.
+- Not performed: destructive import/delete/restore; no data changed by smoke.
