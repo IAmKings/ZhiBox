@@ -2,7 +2,7 @@
 
 本地优先的 Android 端侧 RAG 记忆系统骨架：文档导入 → 分块 → 端侧 embedding → SQLite 检索 → 原文证据回溯，全程可离线。架构移植自 SAG 的检索数据模型思想（Kotlin 重写，非直接复用 Python 引擎）。
 
-当前状态：**v0.1.1 已发布（tag `v0.1.1`）**；master 正在开发 **v0.1.2**，已落地 P1 导入扩展首版（PDF 文本型 / Office DOCX/PPTX/XLSX / 网页 URL / SAF 文件选择；见 [`B14 报告`](docs/review/B14_IMPORT_EXPANSION_REPORT.md)）。版本 `versionName = 0.1.2` / `versionCode = 3`（**签名 RC 已构建；未发布/tag**）；发布说明见 [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) 与 `docs/RELEASE.md`。Phase 1 MVP-1 验收与 262 条/50 卡评测历史见 `docs/phase1/`。
+当前状态：**v0.1.1 已发布（tag `v0.1.1`）**；master 正在开发 **v0.1.3**，包含 P1 导入扩展、质量审查修复、R1/R2/R5 回归与 clean-install/upgrade smoke。版本 `versionName = 0.1.3` / `versionCode = 4`（签名 RC 将重建；未发布/tag）；发布说明见 [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) 与 `docs/RELEASE.md`。Phase 1 MVP-1 验收与 262 条/50 卡评测历史见 `docs/phase1/`。
 
 ## 模型路线（B7 起）
 

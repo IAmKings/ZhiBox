@@ -1,9 +1,17 @@
-# 发布说明（v0.1.2 开发中；v0.1.1 已发布；含历史）
+# 发布说明（v0.1.3 开发中；v0.1.1 已发布；含历史）
 
-> 适用：**v0.1.2 开发中**（v0.1.1 已发布；当前 master 含 P1 导入扩展与多轮问答首版）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/B*_FIX_REPORT.md`、`docs/CODE_QUALITY_REVIEW_R2.md`/`R3.md`。
-> **发布状态**：v0.1.1 已发布/tag；v0.1.2 **未最终验证/未 tag/未发布**，发布动作由负责人确认（`docs/RELEASE.md`）。
+> 适用：**v0.1.3 开发中**（v0.1.1 已发布；当前 master 含 P1 导入扩展、质量审查修复、R1/R2/R5 回归与 clean-install/upgrade smoke）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/B*_FIX_REPORT.md`、`docs/CODE_QUALITY_REVIEW_R2.md`/`R3.md`。
+> **发布状态**：v0.1.1 已发布/tag；v0.1.3 **未 tag/未发布**，发布动作由负责人确认（`docs/RELEASE.md`）。
 
-## 0. v0.1.2（开发中，未发布）
+## 0. v0.1.3（开发中，未发布）
+
+- **质量审查修复**：R8 版本入 catalog、备份快照持久化/失败保护、来源范围检索分批/流式过滤、导出一致性 reader transaction、SharedModelStore 原子切换、备份排除规则。
+- **R1/R2/R5 回归**：快照失败不动库、生成 50 文档/200 chunk 导出导入回环、导入/重嵌入/抽取活动期间导出拒绝、来源范围端到端检索。
+- **设备验收**：K40 官方 signed RC clean install、PJZ110 同签名 upgrade smoke 通过；R1 人工导出导入验收通过；R5 core 自动化通过。
+- **限制**：Agent/问答真实质量仍 `QUALITY_CLAIM_ALLOWED=false`；R5 真机大库 ANR/进程中断仍建议发布前补测。
+- **签名 RC**：待按 `docs/RELEASE.md` 从本版本重建（旧 v0.1.2 产物不再适用）。
+
+## 0.1 v0.1.2（历史，未发布）
 
 - **P1 导入扩展**：文本型 PDF（PDFBox-Android；owner-password-only 可抽取）、DOCX/PPTX/XLSX、HTML、网页 URL、SAF 多选文件；staging 白名单与 50MB 流式上限；旧 `.doc/.ppt/.xls` 返回明确的“另存为 OOXML”错误；URL 导入把原始地址写入 `source.originUrl`（staging 旁车，schema v8）；**扫描件 OCR（ML Kit 离线，默认开启）与 user-password PDF 输入密码重试**。
 - **P1 多轮问答首版（B13）**：最近 6 条历史作为上下文（不是证据），历史 `[S#]` 剥离，引用仍只来自本轮证据；见 `docs/review/B13_MULTITURN_CHAT_REPORT.md`。

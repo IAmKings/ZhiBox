@@ -1,6 +1,6 @@
 # ZhiBox 发布手册（Release Runbook）
 
-> 适用版本：`versionName = 0.1.2`（`app/build.gradle.kts`；v0.1.1 已发布）
+> 适用版本：`versionName = 0.1.3`（`app/build.gradle.kts`；v0.1.1 已发布）
 > 对应批次：B8–B12 / R2–R3 质量修复；发布链路沿用 P2 B4（构建/依赖/发布）。相关实现：`app/build.gradle.kts`、`scripts/release.sh`、
 > `gradle/wrapper/gradle-wrapper.properties`、`gradle/verification-metadata.xml`。
 > 原则：**任何密钥/口令都不入仓库**；发布物必须可验签、可追溯、可回滚。
@@ -117,8 +117,8 @@ sed -n 's/^ZHIBOX_KEY_PASSWORD=//p' "$HOME/.zhibox-release/credentials.propertie
 ```bash
 # 1) 确认 versionName 与 tag 一致（workflow 会强校验 v<versionName>）
 # 2) 打 tag 并推送（触发 Release workflow）
-git tag -a v0.1.2 -m "ZhiBox v0.1.2"
-git push origin v0.1.2
+git tag -a v0.1.3 -m "ZhiBox v0.1.3"
+git push origin v0.1.3
 # 3) 等待 GitHub Actions "Release (signed APK)" 全绿；会自动创建 Release 并上传：
 #    zhibox-<version>-<sha7>-release-signed.apk / .apk.sha256 / -mapping.txt
 ```
