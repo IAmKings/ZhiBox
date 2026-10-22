@@ -285,6 +285,7 @@ Manifest / 安全（P0-3、P1-10 回归）
 - gitHead：`a28a3f8`；size：70,164,019 bytes
 - SHA-256：`46cb20eaab2cf9700f8952cea47c1c2158d7c88ffae6b781032d91a0683e1619`
 - apksigner：PASS；signer cert SHA-256 `b1d136ba…1db1d1`（与 v0.1.1 同 release key）
-- 设备 smoke：官方 signed RC 已在 PJZ110 上用 `adb install -r` 覆盖升级（同 release key，保留数据/LLM），主页/检索/设置/问答入口 smoke 通过；K60U 上曾用 debug-key 重签等价包启动通过。
-- 未做：clean install/uninstall（需可清理设备）；官方签名 **clean-install** smoke 仍待补。
-- 结论：**仍是 RC，不是完成 clean-install 验收的正式发布包**；未 tag/未发布。Agent 质量声明仍为 false。
+- 设备 smoke：官方 signed RC 已在 PJZ110 上 `adb install -r` 覆盖升级（同 release key，保留数据/LLM），主页/检索/设置/问答入口 smoke 通过。
+- **clean-install smoke：K40（M2012K10C）`adb install` 全新安装 PASS**；cold start 主页空态/检索/设置均正常，模型缺失状态正确提示；未做 destructive import/delete。
+- 未做：模型下载/LLM/聊天功能 smoke（需 key/model）；R5 并发压力仍按豁免记录。
+- 结论：signed RC 已完成 clean-install + upgrade smoke；仍未 tag/未发布，Agent 质量声明仍为 false。

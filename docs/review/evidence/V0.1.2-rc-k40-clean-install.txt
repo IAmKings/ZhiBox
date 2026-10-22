@@ -1,0 +1,13 @@
+K40 official signed RC clean-install smoke (2026-10-23)
+- Device: K40 eipzae799dkfpffq (M2012K10C / ares)
+- Artifact: dist/zhibox-0.1.2-a28a3f8-release-signed.apk
+- SHA-256: 46cb20eaab2cf9700f8952cea47c1c2158d7c88ffae6b781032d91a0683e1619
+- Install: package absent/uninstalled; `adb install` Success; firstInstallTime=2026-10-23 00:04:39
+- Post-install: versionName=0.1.2, versionCode=3
+- Cold-start UI:
+  - Home renders 智匣/ZHIBOX, empty-state "还没有内容 / 导入第一份文档" and input bar;
+  - Search screen opens with 混合/SAG 快速/SAG 精排;
+  - More sheet exposes 来源/带引用问答/设置;
+  - Settings opens; clean-install state correctly shows "未找到模型（filesDir/models 为空）", model store, SOC mt6893, GPU options; no crash.
+- This is a clean-install path (fresh app data); no prior package data used.
+- Not performed: import/model download/LLM/chat functional smoke (requires model/key); no destructive tests.
