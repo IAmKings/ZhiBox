@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+
+    <!-- Transparent icon foreground. ZhiBox obsidian and breathing-green palette. -->
+    <!-- Silhouette is deliberately slightly inset for comfortable launcher margins. -->
+    <clip-path android:pathData="M496,128 Q512,119 528,128 L835,306 Q853,317 853,338 V685 Q853,706 835,717 L530,893 Q512,903 494,893 L189,717 Q171,706 171,685 V338 Q171,317 189,306 Z" />
+
+    <!-- Cube: top, left and right planes. -->
+    <path android:fillColor="#30332F"
+        android:pathData="M512,118 L862,320 L512,523 L162,320 Z" />
+    <path android:fillColor="#222522"
+        android:pathData="M162,320 L512,523 V914 L162,711 Z" />
+    <path android:fillColor="#121412"
+        android:pathData="M862,320 L512,523 V914 L862,711 Z" />
+
+    <!-- Soft tonal facets, substitute for SVG gradients in native VectorDrawable. -->
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.045"
+        android:pathData="M512,118 L512,523 L162,320 Z" />
+    <path android:fillColor="#000000" android:fillAlpha="0.16"
+        android:pathData="M512,523 L862,320 V711 L512,914 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.025"
+        android:pathData="M162,320 L512,523 L512,655 L162,453 Z" />
+
+    <!-- Delicate bevels and structural seams. -->
+    <path android:fillColor="#00000000" android:strokeColor="#F5F3EE"
+        android:strokeAlpha="0.16" android:strokeWidth="2.1"
+        android:strokeLineCap="round"
+        android:pathData="M512,129 L829,312" />
+    <path android:fillColor="#00000000" android:strokeColor="#F5F3EE"
+        android:strokeAlpha="0.10" android:strokeWidth="2.1"
+        android:strokeLineCap="round"
+        android:pathData="M512,129 L195,312" />
+    <path android:fillColor="#00000000" android:strokeColor="#B8BDB5"
+        android:strokeAlpha="0.14" android:strokeWidth="3"
+        android:pathData="M171,320 L512,516 L853,320" />
+    <path android:fillColor="#00000000" android:strokeColor="#A2ADA2"
+        android:strokeAlpha="0.11" android:strokeWidth="3"
+        android:pathData="M512,516 V895" />
+
+    <!-- Subtle breathing-green signals converging at the three-face vertex. -->
+    <path android:fillColor="#00000000" android:strokeColor="#2E7D32"
+        android:strokeAlpha="0.22" android:strokeWidth="3.8"
+        android:pathData="M426,467 L512,516 L603,464" />
+    <path android:fillColor="#00000000" android:strokeColor="#A0F399"
+        android:strokeAlpha="0.65" android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M482,499 L512,516 L543,498" />
+    <path android:fillColor="#00000000" android:strokeColor="#2E7D32"
+        android:strokeAlpha="0.22" android:strokeWidth="3.2"
+        android:pathData="M512,516 V645" />
+    <path android:fillColor="#00000000" android:strokeColor="#A0F399"
+        android:strokeAlpha="0.52" android:strokeWidth="2.3"
+        android:pathData="M512,516 V553" />
+
+    <!-- Vector-only beacon, no blur filters (Android-compatible). -->
+    <path android:fillColor="#2E7D32" android:fillAlpha="0.12"
+        android:pathData="M512,481 A35,35 0,1 1,512 551 A35,35 0,1 1,512 481 Z" />
+    <path android:fillColor="#2E7D32" android:fillAlpha="0.42"
+        android:pathData="M512,499 A17,17 0,1 1,512 533 A17,17 0,1 1,512 499 Z" />
+    <path android:fillColor="#A0F399"
+        android:pathData="M512,504.5 A11.5,11.5 0,1 1,512 527.5 A11.5,11.5 0,1 1,512 504.5 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.82"
+        android:pathData="M507.8,508.1 A3.2,3.2 0,1 1,507.8 514.5 A3.2,3.2 0,1 1,507.8 508.1 Z" />
+
+    <!-- Identical monogram geometry to the source SVG. -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M418,646 Q418,640 424,640 H600 Q606,640 606,646 V668 Q606,672 602,676 L481,774 H600 Q606,774 606,780 V800 Q606,806 600,806 H424 Q418,806 418,800 V778 Q418,774 423,770 L544,672 H424 Q418,672 418,666 Z" />
+</vector>
