@@ -14,6 +14,8 @@ import com.zhibox.memory.data.db.EventEntity
 import com.zhibox.memory.data.db.EventEntityRel
 import com.zhibox.memory.data.db.EventStatus
 import com.zhibox.memory.data.db.ExtractionJobEntity
+import com.zhibox.memory.data.db.IngestJobEntity
+import com.zhibox.memory.data.db.JobStage
 import com.zhibox.memory.data.db.ExtractionJobStatus
 import com.zhibox.memory.data.db.SourceEntity
 import com.zhibox.memory.core.text.BigramTokenizer
@@ -261,6 +263,28 @@ class BackupRobolectricTest {
         assertTrue(result.isFailure)
         assertEquals(beforeDocs, db.documentDao().all().size)
         assertEquals(beforeChunks, db.chunkDao().allChunks().size)
+    }
+
+    @Test
+    fun export_refusesActiveIngestJob() = runBlocking {
+        seedSmallLibrary()
+        db.ingestJobDao().upsert(
+            IngestJobEntity(
+                id = "active-ingest",
+                sourceId = "src_rt",
+                documentId = "doc_rt",
+                stage = JobStage.QUEUED.value,
+                progress = 0,
+                error = null,
+                createdAt = 10,
+                updatedAt = 10,
+            ),
+        )
+
+        val result = KnowledgeBackup.exportToFile(app, tmp("blocked-ingest.zip"))
+
+        assertFalse(result.isSuccess)
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("导入"))
     }
 
     @Test
