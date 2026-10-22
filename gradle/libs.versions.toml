@@ -1,4 +1,6 @@
 [versions]
+jsr305 = "3.0.2"
+r8 = "9.1.29"
 # ============================================================================
 # B4-1b 依赖升级窗口（2026-10）
 #
@@ -107,6 +109,7 @@ androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx"
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-core = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCore" }
+jsr305 = { module = "com.google.code.findbugs:jsr305", version.ref = "jsr305" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 # P1.4 真机评测：UiAutomator 2.3.0（仅 androidTest，Google Maven；AndroidX 官方 AAR）
 androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
@@ -127,8 +130,8 @@ pdfbox-android = { group = "com.tom-roush", name = "pdfbox-android", version.ref
 # 尺寸/APK 增量/传递依赖见 docs/UPSTREAM_VERSIONS.md 与 docs/reference/THIRD_PARTY_NOTICES.md。
 mlkit-text-recognition-chinese = { group = "com.google.mlkit", name = "text-recognition-chinese", version.ref = "mlkitTextRecognitionChinese" }
 # B5：Compose UI 测试（版本由 Compose BOM 2026.06.01 管理 = 1.11.4，故不写 version.ref）
-#   · ui-test-junit4：androidTest（真机 instrumentation，createAndroidComposeRule / createComposeRule）
-#   · ui-test-manifest：debugImplementation（提供测试宿主 Activity，仅 debug 变体）
+#   · ui-test-junit4：androidTest 真机 + JVM/Robolectric 可移植 Compose 测试
+#   · ui-test-manifest：debugImplementation（androidTest 宿主）+ testImplementation（JVM 宿主）
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 

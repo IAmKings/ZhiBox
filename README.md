@@ -28,10 +28,24 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ```
 
 - 工具链（当前）：Gradle **8.14.3**（wrapper，含 `distributionSha256Sum` 校验）/ AGP **8.13.2** / Kotlin **2.4.21** / KSP **2.3.12** / Compose BOM **2026.06.01**。
-- 依赖完整性：`gradle/verification-metadata.xml` 已提交（613 components，strict 校验生效）；未登记的依赖会导致构建直接失败，排障时可临时 `--dependency-verification=off`（见 `app/build.gradle.kts` 注释）。
+- 依赖完整性：`gradle/verification-metadata.xml` 已提交（strict 校验生效）；未登记的依赖会导致构建直接失败，排障时可临时 `--dependency-verification=off`（见 `app/build.gradle.kts` 注释）。
 - minSdk 24 / targetSdk 36 / compileSdk 36，仅 `arm64-v8a`。
-- 权限：仅声明 `INTERNET`，且只用于用户显式触发的模型下载（`networkSecurityConfig` 禁止明文，仅白名单 `hf-mirror.com` 的 HTTPS；URL 写死 + SHA-256 校验）；检索/导入/嵌入全链路离线，无其他权限。`allowBackup="false"`（个人知识库不参与系统备份）。
+- 权限：仅声明 `INTERNET`，用于用户显式触发的模型下载与网页导入，以及用户配置并同意启用后的 OpenAI-compatible LLM 请求；`networkSecurityConfig` 禁止明文流量。检索、本地文件导入与嵌入可离线运行，无其他权限。`allowBackup="false"`，并用两代备份规则显式排除全部应用数据（个人知识库不参与系统云备份或设备迁移）。
 - `local.properties` 配置 SDK 路径（本机 `~/Library/Android/sdk`），不入库。
+
+常用测试门：
+
+```bash
+# 免费默认 CI：含纯 JVM 与 Robolectric/Compose 测试
+./gradlew :app:testDebugUnitTest
+
+# ARM64 真机稳定回归：默认排除评测、性能、联网与真实 Activity 重建等 @LargeTest；
+# 单项上限 3 分钟，整个 Gradle 任务上限 15 分钟
+./gradlew :app:connectedDebugAndroidTest
+```
+
+需要单独执行 `@LargeTest` 时，先安装 debug 与测试 APK，再用 instrumentation 的
+`annotation=androidx.test.filters.LargeTest` 过滤；详见 [`docs/RELEASE.md`](docs/RELEASE.md)。
 
 ## 升级与迁移（B1–B7）
 

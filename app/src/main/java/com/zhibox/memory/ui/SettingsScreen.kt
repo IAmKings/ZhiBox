@@ -328,6 +328,7 @@ fun SettingsScreen(
         requestDeleteModel = { pendingDeleteModel = it },
         exportBackup = { exportLauncher.launch("zhibox-knowledge-base.zip") },
         importBackup = { importLauncher.launch(arrayOf("application/zip")) },
+        restoreBackup = viewModel::previewLatestSnapshot,
         repairIndex = viewModel::repairIndex,
         reembedNow = viewModel::reembedNow,
         cancelReembed = viewModel::cancelReembed,
@@ -372,6 +373,7 @@ class SettingsActions(
     val requestDeleteModel: (File) -> Unit = {},
     val exportBackup: () -> Unit = {},
     val importBackup: () -> Unit = {},
+    val restoreBackup: () -> Unit = {},
     val repairIndex: () -> Unit = {},
     val reembedNow: () -> Unit = {},
     val cancelReembed: () -> Unit = {},
@@ -722,6 +724,13 @@ internal fun SettingsContent(
                         OutlinedButton(onClick = actions.importBackup) {
                             Text(stringResource(R.string.settings_import))
                         }
+                    }
+                    OutlinedButton(
+                        onClick = actions.restoreBackup,
+                        enabled = state.hasAutoBackup,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_restore_latest))
                     }
                     Text(
                         stringResource(R.string.settings_migration_hint),

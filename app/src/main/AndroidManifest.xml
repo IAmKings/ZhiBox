@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-      P1-W1-5 起引入：应用内唯一联网路径是"模型下载器"（显式用户触发的下载，
-      URL + SHA-256 校验 + 断点续传）。检索/导入/嵌入全链路离线可用。
+      联网路径均由用户显式触发或配置：模型下载、网页导入，以及启用并同意后的
+      OpenAI-compatible LLM 请求。检索/本地文件导入/嵌入全链路离线可用。
       依据：docs/SAG_Android_MVP_Implementation_Plan_v1.0.md P1-W1-5 / P1-W2-5
     -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -14,11 +14,14 @@
         SharedPreferences 中的 SAF 授权与模型偏好）禁止进入 Android Auto Backup
         （默认会随用户 Google 账户上云，与「本地优先 / 离线」定位冲突）。
         跨设备迁移只走产品自带的 KnowledgeBackup（用户显式导出/导入）。
-      · networkSecurityConfig：显式禁止明文流量，仅放行模型下载域名 hf-mirror.com(HTTPS)，
+      · networkSecurityConfig：所有网络路径都禁止明文流量；模型下载额外固定为
+        hf-mirror.com，网页导入和用户配置的 LLM 端点由代码侧强制 HTTPS。
         详见 res/xml/network_security_config.xml。
     -->
     <application
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:networkSecurityConfig="@xml/network_security_config"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"

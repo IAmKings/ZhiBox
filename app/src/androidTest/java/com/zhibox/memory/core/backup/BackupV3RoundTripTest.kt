@@ -170,13 +170,13 @@ class BackupV3RoundTripTest {
         assertEquals(1, db.sagVectorDao().byOwner(SagOwnerType.ENTITY.value, seed.entityId).size)
 
         // extraction_job：状态/attempt/错误字段恢复
-        assertEquals(1, db.extractionJobDao().countByStatus(ExtractionJobStatus.QUEUED.value))
+        assertEquals(1, db.extractionJobDao().countByStatus(ExtractionJobStatus.FAILED.value))
         assertEquals(1, db.extractionJobDao().countByStatus(ExtractionJobStatus.DONE.value))
         val jobs = db.extractionJobDao().all().sortedBy { it.id }
         assertEquals(listOf("job-1", "job-2"), jobs.map { it.id })
         assertEquals("doc1", jobs.first().documentId)
         assertEquals(seed.chunkIds[0], jobs.first().chunkId)
-        assertEquals(ExtractionJobStatus.QUEUED.value, jobs.first().status)
+        assertEquals(ExtractionJobStatus.FAILED.value, jobs.first().status)
         assertEquals(ExtractionJobStatus.DONE.value, jobs.last().status)
 
         // B9：FTS 不随包导出，v3 导入成功后由 SagFtsRebuilder 重建：
@@ -575,7 +575,7 @@ class BackupV3RoundTripTest {
         )
         db.extractionJobDao().upsertAll(
             listOf(
-                extractionJob("job-1", "doc1", chunkIds[0], ExtractionJobStatus.QUEUED, 500),
+                extractionJob("job-1", "doc1", chunkIds[0], ExtractionJobStatus.FAILED, 500),
                 extractionJob("job-2", "doc1", chunkIds[1], ExtractionJobStatus.DONE, 510),
             ),
         )

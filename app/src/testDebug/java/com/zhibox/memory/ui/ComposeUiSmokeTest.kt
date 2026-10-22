@@ -1,15 +1,12 @@
 package com.zhibox.memory.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
-import com.zhibox.memory.MainActivity
+import androidx.test.core.app.ApplicationProvider
 import com.zhibox.memory.R
 import com.zhibox.memory.core.sag.RetrievalMode
 import com.zhibox.memory.core.sag.SagChannels
@@ -26,9 +23,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /**
- * P2 B5-2 Compose UI 冒烟测试（instrumentation / 真机，`connectedDebugAndroidTest`）。
+ * P2 B5-2 Compose UI 冒烟测试（Robolectric，不占用真机窗口系统）。
  *
  * 覆盖三条主链路（数据全部由测试 fake，**不访问 DB/模型/网络**，用例间无顺序依赖）：
  * 1. [SearchContent]：fake [SearchService.SearchResult] + 2 条命中 → 断言标题/命中文本，
@@ -36,19 +36,18 @@ import org.junit.runner.RunWith
  * 2. [EvidenceScreen]：fake hit 渲染证据详情，点击顶栏返回图标触发 `onBack`；
  * 3. [SourcesContent] 空态：断言空态文案 +「去导入」按钮点击触发 `onOpenImport`；
  *    另覆盖 [SearchContent] 拒绝态（错误文案 + 「知道了」动作回调）。
- * 4. 重建：`ActivityScenario` 启动真实 [MainActivity] 后 `recreate()`，断言首页仍渲染——
- *    MainActivity 在 `onCreate` 中自行 `setContent`，内容不依赖 DB/模型（首页为静态文案）。
- *
  * 依赖：`androidx.compose.ui:ui-test-junit4` + `debugImplementation androidx.compose.ui:ui-test-manifest`
  * （后者为 `createComposeRule` 提供宿主 ComponentActivity，由 build-fixer 引入）。
  */
-@RunWith(AndroidJUnit4::class)
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w407dp-h853dp-xxhdpi")
 class ComposeUiSmokeTest {
 
     @get:Rule
     val composeRule = createComposeRule()
 
-    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
     private fun str(id: Int): String = context.getString(id)
 
@@ -176,36 +175,6 @@ class ComposeUiSmokeTest {
         composeRule.onNodeWithText(str(R.string.sources_go_import)).performClick()
         composeRule.waitForIdle()
         assertTrue("空态「去导入」应触发 onOpenImport", importRequested.get())
-    }
-}
-
-/**
- * P1-8/B5-2 重建冒烟：真实 [MainActivity] 被 `recreate()`（等价旋转/配置变更）后仍渲染首页。
- *
- * 使用 [createAndroidComposeRule] 托管 Activity：规则负责启动/同步语义树，
- * `activityRule.scenario.recreate()` 触发真实销毁重建。MainActivity 在 `onCreate` 里
- * 自行 `setContent`，重建后自动重新渲染；首页为静态文案，不依赖模型/DB。
- *
- * 历史：B5 用 createEmptyComposeRule + ActivityScenario 在部分 OEM（K40）上出现
- * WindowManager/BLASTSyncEngine 等待挂起（instrumentation 无法完成），改用官方
- * createAndroidComposeRule 后稳定。
- */
-@RunWith(AndroidJUnit4::class)
-class ComposeRecreateSmokeTest {
-
-    @get:Rule
-    val composeRule = createAndroidComposeRule<MainActivity>()
-
-    @Test
-    fun recreate_后首页仍可渲染() {
-        val homeTitle = composeRule.activity.getString(R.string.home_title)
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText(homeTitle).assertIsDisplayed()
-
-        // 等价旋转/深色切换/分屏：Activity 销毁重建，onCreate 重新注入内容
-        composeRule.activityRule.scenario.recreate()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText(homeTitle).assertIsDisplayed()
     }
 }
 

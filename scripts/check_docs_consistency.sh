@@ -5,8 +5,8 @@
 # 校验项（任一失败 → exit 1）：
 #   1. README 的 Gradle 版本 = gradle/wrapper/gradle-wrapper.properties 实际版本，
 #      且不残留旧版本 "Gradle 8.11" 描述；
-#   2. README 权限描述与 AndroidManifest 的 INTERNET 权限一致
-#      （Manifest 有 INTERNET 时 README 不得声称"不申请任何权限"）；
+#   2. README 权限描述与 AndroidManifest 的 INTERNET 权限一致，并同时列出网页导入与
+#      OpenAI-compatible LLM 两条显式联网路径；
 #   3. docs/UPSTREAM_VERSIONS.md 的 AGP 版本 = gradle/libs.versions.toml 的 agp；
 #   4. docs/UPSTREAM_VERSIONS.md 的 270M 模型体积 = ModelCatalog.kt 的 sizeBytes
 #      （允许精确字节或 MiB 换算文本；若写了精确字节则必须一致）；
@@ -90,6 +90,13 @@ if grep -q 'android.permission.INTERNET' "$MANIFEST"; then
   else
     fail "Manifest 声明 INTERNET，但 README 未说明网络权限（INTERNET）"
   fi
+  for network_path in '网页导入' 'OpenAI-compatible'; do
+    if grep -qF "$network_path" "$README" && grep -qF "$network_path" "$MANIFEST"; then
+      pass "README/Manifest 均说明联网路径：$network_path"
+    else
+      fail "README/Manifest 必须同时说明联网路径：$network_path"
+    fi
+  done
 else
   if grep -Eq 'INTERNET|网络权限' "$README"; then
     fail "Manifest 未声明 INTERNET，但 README 声称存在网络权限（不一致）"

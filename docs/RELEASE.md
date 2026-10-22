@@ -15,6 +15,7 @@
 | minSdk | 24 | 仅 arm64-v8a |
 | AGP | 8.13.2 | 本批次不升级（AGP 9.x 需整体迁移） |
 | Kotlin / KSP | 2.4.21 / 2.3.12 | 配对；Kotlin 2.5 与 KSP 2.3.12 未配对 |
+| R8 | 9.1.29 | Kotlin 2.4 metadata 最低兼容版；在 `settings.gradle.kts` 覆盖 AGP 内置版本 |
 | Compose BOM | 2026.06.01 | compose 1.11.4；2026.09.00 需 compileSdk 37 + AGP 9.1.0，不可用 |
 | core-ktx | 1.18.0 | 1.19.x 需 compileSdk 37 + AGP 9.1.0，不可用 |
 | lifecycle | 2.10.0 | 2.11.0 的 viewmodel-compose 需 compileSdk 37 + AGP 9.1.0，不可用 |
@@ -145,6 +146,16 @@ apksigner verify --print-certs dist/zhibox-<version>-<sha>-release-signed.apk
 
 # 纯 Gradle 方式
 ./gradlew :app:assembleRelease
+
+# 发布前 ARM64 真机稳定回归（默认排除 @LargeTest；每项最多 3 分钟，整项最多 15 分钟）
+./gradlew :app:connectedDebugAndroidTest
+
+# 评测/性能/联网/真实 Activity 重建按需单独执行，避免拖慢或卡住默认回归
+./gradlew :app:installDebug :app:installDebugAndroidTest
+adb shell am instrument -w \
+  -e annotation androidx.test.filters.LargeTest \
+  -e timeout_msec 180000 \
+  com.zhibox.memory.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 产物命名（`scripts/release.sh` 自动归档到 `dist/`，该目录已在 `.gitignore`）：
@@ -220,7 +231,8 @@ Manifest / 安全（P0-3、P1-10 回归）
 - [ ] `aapt2 dump badging <apk>`：无 `application-debuggable`（release）；package/versionCode/versionName 正确；
       `native-code: 'arm64-v8a'`；`targetSdkVersion:'36'`
 - [ ] `aapt2 dump xmltree --file AndroidManifest.xml <apk>`：`allowBackup=false`、
-      `networkSecurityConfig` 指向的 XML 中 `cleartextTrafficPermitted=false`、白名单仅 `hf-mirror.com`
+      `fullBackupContent`/`dataExtractionRules` 均存在且排除全部域；`networkSecurityConfig`
+      全局 `cleartextTrafficPermitted=false`，模型下载域名策略为 `hf-mirror.com`
 - [ ] release dex 中无 `com.zhibox.memory.benchmark` / 实验 UI（`apkanalyzer dex packages`）
 
 功能 smoke（真机，arm64）

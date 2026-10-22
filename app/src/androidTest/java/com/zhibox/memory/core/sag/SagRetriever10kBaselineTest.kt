@@ -3,6 +3,7 @@ package com.zhibox.memory.core.sag
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.filters.LargeTest
 import com.zhibox.memory.core.search.SearchService
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.ChunkEntity
@@ -38,6 +39,7 @@ import java.nio.ByteOrder
  * 输出原始数（logcat/println）：`B10_10K_RETRIEVE ...` / `B10_10K_SQL ...`，供 Lead 与 B10 报告引用；
  * 硬断言只设 30s 病态上限，不做性能门禁（阈值待真机基线确定）。
  */
+@LargeTest
 class SagRetriever10kBaselineTest {
 
     private lateinit var context: Context

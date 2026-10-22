@@ -3,6 +3,8 @@ package com.zhibox.memory.core.backup
 import android.content.Context
 import android.net.Uri
 import androidx.annotation.VisibleForTesting
+import androidx.room.Transactor
+import androidx.room.useReaderConnection
 import androidx.room.withTransaction
 import com.zhibox.memory.core.extraction.EntityAliasRepository
 import com.zhibox.memory.core.extraction.SagFtsRebuilder
@@ -41,6 +43,7 @@ import org.json.JSONObject
 import java.io.File
 import java.util.Locale
 import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
@@ -71,7 +74,8 @@ import java.util.zip.ZipOutputStream
  *   count 与字节数、blob 长度 == dim×4、chunkId 引用存在、空间索引/重复行校验）；
  * - 写库 = 单个 Room 事务内显式 DELETE + 批量插入（不再用 clearAllTables()）——任何一步失败整体
  *   回滚，原库保持不变；
- * - 导入前自动导出一份 `cacheDir/auto-backup-<ts>.zip` 快照（校验通过后才拍，最多保留 2 份）；
+ * - 导入前自动导出一份 `filesDir/backup_snapshots/auto-backup-<ts>.zip` 快照
+ *   （校验通过后才拍，最多保留 2 份，可从设置页恢复）；
  * - 导出流式分页（每页 ~200 行），SAF 目标先写 cacheDir 临时文件再 copy（避免用户可见的半包）。
  *
  * 模型供应链（P1-7）：导入写库前用 [ModelIntegrity] 对在位模型做 SHA-256 + 精确尺寸校验，
@@ -100,6 +104,18 @@ object KnowledgeBackup {
     private const val SQLITE_BATCH = 500
     private const val SNAPSHOT_PREFIX = "auto-backup-"
     private const val SNAPSHOT_KEEP = 2
+    private const val SNAPSHOT_DIR = "backup_snapshots"
+
+    /** Recoverable work that failed only after the restored database was committed. */
+    enum class ImportWarning { SAG_FTS_REBUILD_FAILED }
+
+    /** Successful import payload; [warning] never means the restored rows were rolled back. */
+    data class ImportOutcome(
+        val restoredCount: Int,
+        val warning: ImportWarning? = null,
+        /** Sanitized diagnostic detail for the warning; never contains document text or credentials. */
+        val warningDetail: String? = null,
+    )
 
     // entry 名单单一事实源：定义在 BackupValidator（标准审查修复：此前两文件各自维护
     // 7 个 entry 名，新增 entry 需同改两处、易漂移）。
@@ -180,7 +196,7 @@ object KnowledgeBackup {
             }
         }
 
-    suspend fun import(context: Context, srcUri: Uri, dropIncompatibleGpuVectors: Boolean): Result<Int> =
+    suspend fun import(context: Context, srcUri: Uri, dropIncompatibleGpuVectors: Boolean): Result<ImportOutcome> =
         withContext(Dispatchers.IO) {
             runCatchingCancellable {
                 context.contentResolver.openInputStream(srcUri)?.buffered()?.use { ins ->
@@ -191,7 +207,7 @@ object KnowledgeBackup {
 
     suspend fun importFromFile(
         context: Context, src: File, dropIncompatibleGpuVectors: Boolean,
-    ): Result<Int> = withContext(Dispatchers.IO) {
+    ): Result<ImportOutcome> = withContext(Dispatchers.IO) {
         runCatchingCancellable {
             src.inputStream().buffered().use { ins ->
                 ZipInputStream(ins).use { zip -> importZip(context, zip, dropIncompatibleGpuVectors) }
@@ -207,11 +223,18 @@ object KnowledgeBackup {
     @VisibleForTesting
     internal suspend fun importFromFileForTest(
         context: Context, src: File, dropIncompatibleGpuVectors: Boolean = false,
-    ): Result<Int> = withContext(Dispatchers.IO) {
+        rebuildSagFts: suspend (AppDatabase) -> Unit = SagFtsRebuilder::rebuildAll,
+    ): Result<ImportOutcome> = withContext(Dispatchers.IO) {
         runCatchingCancellable {
             src.inputStream().buffered().use { ins ->
                 ZipInputStream(ins).use { zip ->
-                    importZip(context, zip, dropIncompatibleGpuVectors, verifyModelIntegrity = false)
+                    importZip(
+                        context,
+                        zip,
+                        dropIncompatibleGpuVectors,
+                        verifyModelIntegrity = false,
+                        rebuildSagFts = rebuildSagFts,
+                    )
                 }
             }
         }
@@ -241,6 +264,9 @@ object KnowledgeBackup {
     ): Int {
         val db = AppDatabase.get(context)
         requireNoActiveJobs(context)
+        // 导出只读：reader connection + DEFERRED 事务提供一致快照，避免导出期间写事务阻塞导入/抽取。
+        return db.useReaderConnection { transactor ->
+            transactor.withTransaction(Transactor.SQLiteTransactionType.DEFERRED) {
 
         // B7：只导出受支持 EGemma2 空间（旧路线 Path C/granite/LFM 的 meta/向量跳过）；
         // 仅旧模型向量的 ready 文档在包内降级为 failed（documents/chunks 保留，见第 3 步），
@@ -567,7 +593,9 @@ object KnowledgeBackup {
         check(sagWritten == sagVectorCount) {
             "导出期间 SAG 向量数量发生变化（$sagWritten/$sagVectorCount）——请稍后重试"
         }
-        return vectorCount
+            vectorCount
+            }
+        }
     }
 
     /**
@@ -1385,7 +1413,8 @@ object KnowledgeBackup {
         zip: ZipInputStream,
         dropIncompatibleGpuVectors: Boolean,
         verifyModelIntegrity: Boolean = true,
-    ): Int {
+        rebuildSagFts: suspend (AppDatabase) -> Unit = SagFtsRebuilder::rebuildAll,
+    ): ImportOutcome {
         // 0) 前置：导入/重嵌入进行中拒绝导入（避免与 worker 写入交错成混合数据）
         requireNoActiveJobs(context, action = "导入")
 
@@ -1412,31 +1441,36 @@ object KnowledgeBackup {
 
         // 5) B9：SAG FTS（event/entity）是纯派生数据，v3 包不携带 → 事务提交后重建。
         //    放在事务外：FTS 重建失败不应让已恢复的主数据不可用（事务已提交，数据已恢复）；
-        //    失败时抛可读错误提示可重试。v1/v2 包没有 SAG 数据 → 保持清空、不调用重建。
-        if (parsed.formatVersion >= 3) {
-            rebuildSagFtsAfterImport(context)
+        //    失败时返回可恢复警告。v1/v2 包没有 SAG 数据 → 保持清空、不调用重建。
+        val rebuildFailure = if (parsed.formatVersion >= 3) {
+            rebuildSagFtsAfterImport(context, rebuildSagFts)
+        } else {
+            null
         }
-        return restored
+        return ImportOutcome(
+            restoredCount = restored,
+            warning = rebuildFailure?.let { ImportWarning.SAG_FTS_REBUILD_FAILED },
+            warningDetail = rebuildFailure?.let {
+                (it.message ?: it.javaClass.simpleName).take(300)
+            },
+        )
     }
 
     /**
      * v3 导入成功后重建 event/entity FTS（B9）。
      *
      * 为什么在事务外：FTS 是派生数据（[SagFtsRebuilder] 先清空再分批重建），失败不应连带知识库
-     * 回滚——此时主事务已提交，数据已恢复；这里只把可读错误抛给 UI（提示"数据已恢复、索引重建
-     * 失败，可重试"）。重试入口：再次导入 / 设置页索引维护 / 直接调用 SagFtsRebuilder.rebuildAll。
+     * 回滚——此时主事务已提交，数据已恢复；失败作为 [ImportOutcome.warning] 返回给 UI。
+     * 重试入口：再次导入 / 设置页索引维护 / 直接调用 SagFtsRebuilder.rebuildAll。
      */
-    private suspend fun rebuildSagFtsAfterImport(context: Context) {
+    /** @return null on success, otherwise the sanitized cause (never document content). */
+    private suspend fun rebuildSagFtsAfterImport(
+        context: Context,
+        rebuild: suspend (AppDatabase) -> Unit,
+    ): Throwable? {
         val db = AppDatabase.get(context)
         try {
-            runCatchingCancellable { SagFtsRebuilder.rebuildAll(db) }.onFailure { e ->
-                throw IllegalStateException(
-                    "知识库数据已恢复，但 SAG 索引（event/entity FTS）重建失败：" +
-                        "${e.message ?: e.javaClass.simpleName}。主数据不受影响，可重试重建" +
-                        "（再次导入或使用设置页索引维护）",
-                    e,
-                )
-            }
+            return runCatchingCancellable { rebuild(db) }.exceptionOrNull()
         } finally {
             // 恢复包内 queued 抽取任务必须唤醒 Worker；WorkManager 未初始化（Robolectric 等）
             // 时不能把已成功的导入改判失败，任务保留 queued 由 App 启动/补抽取入口兜底。
@@ -1480,7 +1514,7 @@ object KnowledgeBackup {
 
     /** 导入前快照：保留最近 [SNAPSHOT_KEEP] 份，保证误导入后用户仍可回滚 */
     private suspend fun snapshotBeforeImport(context: Context): File {
-        val dir = context.cacheDir
+        val dir = snapshotDir(context).apply { mkdirs() }
         val snapshot = File(dir, "$SNAPSHOT_PREFIX${System.currentTimeMillis()}.zip")
         // 快照 = 回滚安全网：保留全部文档行（含非 ready），父子行仍成对（闭包一致）。
         runCatchingCancellable { exportZipFile(context, snapshot, includeNonReadyDocuments = true) }.onFailure {
@@ -1495,6 +1529,25 @@ object KnowledgeBackup {
         }
         return snapshot
     }
+
+    /** 最新可恢复的自动快照；结构损坏文件不会遮蔽更早的有效快照。 */
+    fun latestSnapshot(context: Context): File? = snapshotDir(context)
+        .listFiles { f ->
+            f.isFile && f.length() > 0 && f.name.startsWith(SNAPSHOT_PREFIX) && f.name.endsWith(".zip")
+        }
+        ?.sortedByDescending { it.name }
+        ?.firstOrNull(::hasSnapshotEntries)
+
+    private fun hasSnapshotEntries(file: File): Boolean = runCatching {
+        ZipFile(file).use { zip ->
+            BackupValidator.KNOWN_ENTRIES
+                .asSequence()
+                .filter { it != ENTRY_ENTITY_ALIASES }
+                .all { zip.getEntry(it) != null }
+        }
+    }.getOrDefault(false)
+
+    private fun snapshotDir(context: Context): File = File(context.filesDir, SNAPSHOT_DIR)
 
     /**
      * 恢复时保证 embedding_meta 最多一个 active（P2-B1-4）。
@@ -1588,10 +1641,12 @@ object KnowledgeBackup {
     // ---- 公共小工具 ----
 
     private suspend fun requireNoActiveJobs(context: Context, action: String = "导出") {
-        // B1-5 后状态查询已参数化：直接使用 activeCount(JobStage.ACTIVE_VALUES)（单一事实源）。
-        val active = AppDatabase.get(context).ingestJobDao().activeCount(JobStage.ACTIVE_VALUES)
-        check(active == 0) {
-            "有 $active 个导入/重嵌入任务正在进行，请等待完成后再$action（避免备份/恢复数据交错）"
+        val db = AppDatabase.get(context)
+        val ingestActive = db.ingestJobDao().activeCount(JobStage.ACTIVE_VALUES)
+        val extractionActive = db.extractionJobDao().activeCount(ExtractionJobStatus.ACTIVE_VALUES)
+        check(ingestActive == 0 && extractionActive == 0) {
+            "有 $ingestActive 个导入/重嵌入任务、$extractionActive 个 SAG 抽取任务正在进行，" +
+                "请等待完成后再$action（避免备份/恢复数据交错）"
         }
     }
 

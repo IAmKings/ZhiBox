@@ -1,6 +1,7 @@
 package com.zhibox.memory.core.chat
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
 import com.zhibox.memory.core.llm.KeystoreLlmConfigStore
 import com.zhibox.memory.core.llm.LlmPreferences
@@ -35,6 +36,7 @@ import java.io.File
  * 选择口径与 `scripts/eval/b11_qa_manifest.json` 保持一致（改选择需两处同步）。
  */
 @RunWith(AndroidJUnit4::class)
+@LargeTest
 class B11QaEvalTest {
 
     private companion object {

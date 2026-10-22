@@ -1,6 +1,7 @@
 package com.zhibox.memory.core.text
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.LargeTest
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -8,6 +9,7 @@ import org.junit.runner.RunWith
 
 /** P1 真实网络 smoke：WebPageFetcher 在当前设备网络下可抓取公网 HTTPS 页面。 */
 @RunWith(AndroidJUnit4::class)
+@LargeTest
 class WebPageFetcherInstrumentedTest {
     @Test
     fun fetchExampleDotCom_succeedsWithTitleAndText() = runBlocking {

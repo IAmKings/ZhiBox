@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.LargeTest
 import com.zhibox.memory.core.extraction.SagFtsRebuilder
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.ChunkEntity
@@ -35,6 +36,7 @@ import org.junit.runner.RunWith
  * - 无正文加载：event.content 含 SECRET marker，但图节点 label/subtitle 只来自 title/summary。
  */
 @RunWith(AndroidJUnit4::class)
+@LargeTest
 class ExploreGraphBigDbInstrumentedTest {
 
     private lateinit var context: Context

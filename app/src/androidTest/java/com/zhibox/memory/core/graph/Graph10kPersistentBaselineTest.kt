@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.filters.LargeTest
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.ChunkEntity
 import com.zhibox.memory.data.db.DocStatus
@@ -30,6 +31,7 @@ import org.junit.Test
  * warm p50/p95/max；来源过滤 `src-050` count/page。打印 `B12_GRAPH_10K_PERSISTENT ...` 原始行。
  * 结束后关闭并 `deleteDatabase` 清理测试 DB（不触碰生产 DB）。
  */
+@LargeTest
 class Graph10kPersistentBaselineTest {
 
     private lateinit var context: Context

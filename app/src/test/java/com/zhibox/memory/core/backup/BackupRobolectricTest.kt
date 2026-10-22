@@ -13,6 +13,8 @@ import com.zhibox.memory.data.db.EntityEntity
 import com.zhibox.memory.data.db.EventEntity
 import com.zhibox.memory.data.db.EventEntityRel
 import com.zhibox.memory.data.db.EventStatus
+import com.zhibox.memory.data.db.ExtractionJobEntity
+import com.zhibox.memory.data.db.ExtractionJobStatus
 import com.zhibox.memory.data.db.SourceEntity
 import com.zhibox.memory.core.text.BigramTokenizer
 import java.util.zip.ZipInputStream
@@ -21,6 +23,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -73,6 +76,7 @@ class BackupRobolectricTest {
     fun tearDown() {
         runBlocking(Dispatchers.IO) { runCatching { db.clearAllTables() } }
         tmpFiles.forEach { it.delete() }
+        File(app.filesDir, "backup_snapshots").deleteRecursively()
         resetDatabaseSingleton()
         app.deleteDatabase(DB_NAME)
     }
@@ -207,6 +211,79 @@ class BackupRobolectricTest {
             "B15_BACKUP_ALIAS_ROBOLECTRIC aliases=${db.entityAliasDao().count()} " +
                 "entities=${db.entityDao().count()} entityFts=${db.entityDao().countFts()}",
         )
+    }
+
+    @Test
+    fun import_keepsPersistentSnapshot_andReportsDerivedIndexWarning() = runBlocking {
+        seedSmallLibrary()
+        val pkg = tmp("warning-backup.zip")
+        KnowledgeBackup.exportToFile(app, pkg).getOrThrow()
+
+        val outcome = KnowledgeBackup.importFromFileForTest(
+            context = app,
+            src = pkg,
+            rebuildSagFts = { error("forced rebuild failure") },
+        ).getOrThrow()
+
+        assertEquals(2, outcome.restoredCount)
+        assertEquals(KnowledgeBackup.ImportWarning.SAG_FTS_REBUILD_FAILED, outcome.warning)
+        assertTrue(outcome.warningDetail.orEmpty().contains("forced rebuild failure"))
+        val snapshot = requireNotNull(KnowledgeBackup.latestSnapshot(app))
+        assertTrue(snapshot.isFile)
+        assertEquals(File(app.filesDir, "backup_snapshots"), snapshot.parentFile)
+        assertTrue(KnowledgeBackup.previewFromFile(app, snapshot).isSuccess)
+
+        File(snapshot.parentFile, "auto-backup-9999999999999.zip").writeText("broken")
+        assertEquals(snapshot, KnowledgeBackup.latestSnapshot(app))
+    }
+
+    @Test
+    fun snapshotFailureLeavesLiveDatabaseUnchanged() = runBlocking {
+        seedSmallLibrary()
+        val beforeDocs = db.documentDao().all().size
+        val beforeChunks = db.chunkDao().allChunks().size
+        val pkg = tmp("snapshot-failure.zip")
+        KnowledgeBackup.exportToFile(app, pkg).getOrThrow()
+
+        // Make the persistent snapshot path unwritable by occupying it with a regular file.
+        val blocker = File(app.filesDir, "backup_snapshots")
+        blocker.writeText("not a directory")
+
+        val result = runCatching {
+            KnowledgeBackup.importFromFileForTest(
+                context = app,
+                src = pkg,
+                rebuildSagFts = {},
+            ).getOrThrow()
+        }
+        blocker.delete()
+
+        assertTrue(result.isFailure)
+        assertEquals(beforeDocs, db.documentDao().all().size)
+        assertEquals(beforeChunks, db.chunkDao().allChunks().size)
+    }
+
+    @Test
+    fun export_refusesActiveExtractionJob() = runBlocking {
+        seedSmallLibrary()
+        val chunkId = db.chunkDao().page(limit = 1, offset = 0).single().id
+        db.extractionJobDao().upsert(
+            ExtractionJobEntity(
+                id = "active-extraction",
+                documentId = "doc_rt",
+                chunkId = chunkId,
+                status = ExtractionJobStatus.QUEUED.value,
+                errorCode = null,
+                errorDetail = null,
+                createdAt = 10,
+                updatedAt = 10,
+            ),
+        )
+
+        val result = KnowledgeBackup.exportToFile(app, tmp("blocked.zip"))
+
+        assertFalse(result.isSuccess)
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("抽取"))
     }
 
     private fun readZipEntries(file: File): Map<String, ByteArray> {

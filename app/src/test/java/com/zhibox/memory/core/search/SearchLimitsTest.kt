@@ -89,4 +89,19 @@ class SearchLimitsTest {
         assertNotSame(batches[0], batches[1])
         batches.forEach { assert(it.size <= SearchService.SQL_VARIABLE_BATCH) }
     }
+
+    @Test
+    fun `来源过滤先于 topK 不会饿死范围内候选`() {
+        val chunkIds = longArrayOf(1, 2, 3, 4)
+        val scores = doubleArrayOf(1.0, 0.9, 0.8, 0.1)
+
+        assertEquals(
+            listOf(4L),
+            SearchService.rankByScore(chunkIds, scores, allowed = setOf(4L), cap = 1),
+        )
+        assertEquals(
+            listOf(1L, 2L),
+            SearchService.rankByScore(chunkIds, scores, allowed = null, cap = 2),
+        )
+    }
 }

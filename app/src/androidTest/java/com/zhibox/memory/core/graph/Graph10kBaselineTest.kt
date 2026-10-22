@@ -3,6 +3,7 @@ package com.zhibox.memory.core.graph
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.filters.LargeTest
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.ChunkEntity
 import com.zhibox.memory.data.db.DocStatus
@@ -32,6 +33,7 @@ import org.junit.Test
  * 输出：logcat `System.out` 中 `B12_GRAPH_10K_*` 原始数据，供 B12 验收报告；
  * 不设硬延迟断言（B12 目标 p95≤1.5s，仅打印 target_ok 供对照）；只断言结果/分页/过滤正确性。
  */
+@LargeTest
 class Graph10kBaselineTest {
 
     private lateinit var db: AppDatabase

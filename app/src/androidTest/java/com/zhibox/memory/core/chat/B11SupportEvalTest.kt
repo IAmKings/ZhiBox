@@ -1,6 +1,7 @@
 package com.zhibox.memory.core.chat
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
 import com.zhibox.memory.core.llm.KeystoreLlmConfigStore
 import com.zhibox.memory.core.llm.LlmPreferences
@@ -36,6 +37,7 @@ import java.io.File
  * b10 `q001..q050`（自然均衡：2 跳 18 / 3 跳 16 / 4 跳 16）。
  */
 @RunWith(AndroidJUnit4::class)
+@LargeTest
 class B11SupportEvalTest {
 
     private companion object {

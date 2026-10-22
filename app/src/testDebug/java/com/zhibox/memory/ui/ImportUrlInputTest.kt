@@ -3,13 +3,12 @@ package com.zhibox.memory.ui
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.core.app.ApplicationProvider
 import com.zhibox.memory.R
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
 import java.util.concurrent.atomic.AtomicBoolean
@@ -19,9 +18,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /**
- * B14.1：导入屏「网页 URL 导入」输入/IME/按钮交互的 Compose UI 测试（instrumentation）。
+ * B14.1：导入屏「网页 URL 导入」输入/IME/按钮交互的 Compose UI 测试（Robolectric）。
  *
  * 覆盖（全部通过 [ImportContent] 无状态渲染 + 回调捕获，不访问 DB/网络）：
  * 1. 输入 URL 触发 `onUrlInputChange`；
@@ -32,13 +34,15 @@ import org.junit.runner.RunWith
  *
  * 依赖既有 `androidx.compose.ui:ui-test-junit4` + debug `ui-test-manifest`（B5 基线）。
  */
-@RunWith(AndroidJUnit4::class)
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w407dp-h853dp-xxhdpi")
 class ImportUrlInputTest {
 
     @get:Rule
     val composeRule = createComposeRule()
 
-    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
     private fun str(id: Int): String = context.getString(id)
 
@@ -135,7 +139,7 @@ class ImportUrlInputTest {
     fun urlSection_可见() {
         setImportContent(urlInput = "")
 
-        composeRule.onNodeWithText(str(R.string.import_url_section)).assertIsDisplayed()
+        composeRule.onAllNodesWithText(str(R.string.import_url_section))[0].assertIsDisplayed()
     }
 
     private companion object {

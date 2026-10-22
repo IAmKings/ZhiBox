@@ -3,6 +3,7 @@ package com.zhibox.memory.core.sag
 import android.content.Context
 import androidx.room.withTransaction
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
 import com.zhibox.memory.core.embedding.EmbeddingRuntime
 import com.zhibox.memory.core.extraction.EmbeddingSagGateway
@@ -42,6 +43,7 @@ import java.nio.ByteOrder
  * 临时/评测型 instrumentation：不做 Gate 断言，结果导出 files/b10-eval/results.json 由宿主机计分。
  */
 @RunWith(AndroidJUnit4::class)
+@LargeTest
 class B10MultiHopEvalTest {
 
     private fun blob(values: FloatArray): ByteArray {

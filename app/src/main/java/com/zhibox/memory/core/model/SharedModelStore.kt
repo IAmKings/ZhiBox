@@ -49,26 +49,46 @@ object SharedModelStore {
      *         此时**不写偏好**，避免下次启动显示"已连接"但实际无权限的假状态。
      */
     fun setTreeUri(context: Context, uri: Uri): Boolean {
-        // 释放旧授权可能因 URI 失效/已释放抛异常：旧授权清理失败不应阻断新授权
-        treeUri(context)?.let { old ->
-            runCatching {
+        val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+            android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        return replaceTreeUri(
+            old = treeUri(context),
+            new = uri,
+            hasNewPermission = hasPermission(context, uri),
+            acquire = { target ->
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(target, flags)
+                }.isSuccess
+            },
+            persist = { target ->
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .edit().putString(KEY_TREE_URI, target.toString()).commit()
+            },
+            release = { target ->
                 context.contentResolver.releasePersistableUriPermission(
-                    old,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                        android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                    target,
+                    flags,
                 )
-            }
+            },
+        )
+    }
+
+    /** Acquire → persist → release keeps the old directory usable on every failure path. */
+    internal fun replaceTreeUri(
+        old: Uri?,
+        new: Uri,
+        hasNewPermission: Boolean,
+        acquire: (Uri) -> Boolean,
+        persist: (Uri) -> Boolean,
+        release: (Uri) -> Unit,
+    ): Boolean {
+        if (old == new && hasNewPermission) return true
+        if (!hasNewPermission && !acquire(new)) return false
+        if (!persist(new)) {
+            if (!hasNewPermission && old != new) runCatching { release(new) }
+            return false
         }
-        val granted = runCatching {
-            context.contentResolver.takePersistableUriPermission(
-                uri,
-                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                    android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-        }.isSuccess
-        if (!granted) return false
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(KEY_TREE_URI, uri.toString()).apply()
+        if (old != null && old != new) runCatching { release(old) }
         return true
     }
 

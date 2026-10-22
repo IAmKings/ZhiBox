@@ -3,6 +3,7 @@ package com.zhibox.memory.core.search
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.filters.LargeTest
 import com.zhibox.memory.core.text.BigramTokenizer
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.ChunkEntity
@@ -36,6 +37,7 @@ import org.junit.Test
  * 复跑口径：`./gradlew :app:connectedDebugAndroidTest --tests "*Fts10kPerfTest*"`（由 Lead 统一执行）。
  * 不把耗时设为硬门禁（仅 5s 上限防病态回归），基线以输出为准。
  */
+@LargeTest
 class Fts10kPerfTest {
 
     private lateinit var db: AppDatabase

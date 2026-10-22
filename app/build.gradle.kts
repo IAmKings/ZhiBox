@@ -1,3 +1,4 @@
+import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -80,6 +81,10 @@ android {
         }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // 默认真机门只跑稳定回归：评测/性能基准用 @LargeTest 标记后按需单独执行。
+        // 单项失控最多 3 分钟，避免 UTP 默认近一年超时把 connectedDebugAndroidTest 永久挂住。
+        testInstrumentationRunnerArguments["notAnnotation"] = "androidx.test.filters.LargeTest"
+        testInstrumentationRunnerArguments["timeout_msec"] = "180000"
 
         // B4-4 构建可追溯字段（BuildConfig；见文件顶部 buildGitSha/buildTimeIso 的取值策略）
         buildConfigField("String", "BUILD_GIT_SHA", "\"$buildGitSha\"")
@@ -200,6 +205,11 @@ ksp {
 //   · 已知限制：Gradle 校验不覆盖动态版本（本项目全部为精确版本）与本地 jar。
 // ---------------------------------------------------------------------------
 
+// Runner timeout cannot always interrupt an OEM system call; bound the host task as the final guard.
+tasks.matching { it.name == "connectedDebugAndroidTest" }.configureEach {
+    timeout.set(Duration.ofMinutes(15))
+}
+
 // B4-1a：tasks-retrieval 1.1.1 的 POM 传递依赖 litertlm-android:0.17.0-alpha1，
 // 但该 alpha 缺少运行时所需的 com.google.ai.edge.litertlm.ActivationDataType
 // （运行时 NoClassDefFoundError，经 AAR 反编译核验 0.18.0 才包含该类）。
@@ -279,14 +289,21 @@ dependencies {
     // 不进入 app APK/release）。AAR 约 130KB + 传递 androidx.tracing。
     androidTestImplementation(libs.androidx.test.uiautomator)
     androidTestImplementation(libs.kotlinx.coroutines.test)
-    // B5：Compose UI instrumentation（真机 5 条：搜索命中/拒绝态/证据返回/来源空态/重建；
-    // createComposeRule + createEmptyComposeRule + ActivityScenario.recreate）
+    // 真机只保留设备能力测试（例如 ActivityScenario.recreate）；可移植 Compose UI 测试在 Robolectric。
     // 版本由 Compose BOM 管理（1.11.4）；ui-test-junit4 传递 androidx.test.ext:junit（AndroidJUnit4）。
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     testImplementation(libs.kotlinx.coroutines.test)
     // B5：Robolectric（JVM Android 单测；仅 test classpath，不进 APK/release）
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.runner)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
+    // UI 测试宿主 Activity 的 manifest 也需进入 JVM test classpath（release unit test 同源）。
+    testImplementation(libs.androidx.ui.test.manifest)
+    // ui-test-junit4 传递的 test-storage 仍声明 jsr305 2.0.2；仓库已统一使用可获取的 3.0.2。
+    testImplementation(libs.jsr305)
     debugImplementation(libs.androidx.ui.tooling)
     // B5：Compose 测试宿主 Activity（仅 debug 变体，release 不包含）
     debugImplementation(libs.androidx.ui.test.manifest)

@@ -95,6 +95,7 @@ data class SettingsUiState(
     val error: String? = null,
     /** 备份迁移状态/错误 */
     val migrationMessage: String? = null,
+    val hasAutoBackup: Boolean = false,
     val reembedDone: Int = 0,
     val reembedTotal: Int = -1,
     val lastReembed: String? = null,
@@ -109,6 +110,7 @@ data class SettingsUiState(
     val diagMessage: String? = null,
     val importPreview: KnowledgeBackup.ImportPreview? = null,
     val importUri: Uri? = null,
+    val importFile: File? = null,
     // ---- B8：SAG 增强 / LLM（未配置时离线检索不受影响；默认禁网） ----
     /** LLM 配置（仅掩码 key）；null = 未配置 */
     val llm: LlmConfigUi? = null,
@@ -215,6 +217,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val indexHealth: IngestRepository.IndexHealth?,
         val legacySpaces: List<LegacySpaceUi>,
         val legacySpacesError: String?,
+        val hasAutoBackup: Boolean,
         // B8
         val llm: LlmConfigUi?,
         val llmError: String?,
@@ -273,6 +276,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         indexHealth = s.indexHealth,
                         legacySpaces = s.legacySpaces,
                         legacySpacesError = s.legacySpacesError,
+                        hasAutoBackup = s.hasAutoBackup,
                         llm = s.llm,
                         llmError = s.llmError,
                         sagEnabled = s.sagEnabled,
@@ -371,6 +375,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         } else {
             emptyList()
         }
+        val hasAutoBackup = KnowledgeBackup.latestSnapshot(app) != null
         return Snapshot(
             model = model,
             preference = preference,
@@ -387,6 +392,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             indexHealth = indexHealth,
             legacySpaces = legacySpaces,
             legacySpacesError = legacySpacesError,
+            hasAutoBackup = hasAutoBackup,
             llm = llm,
             llmError = llmError,
             sagEnabled = sagEnabled,
@@ -573,7 +579,34 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         ) {
             val result = KnowledgeBackup.preview(app, uri)
             result.onSuccess { preview ->
-                update { it.copy(importPreview = preview, importUri = uri, migrationMessage = null) }
+                update {
+                    it.copy(importPreview = preview, importUri = uri, importFile = null, migrationMessage = null)
+                }
+            }.onFailure { t ->
+                update {
+                    it.copy(migrationMessage = str(R.string.settings_backup_read_failed, t.readableMessage()))
+                }
+            }
+        }
+    }
+
+    fun previewLatestSnapshot() {
+        safeLaunch(
+            onError = { t ->
+                update {
+                    it.copy(migrationMessage = str(R.string.settings_backup_read_failed, t.readableMessage()))
+                }
+            },
+        ) {
+            val file = KnowledgeBackup.latestSnapshot(app)
+            if (file == null) {
+                update { it.copy(migrationMessage = str(R.string.settings_restore_unavailable)) }
+                return@safeLaunch
+            }
+            KnowledgeBackup.previewFromFile(app, file).onSuccess { preview ->
+                update {
+                    it.copy(importPreview = preview, importUri = null, importFile = file, migrationMessage = null)
+                }
             }.onFailure { t ->
                 update {
                     it.copy(migrationMessage = str(R.string.settings_backup_read_failed, t.readableMessage()))
@@ -583,11 +616,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun dismissImportPreview() {
-        update { it.copy(importPreview = null, importUri = null) }
+        update { it.copy(importPreview = null, importUri = null, importFile = null) }
     }
 
     fun confirmImport(dropIncompatibleGpuVectors: Boolean) {
-        val uri = _state.value.importUri ?: return
+        val uri = _state.value.importUri
+        val file = _state.value.importFile
+        if (uri == null && file == null) return
         // B12：导入前快照预览，成功后据此给出 SAG 补抽取提示（v1/v2 或 SAG 空包）
         val preview = _state.value.importPreview
         update { it.copy(migrationMessage = str(R.string.settings_backup_importing), importPreview = null) }
@@ -598,8 +633,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 }
             },
         ) {
-            val result = KnowledgeBackup.import(app, uri, dropIncompatibleGpuVectors)
-            result.onSuccess { n ->
+            val result = if (file != null) {
+                KnowledgeBackup.importFromFile(app, file, dropIncompatibleGpuVectors)
+            } else {
+                KnowledgeBackup.import(app, checkNotNull(uri), dropIncompatibleGpuVectors)
+            }
+            result.onSuccess { outcome ->
                 val sagHint = when {
                     preview != null && preview.formatVersion < 3 -> "\n" + str(R.string.settings_import_legacy_sag_hint)
                     preview != null && preview.eventCount == 0 && preview.extractionJobCount == 0 ->
@@ -607,9 +646,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     else -> ""
                 }
                 update {
+                    val warning = if (outcome.warning == KnowledgeBackup.ImportWarning.SAG_FTS_REBUILD_FAILED) {
+                        "\n" + str(R.string.settings_backup_import_index_warning)
+                    } else {
+                        ""
+                    }
                     it.copy(
-                        migrationMessage = str(R.string.settings_backup_import_done, n) + sagHint,
+                        migrationMessage = str(
+                            R.string.settings_backup_import_done,
+                            outcome.restoredCount,
+                        ) + warning + sagHint,
                         importUri = null,
+                        importFile = null,
                     )
                 }
                 refresh()

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.LargeTest
 import com.zhibox.memory.core.extraction.SagFtsRebuilder
 import com.zhibox.memory.data.db.AppDatabase
 import com.zhibox.memory.data.db.ChunkEntity
@@ -36,6 +37,7 @@ import org.junit.runner.RunWith
  * - 打印 `B15_EXPLORE_PERF ...` 原始行供性能卡汇报。
  */
 @RunWith(AndroidJUnit4::class)
+@LargeTest
 class ExploreGraphPerfBenchmarkInstrumentedTest {
 
     private lateinit var context: Context

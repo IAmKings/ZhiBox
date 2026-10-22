@@ -204,6 +204,22 @@ interface ChunkDao {
     )
     suspend fun searchFtsOrdered(matchQuery: String, limit: Int, readyStatus: String): List<Long>
 
+    /** 来源限定检索：在 SQL LIMIT 前过滤来源，避免全库高排名候选挤掉范围内结果。 */
+    @Query(
+        "SELECT chunk_fts.chunkId FROM chunk_fts " +
+            "JOIN chunk c ON c.id = chunk_fts.chunkId " +
+            "JOIN document d ON d.id = c.documentId " +
+            "WHERE chunk_fts MATCH :matchQuery AND d.status = :readyStatus " +
+            "AND d.sourceId IN (:sourceIds) " +
+            "ORDER BY chunk_fts.rowid LIMIT :limit"
+    )
+    suspend fun searchFtsOrderedBySources(
+        matchQuery: String,
+        limit: Int,
+        readyStatus: String,
+        sourceIds: List<String>,
+    ): List<Long>
+
     /**
      * 兼容重载（暂未迁移的旧调用方/诊断工具）：等价于 readyStatus = [DocStatus.READY.value]。
      * 新代码请显式传枚举值，避免“只读 ready”这一契约在调用点隐形。
@@ -228,6 +244,13 @@ interface ChunkDao {
 
     @Query("SELECT * FROM chunk WHERE id IN (:ids)")
     suspend fun chunksByIds(ids: List<Long>): List<ChunkEntity>
+
+    /** 向量通道来源范围：只返回 ready 文档的 chunk id。 */
+    @Query(
+        "SELECT c.id FROM chunk c JOIN document d ON d.id = c.documentId " +
+            "WHERE d.status = :readyStatus AND d.sourceId IN (:sourceIds) ORDER BY c.id"
+    )
+    suspend fun readyIdsBySources(sourceIds: List<String>, readyStatus: String): List<Long>
 
     /** W4-3 FTS 重建输入（全量） */
     @Query("SELECT * FROM chunk ORDER BY documentId, ordinal")
@@ -304,6 +327,22 @@ interface EmbeddingDao {
     suspend fun vectorsForSpacePage(
         spaceId: String,
         readyStatus: String,
+        limit: Int,
+        offset: Int,
+    ): List<VectorRow>
+
+    /** 与 [vectorsForSpacePage] 同过滤，但只返回指定来源的 ready chunk（调用方按批传入，规避 SQLite 变量上限）。 */
+    @Query(
+        "SELECT e.chunkId AS chunkId, e.vectorBlob AS vectorBlob FROM chunk_embedding e " +
+            "JOIN chunk c ON c.id = e.chunkId " +
+            "JOIN document d ON d.id = c.documentId " +
+            "WHERE e.embeddingSpaceId = :spaceId AND e.role = 'content' AND d.status = :readyStatus " +
+            "AND d.sourceId IN (:sourceIds) ORDER BY e.chunkId LIMIT :limit OFFSET :offset"
+    )
+    suspend fun vectorsForSpaceSourcesPage(
+        spaceId: String,
+        readyStatus: String,
+        sourceIds: List<String>,
         limit: Int,
         offset: Int,
     ): List<VectorRow>

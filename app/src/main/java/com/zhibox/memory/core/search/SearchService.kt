@@ -74,7 +74,9 @@ class SearchService(
         val spaceId: String?,
         val providerId: String?,
         val modelId: String?,
+        /** 向量候选数；指定 sourceIds 时仅统计范围内候选。 */
         val vectorCandidates: Int,
+        /** 关键词候选数；指定 sourceIds 时仅统计范围内候选。 */
         val keywordCandidates: Int,
         val elapsedMs: Long,
         val hits: List<SearchHit>,
@@ -85,8 +87,8 @@ class SearchService(
     /**
      * 检索（向量 + 关键词 + RRF 融合）。
      *
-     * @param sourceIds B10：来源范围过滤（空=全库）。在候选融合后按 document.sourceId 过滤；
-     *   默认空列表保持旧行为（B9/UI/benchmark 调用点零改动）。
+     * @param sourceIds B10：来源范围过滤（空=全库）。过滤在候选截断与融合前完成，避免全库
+     *   高排名候选挤掉范围内结果；默认空列表保持旧行为。
      */
     suspend fun search(
         query: String,
@@ -133,19 +135,26 @@ class SearchService(
             }
 
             // ---- 排序核心（向量扫描 + 关键词召回 + 融合；searchChannels 评测复用）----
-            val ranking = rankChannels(provider, spaceId, signature, queryBounded, topK)
+            val allowedChunkIds = sourceIds.takeIf { it.isNotEmpty() }
+                ?.let { ids ->
+                    ids.distinct().chunked(SQL_VARIABLE_BATCH)
+                        .flatMap { db.chunkDao().readyIdsBySources(it, DocStatus.READY.value) }
+                        .toHashSet()
+                }
+            val ranking = rankChannels(
+                provider = provider,
+                spaceId = spaceId,
+                signature = signature,
+                query = queryBounded,
+                topK = topK,
+                sourceIds = sourceIds,
+                allowedChunkIds = allowedChunkIds,
+            )
             val vectorRanked = ranking.vectorChunks
             val keywordRanked = ranking.keywordChunks
 
             // ---- 证据回溯（chunk → document → source，批量回填）----
-            val allHits = buildHits(ranking.fused)
-            // B10：来源范围过滤（buildHits 后过滤，保持 candidate 生成逻辑不变）
-            val hits = if (sourceIds.isEmpty()) {
-                allHits
-            } else {
-                val allowed = sourceIds.toHashSet()
-                allHits.filter { it.sourceId in allowed }
-            }
+            val hits = buildHits(ranking.fused)
             SearchResult(
                 query = queryBounded,
                 spaceId = spaceId,
@@ -209,6 +218,8 @@ class SearchService(
         signature: VectorSignature,
         query: String,
         topK: Int,
+        sourceIds: List<String> = emptyList(),
+        allowedChunkIds: Set<Long>? = null,
     ): ChannelRanking {
         // ---- 向量通道：PRELOADED 精确扫描（进程内矩阵缓存，P1-5）----
         val qvec = provider.embedQuery(query) // 同时回填 descriptor.dimensions
@@ -223,7 +234,9 @@ class SearchService(
         val candidateCap = topK * CANDIDATE_FACTOR
         val vectorRanked: List<Long> =
             if (shouldStreamMatrix(signature.rowCount, dim)) {
-                rankVectorsStreaming(spaceId, dim, qvec, qNorm, candidateCap)
+                rankVectorsStreaming(
+                    spaceId, dim, qvec, qNorm, candidateCap, sourceIds, allowedChunkIds,
+                )
             } else {
                 val spaceMatrix = loadOrBuildMatrix(spaceId, signature, dim)
                     ?: return ChannelRanking(emptyList(), emptyList(), emptyList())
@@ -237,9 +250,7 @@ class SearchService(
                     for (k in 0 until dim) dot += matrix[base + k].toDouble() * qvec[k].toDouble()
                     scores[i] = if (qNorm == 0.0) 0.0 else dot / qNorm // 向量 L2 归一化，分母只需查询侧
                 }
-                (0 until n).sortedByDescending { scores[it] }
-                    .take(candidateCap)
-                    .map(chunkIds::get)
+                rankByScore(chunkIds, scores, allowedChunkIds, candidateCap)
             }
 
         // ---- 关键词通道：FTS4 bigram OR 召回 + bigram 覆盖数重排（G3 的 AND 语义对自然语言
@@ -252,9 +263,22 @@ class SearchService(
             // 只能先取回 chunkId 列表（≤5000×8B，内存可忽略），Kotlin 侧算覆盖分后截候选。
             // 旧实现 limit=topK×12 按入库顺序截断，高频 bigram 的长尾 chunk 永远进不了候选
             //（long-tail 评测 keyword_candidates_avg=0.8 的根因之一）。
-            val ftsIds = db.chunkDao().searchFtsOrdered(
-                orQuery, KEYWORD_FULL_HIT_LIMIT, DocStatus.READY.value,
-            )
+            val ftsIds = if (sourceIds.isEmpty()) {
+                db.chunkDao().searchFtsOrdered(
+                    orQuery, KEYWORD_FULL_HIT_LIMIT, DocStatus.READY.value,
+                )
+            } else {
+                sourceIds.distinct().chunked(SQL_VARIABLE_BATCH)
+                    .flatMap { batch ->
+                        db.chunkDao().searchFtsOrderedBySources(
+                            orQuery, KEYWORD_FULL_HIT_LIMIT, DocStatus.READY.value, batch,
+                        )
+                    }
+                    .asSequence()
+                    .distinct()
+                    .take(KEYWORD_FULL_HIT_LIMIT)
+                    .toList()
+            }
             if (ftsIds.isEmpty()) {
                 emptyList()
             } else {
@@ -284,31 +308,47 @@ class SearchService(
         qvec: FloatArray,
         qNorm: Double,
         cap: Int,
+        sourceIds: List<String>,
+        allowedChunkIds: Set<Long>?,
     ): List<Long> {
         if (cap <= 0) return emptyList()
         // 有界候选：按页追加后定期裁剪，保持 O(2×cap) 内存；分数相同按 chunkId 升序保证确定性
         val best = ArrayList<Pair<Double, Long>>(cap * 2)
-        var offset = 0
-        while (true) {
-            val page = db.embeddingDao().vectorsForSpacePage(
-                spaceId, DocStatus.READY.value, STREAM_PAGE_SIZE, offset,
-            )
-            if (page.isEmpty()) break
-            for (row in page) {
-                check(row.vectorBlob.size == dim * 4) {
-                    "vector blob 尺寸与空间维度不符（dim=$dim）"
+        val sourceBatches = if (sourceIds.isEmpty()) {
+            listOf(emptyList())
+        } else {
+            sourceIds.distinct().chunked(SQL_VARIABLE_BATCH)
+        }
+        for (sourceBatch in sourceBatches) {
+            var offset = 0
+            while (true) {
+                val page = if (sourceBatch.isEmpty()) {
+                    db.embeddingDao().vectorsForSpacePage(
+                        spaceId, DocStatus.READY.value, STREAM_PAGE_SIZE, offset,
+                    )
+                } else {
+                    db.embeddingDao().vectorsForSpaceSourcesPage(
+                        spaceId, DocStatus.READY.value, sourceBatch, STREAM_PAGE_SIZE, offset,
+                    )
                 }
-                val buf = ByteBuffer.wrap(row.vectorBlob).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
-                var dot = 0.0
-                for (k in 0 until dim) dot += buf.get(k).toDouble() * qvec[k].toDouble()
-                val score = if (qNorm == 0.0) 0.0 else dot / qNorm
-                best.add(score to row.chunkId)
+                if (page.isEmpty()) break
+                for (row in page) {
+                    if (allowedChunkIds != null && row.chunkId !in allowedChunkIds) continue
+                    check(row.vectorBlob.size == dim * 4) {
+                        "vector blob 尺寸与空间维度不符（dim=$dim）"
+                    }
+                    val buf = ByteBuffer.wrap(row.vectorBlob).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+                    var dot = 0.0
+                    for (k in 0 until dim) dot += buf.get(k).toDouble() * qvec[k].toDouble()
+                    val score = if (qNorm == 0.0) 0.0 else dot / qNorm
+                    best.add(score to row.chunkId)
+                }
+                if (best.size > cap * 2) {
+                    best.sortWith(compareByDescending<Pair<Double, Long>> { it.first }.thenBy { it.second })
+                    while (best.size > cap) best.removeAt(best.size - 1)
+                }
+                offset += page.size
             }
-            if (best.size > cap * 2) {
-                best.sortWith(compareByDescending<Pair<Double, Long>> { it.first }.thenBy { it.second })
-                while (best.size > cap) best.removeAt(best.size - 1)
-            }
-            offset += page.size
         }
         return best
             .sortedWith(compareByDescending<Pair<Double, Long>> { it.first }.thenBy { it.second })
@@ -454,6 +494,23 @@ class SearchService(
         /** B2-10：是否走流式扫描（避免一次性分配超大矩阵）。 */
         internal fun shouldStreamMatrix(rowCount: Int, dim: Int): Boolean =
             estimatedMatrixBytes(rowCount, dim) > streamThresholdBytes
+
+        /** 来源资格先于 top-K；同分按 chunkId 升序，保持矩阵行的既有稳定顺序。 */
+        internal fun rankByScore(
+            chunkIds: LongArray,
+            scores: DoubleArray,
+            allowed: Set<Long>?,
+            cap: Int,
+        ): List<Long> {
+            if (cap <= 0) return emptyList()
+            return chunkIds.indices
+                .asSequence()
+                .filter { it < scores.size && (allowed == null || chunkIds[it] in allowed) }
+                .sortedWith(compareByDescending<Int> { scores[it] }.thenBy { chunkIds[it] })
+                .take(cap)
+                .map { chunkIds[it] }
+                .toList()
+        }
 
         /** 测试钩子：注入流式门限；传 null 恢复默认。 */
         internal fun setStreamThresholdBytesForTest(bytes: Long?) {
