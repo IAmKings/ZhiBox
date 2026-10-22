@@ -2,6 +2,7 @@ package com.zhibox.memory.core.backup
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.annotation.VisibleForTesting
 import androidx.room.Transactor
 import androidx.room.useReaderConnection
@@ -1470,7 +1471,10 @@ object KnowledgeBackup {
     ): Throwable? {
         val db = AppDatabase.get(context)
         try {
-            return runCatchingCancellable { rebuild(db) }.exceptionOrNull()
+            return runCatchingCancellable { rebuild(db) }.exceptionOrNull()?.also { failure ->
+                // 保留原因用于 Settings 警告/诊断；只记录异常，不记录文档内容或密钥。
+                Log.w("KnowledgeBackup", "SAG FTS rebuild failed after import", failure)
+            }
         } finally {
             // 恢复包内 queued 抽取任务必须唤醒 Worker；WorkManager 未初始化（Robolectric 等）
             // 时不能把已成功的导入改判失败，任务保留 queued 由 App 启动/补抽取入口兜底。
