@@ -9,7 +9,7 @@
 - **R1/R2/R5 回归**：快照失败不动库、生成 50 文档/200 chunk 导出导入回环、导入/重嵌入/抽取活动期间导出拒绝、来源范围端到端检索。
 - **设备验收**：K40 官方 signed RC clean install、PJZ110 同签名 upgrade smoke 通过；R1 人工导出导入验收通过；R5 core 自动化通过。
 - **限制**：Agent/问答真实质量仍 `QUALITY_CLAIM_ALLOWED=false`；R5 真机大库 ANR/进程中断仍建议发布前补测。
-- **签名 RC**：待按 `docs/RELEASE.md` 从本版本重建（旧 v0.1.2 产物不再适用）。
+- **签名 RC**：`dist/zhibox-0.1.3-bdc8be2-release-signed.apk`（70,164,017 bytes，SHA-256 `0f47cdffcea8eb2d4b626401904686393bc2275357f2a2d651070ee6fdf4a03b`，apksigner PASS）；PJZ110 同签名覆盖升级 smoke 通过。
 
 ## 0.1 v0.1.2（历史，未发布）
 

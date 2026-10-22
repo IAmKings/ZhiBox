@@ -289,3 +289,13 @@ Manifest / 安全（P0-3、P1-10 回归）
 - **clean-install smoke：K40（M2012K10C）`adb install` 全新安装 PASS**；cold start 主页空态/检索/设置均正常，模型缺失状态正确提示；未做 destructive import/delete。
 - 未做：模型下载/LLM/聊天功能 smoke（需 key/model）；R5 并发压力仍按豁免记录。
 - 结论：signed RC 已完成 clean-install + upgrade smoke；仍未 tag/未发布，Agent 质量声明仍为 false。
+
+---
+
+## 10. 2026-10-23 v0.1.3 signed RC / 发布准备
+
+- 产物：`dist/zhibox-0.1.3-bdc8be2-release-signed.apk`
+- versionCode 4 / versionName 0.1.3；SHA-256 `0f47cdffcea8eb2d4b626401904686393bc2275357f2a2d651070ee6fdf4a03b`
+- apksigner PASS；PJZ110 同签名覆盖升级成功，数据/LLM 保留，启动 smoke 通过。
+- 证据：`docs/review/evidence/V0.1.3-rc-pjz110-smoke.txt`、`V0.1.3-RELEASE_CANDIDATE.json`。
+- 尚未打 tag/发布；下一步按本手册流程触发 tag Release。

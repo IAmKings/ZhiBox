@@ -1,0 +1,18 @@
+{
+  "name": "zhibox-0.1.3-bdc8be2-release-signed.apk",
+  "path": "dist/zhibox-0.1.3-bdc8be2-release-signed.apk",
+  "versionName": "0.1.3",
+  "versionCode": 4,
+  "sizeBytes": 70164017,
+  "sha256": "0f47cdffcea8eb2d4b626401904686393bc2275357f2a2d651070ee6fdf4a03b",
+  "gitHead": "bdc8be2",
+  "signedBy": "release keystore (same as v0.1.1)",
+  "signerCertSha256": "b1d136badcc7e032a39d8504fb050f98f444017aeb5f5cfce66256afec1db1d1",
+  "apksigner": "PASS",
+  "status": "signed 0.1.3 RC rebuilt; PJZ110 same-signature upgrade smoke PASS; K40 clean-install smoke was on 0.1.2 and code changes since are version/docs",
+  "smoke": {
+    "device": "PJZ110 1fc6056b",
+    "result": "upgrade+launch PASS; version 0.1.3 (4); data preserved"
+  },
+  "qualityClaimAllowed": false
+}
