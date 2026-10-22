@@ -59,3 +59,9 @@ __pycache__/
 
 # 评审中间产物（最终 *_FIX_REPORT.md / 评审报告仍入库）
 .review/
+
+# Trellis / Agent 工具本地缓存（运行期产物，不入库）
+# · .dsh/：DeepSeek Harness 会话与运行态
+# · .codegraph/：代码索引缓存（数十 MB，可随时重建）
+.dsh/
+.codegraph/
