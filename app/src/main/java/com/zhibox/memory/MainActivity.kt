@@ -118,6 +118,8 @@ class MainActivity : ComponentActivity() {
                         },
                         // 文档详情屏尚未落地：先落到来源页（见 HomeScreen 顶部注释）
                         onOpenDocument = { screen = "sources" },
+                        // M1：智能状态入口先落到设置页；M2 接入「智能状态」面板后改这里
+                        onOpenIntelligence = { screen = "settings" },
                     )
                 }
             }

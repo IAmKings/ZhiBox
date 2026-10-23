@@ -4,16 +4,26 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zhibox.memory.R
+import com.zhibox.memory.core.embedding.EmbeddingRuntime
+import com.zhibox.memory.core.ingest.IngestRepository
+import com.zhibox.memory.core.llm.KeystoreLlmConfigStore
+import com.zhibox.memory.core.model.PathPreferences
+import com.zhibox.memory.core.model.SharedModelStore
 import com.zhibox.memory.data.db.AppDatabase
+import com.zhibox.memory.data.db.AppKvEntity
 import com.zhibox.memory.data.db.DocumentEntity
 import com.zhibox.memory.data.db.DocumentPreviewRow
 import com.zhibox.memory.data.db.DocStatus
 import com.zhibox.memory.data.db.SourceEntity
 import com.zhibox.memory.data.db.SourceStatus
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -72,6 +82,94 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = HomeUiState.Loading,
         )
+
+    // ─────────────────── 智能状态（M1：绿点说真话） ───────────────────
+
+    private val _intelligence = MutableStateFlow(IntelligenceStatus.Loading)
+
+    /** 首页左上角状态点消费：四态 + 待处理项数 + 进行中任务（只影响动效）。 */
+    val intelligence: StateFlow<IntelligenceStatus> = _intelligence.asStateFlow()
+
+    private val _showOnboarding = MutableStateFlow(false)
+
+    /** 首次引导条：仅"未就绪 + 用户未处理过"时展示（一次性）。 */
+    val showOnboarding: StateFlow<Boolean> = _showOnboarding.asStateFlow()
+
+    /**
+     * 读取一次智能状态快照。
+     *
+     * 由首页进入组合时调用（从设置页返回会重新进入组合 → 颜色立即刷新）。
+     * 所有读取都在 IO 线程；单项失败按 `Unknown` 降级，不阻塞其他状态。
+     */
+    fun refreshIntelligence() {
+        viewModelScope.launch {
+            val readings = withContext(Dispatchers.IO) { readIntelligenceReadings() }
+            val status = evaluateIntelligence(readings)
+            _intelligence.value = status
+            val seen = withContext(Dispatchers.IO) { onboardingSeen() }
+            _showOnboarding.value = status.needsOnboarding && !seen
+        }
+    }
+
+    /** 用户点过引导条 CTA 或关闭：持久化标记，不再打扰（模型缺失时状态点仍保持灰色提示）。 */
+    fun onOnboardingSeen() {
+        _showOnboarding.value = false
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                db.appKvDao().put(
+                    AppKvEntity(
+                        key = KEY_INTELLIGENCE_ONBOARDED,
+                        value = "1",
+                        updatedAt = System.currentTimeMillis(),
+                    ),
+                )
+            }
+        }
+    }
+
+    private suspend fun readIntelligenceReadings(): IntelligenceReadings {
+        val app = getApplication<Application>()
+        // 模型：文件扫描（IO）
+        val modelFile = runCatching { EmbeddingRuntime.findModel(app) }.getOrNull()
+        val modelBroken = modelFile != null &&
+            (!modelFile.exists() || modelFile.length() == 0L)
+        // 向量空间（DB）
+        val spaceCount = runCatching { db.embeddingDao().allMeta().size }.getOrDefault(-1)
+        // GPU 档位偏好（只能表达偏好，真实可用性事前不可知）
+        val gpuMode = runCatching { PathPreferences.gpuMode(app) }.getOrNull()
+        // 共享目录授权
+        val storeState = runCatching { SharedModelStore.state(app) }.getOrNull()
+        // LLM 配置：load() 抛异常即"配置存在但读取失败"（Keystore/损坏）
+        var llmConfigured = false
+        var llmLoadError = false
+        runCatching { KeystoreLlmConfigStore(app).load() }
+            .onSuccess { llmConfigured = it != null }
+            .onFailure { llmLoadError = true }
+        // 旧模型空间（B7 检测；失败按未知 -1，不误报待处理）
+        val legacyCount = runCatching {
+            IngestRepository(app).legacySpacesReport().size
+        }.getOrDefault(-1)
+        // SAG 抽取计数：失败按未知，不误报
+        val counts = runCatching { db.extractionJobDao().readCounts() }.getOrNull()
+
+        return IntelligenceReadings(
+            modelName = modelFile?.name,
+            modelFileBroken = modelBroken,
+            spaceCount = spaceCount,
+            gpuMode = gpuMode,
+            llmConfigured = llmConfigured,
+            llmLoadError = llmLoadError,
+            legacySpaceCount = legacyCount,
+            extractionFailedCount = counts?.failed ?: -1,
+            extracting = (counts?.running ?: 0) > 0,
+            storePermissionLost = storeState == SharedModelStore.State.PERMISSION_LOST,
+            // M1 不做索引全表检查（重查询，代价高）：保持"未检查"
+            indexUnhealthy = false,
+        )
+    }
+
+    private suspend fun onboardingSeen(): Boolean =
+        runCatching { db.appKvDao().get(KEY_INTELLIGENCE_ONBOARDED) != null }.getOrDefault(false)
 
     /** 切换分类药丸。 */
     fun selectFilter(value: HomeFilter) {
@@ -141,6 +239,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
+        /** 一次性引导标记（app_kv）：用户处理/关闭后不再打扰。 */
+        const val KEY_INTELLIGENCE_ONBOARDED = "intelligence_onboarded"
+
         /** 首页只展示最近 N 条（超出走检索/来源页），避免 LazyColumn 首帧开销。 */
         const val MAX_ITEMS = 40
 

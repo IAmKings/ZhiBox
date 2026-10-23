@@ -1,5 +1,6 @@
 package com.zhibox.memory.ui
 
+import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -37,9 +39,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,12 +58,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -106,9 +114,19 @@ fun HomeScreen(
     /** 仅 debug 构建传入；release 为 null 时不渲染实验入口（P0-3 实验隔离）。 */
     onOpenDiagnostics: (() -> Unit)? = null,
     onOpenDocument: (documentId: String) -> Unit = {},
+    /**
+     * 智能状态入口。M1 先落到设置页（模型商店/嵌入路径/GPU/LLM 都在那里）；
+     * M2 接入「智能状态」面板后只需改这一处映射。
+     */
+    onOpenIntelligence: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val intelligence by viewModel.intelligence.collectAsStateWithLifecycle()
+    val showOnboarding by viewModel.showOnboarding.collectAsStateWithLifecycle()
+
+    // 每次回到首页刷新一次（从设置页返回会重新进入组合 → 状态点颜色立即跟上）
+    LaunchedEffect(Unit) { viewModel.refreshIntelligence() }
     // 输入框内容属于用户输入：rememberSaveable 保证旋转/进程重建后不丢
     var draft by rememberSaveable { mutableStateOf("") }
 
@@ -129,6 +147,14 @@ fun HomeScreen(
         onOpenSettings = onOpenSettings,
         onOpenDiagnostics = onOpenDiagnostics,
         onOpenDocument = onOpenDocument,
+        intelligence = intelligence,
+        showOnboarding = showOnboarding,
+        // 点引导条 CTA = 表示"我看到了"，先落标记再跳转；关闭同理（不再打扰）
+        onOpenIntelligence = {
+            viewModel.onOnboardingSeen()
+            onOpenIntelligence()
+        },
+        onDismissOnboarding = { viewModel.onOnboardingSeen() },
     )
 }
 
@@ -148,6 +174,10 @@ private fun HomeContent(
     onOpenSettings: () -> Unit,
     onOpenDiagnostics: (() -> Unit)?,
     onOpenDocument: (String) -> Unit,
+    intelligence: IntelligenceStatus,
+    showOnboarding: Boolean,
+    onOpenIntelligence: () -> Unit,
+    onDismissOnboarding: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.zhiBoxColors
@@ -170,6 +200,8 @@ private fun HomeContent(
                 .fillMaxSize(),
         ) {
             HomeTopBar(
+                status = intelligence,
+                onOpenIntelligence = onOpenIntelligence,
                 onOpenSearch = { onSubmit() },
                 onOpenChat = onOpenChat,
                 onOpenSources = onOpenSources,
@@ -181,6 +213,15 @@ private fun HomeContent(
                 onSelect = onSelectFilter,
                 onOpenGraph = onOpenGraph,
             )
+            if (showOnboarding) {
+                IntelligenceOnboardingBanner(
+                    onOpen = onOpenIntelligence,
+                    onDismiss = onDismissOnboarding,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 4.dp, bottom = 8.dp),
+                )
+            }
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 when (state) {
                     HomeUiState.Loading -> HomeLoading()
@@ -210,6 +251,8 @@ private fun HomeContent(
 
 @Composable
 private fun HomeTopBar(
+    status: IntelligenceStatus,
+    onOpenIntelligence: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenChat: () -> Unit,
     onOpenSources: () -> Unit,
@@ -229,7 +272,7 @@ private fun HomeTopBar(
     ) {
         // 左：端侧离线就绪指示（呼吸绿点 + ping 扩散）
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            OfflineReadyDot()
+            OfflineReadyDot(status = status, onClick = onOpenIntelligence)
         }
 
         // 中：品牌锁版（中文用系统 serif 复现参考稿宋体观感，拉丁用 Plus Jakarta Sans）
@@ -309,44 +352,211 @@ private fun HomeMenuItem(labelRes: Int, onClick: () -> Unit) {
     )
 }
 
-/** 呼吸绿状态点：外层 ping 扩散 + 内层实心点（对应参考稿 animate-ping）。 */
+// ── 智能状态点（M1：让绿点说真话） ─────────────────────────────────
+
+/** 命中区：视觉点只有 10dp，但可点区域必须 ≥48dp。 */
+private val DotTouchTarget = 48.dp
+private val DotVisual = 10.dp
+private val PendingBadgeSize = 14.dp
+
+/** 动效参数：就绪=慢呼吸；有任务在跑=快脉冲；未就绪/异常=静止（见规格 §3.4）。 */
+private data class PulseSpec(
+    val durationMs: Int,
+    val maxScale: Float,
+    val startAlpha: Float,
+    val endAlpha: Float,
+)
+private val CalmBreath = PulseSpec(4_000, 1.15f, 0.35f, 0.12f)
+private val BusyPulse = PulseSpec(1_400, 1.6f, 0.45f, 0f)
+
+/** 四态文案（同时用于 stateDescription 与无障碍播报）。 */
 @Composable
-private fun OfflineReadyDot() {
-    val description = stringResource(R.string.home_status_offline_ready)
-    val transition = rememberInfiniteTransition(label = "offline-ping")
-    val pingScale by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 2.4f,
-        animationSpec = infiniteRepeatable(tween(durationMillis = 1_800), RepeatMode.Restart),
-        label = "ping-scale",
+private fun intelligenceStatusLabel(status: IntelligenceStatus): String = when (status.level) {
+    IntelligenceLevel.READY -> stringResource(R.string.intelligence_status_ready)
+    IntelligenceLevel.PARTIAL -> stringResource(
+        R.string.intelligence_status_partial,
+        status.pendingCount,
     )
-    val pingAlpha by transition.animateFloat(
-        initialValue = 0.45f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(tween(durationMillis = 1_800), RepeatMode.Restart),
-        label = "ping-alpha",
-    )
+    IntelligenceLevel.NOT_READY -> stringResource(R.string.intelligence_status_not_ready)
+    IntelligenceLevel.ERROR -> stringResource(R.string.intelligence_status_error)
+}
+
+/**
+ * 系统"减少动画"是否关闭：读 `ANIMATOR_DURATION_SCALE`（开发者选项/无障碍动画关闭时为 0）。
+ * 读失败按"允许动画"处理，避免误伤正常设备。
+ */
+@Composable
+private fun rememberAnimationsEnabled(): Boolean {
+    val context = LocalContext.current
+    return remember(context) {
+        runCatching {
+            Settings.Global.getFloat(
+                context.contentResolver,
+                Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f,
+            ) > 0f
+        }.getOrDefault(true)
+    }
+}
+
+/**
+ * 智能状态点：
+ * - 颜色只表达 L1（就绪=呼吸绿 / 未就绪=灰 / 异常=琥珀），L3 可选能力不用灰色惩罚；
+ * - L4 待处理项用琥珀角标（数字=项数）；
+ * - 可点击（≥48dp），TalkBack 播报「智能状态 + 四态文案」；
+ * - 未就绪/异常或系统关闭动画时完全静止。
+ */
+@Composable
+private fun OfflineReadyDot(status: IntelligenceStatus, onClick: () -> Unit) {
+    val colors = MaterialTheme.zhiBoxColors
+    val label = intelligenceStatusLabel(status)
+    val title = stringResource(R.string.intelligence_hub_title)
+    val openLabel = stringResource(R.string.intelligence_open_status)
+    val dotColor = when (status.level) {
+        IntelligenceLevel.READY, IntelligenceLevel.PARTIAL -> MaterialTheme.colorScheme.secondary
+        IntelligenceLevel.NOT_READY -> colors.inkMeta
+        IntelligenceLevel.ERROR -> colors.warning
+    }
+    val animationsEnabled = rememberAnimationsEnabled()
+    val animate = animationsEnabled && status.animates
+    val busy = status.busy != IntelligenceBusy.NONE
+
+    // 外层不裁剪：角标要能压到命中区边缘之外；裁剪只作用于内层（水波纹仍是圆形）
     Box(
-        modifier = Modifier
-            .size(16.dp)
-            .semantics { contentDescription = description },
+        modifier = Modifier.size(DotTouchTarget),
         contentAlignment = Alignment.Center,
     ) {
         Box(
-            Modifier
-                .size(10.dp)
-                .graphicsLayer {
-                    scaleX = pingScale
-                    scaleY = pingScale
-                    alpha = pingAlpha
-                }
-                .background(MaterialTheme.colorScheme.secondary, CircleShape),
-        )
-        Box(
-            Modifier
-                .size(10.dp)
-                .background(MaterialTheme.colorScheme.secondary, CircleShape),
-        )
+            modifier = Modifier
+                .matchParentSize()
+                .clip(CircleShape)
+                .clickable(onClickLabel = openLabel, role = Role.Button, onClick = onClick)
+                // clearAndSetSemantics：把"状态描述"合并到可点击节点本身，并屏蔽内部小圆/角标
+                // 的独立语义，保证 TalkBack 只落到一个节点（否则会读出"按钮（无标签）"）。
+                .clearAndSetSemantics {
+                    contentDescription = title
+                    stateDescription = label
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (animate) {
+                val spec = if (busy) BusyPulse else CalmBreath
+                val transition = rememberInfiniteTransition(label = "intelligence-pulse")
+                val pulseScale by transition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = spec.maxScale,
+                    animationSpec = infiniteRepeatable(
+                        tween(durationMillis = spec.durationMs),
+                        RepeatMode.Restart,
+                    ),
+                    label = "pulse-scale",
+                )
+                val pulseAlpha by transition.animateFloat(
+                    initialValue = spec.startAlpha,
+                    targetValue = spec.endAlpha,
+                    animationSpec = infiniteRepeatable(
+                        tween(durationMillis = spec.durationMs),
+                        RepeatMode.Restart,
+                    ),
+                    label = "pulse-alpha",
+                )
+                Box(
+                    Modifier
+                        .size(DotVisual)
+                        .graphicsLayer {
+                            scaleX = pulseScale
+                            scaleY = pulseScale
+                            alpha = pulseAlpha
+                        }
+                        .background(dotColor, CircleShape),
+                )
+            }
+            Box(Modifier.size(DotVisual).background(dotColor, CircleShape))
+        }
+
+        if (status.pendingCount > 0) {
+            Box(
+                modifier = Modifier
+                    // 压在圆点右上沿（相对中心 +8/-8dp），而不是跑到 48dp 命中区的角上
+                    .align(Alignment.Center)
+                    .offset(x = 7.dp, y = (-7).dp)
+                    .size(PendingBadgeSize)
+                    .clip(CircleShape)
+                    .background(colors.warning)
+                    // 角标数字已并入状态描述（"就绪，N 项待处理"），不再单独朗读
+                    .clearAndSetSemantics { },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = if (status.pendingCount > 9) "9+" else status.pendingCount.toString(),
+                    fontSize = 9.sp,
+                    lineHeight = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.paper,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+// ── 首次引导条（M1：无模型时给出正确下一步） ────────────────────────
+
+/**
+ * 一次性引导条：只在「未就绪」且用户从未处理过时出现。
+ * 之所以需要它：裸点的发现性太低，新用户不会主动去点左上角。
+ */
+@Composable
+private fun IntelligenceOnboardingBanner(
+    onOpen: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.zhiBoxColors
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(ZhiBoxRadius.card),
+        color = colors.card,
+        border = BorderStroke(1.dp, colors.border),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(colors.warning))
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.intelligence_onboarding_title),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.ink,
+                )
+                Text(
+                    text = stringResource(R.string.intelligence_onboarding_message),
+                    fontSize = 11.sp,
+                    color = colors.inkSecondary,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            TextButton(onClick = onOpen) {
+                Text(
+                    text = stringResource(R.string.intelligence_onboarding_cta),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.ink,
+                )
+            }
+            IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    // 线条 ×（不是 Clear 的实心圆挖空 ×）：与整套图标同风格，16dp 下不会糊
+                    imageVector = ZhiBoxIcons.Close,
+                    contentDescription = stringResource(R.string.intelligence_onboarding_dismiss),
+                    modifier = Modifier.size(18.dp),
+                    tint = colors.inkMeta,
+                )
+            }
+        }
     }
 }
 
@@ -860,6 +1070,15 @@ private val MaxContentWidth = 448.dp
 // ── 预览 ────────────────────────────────────────────────────────────
 
 private object FakeHome {
+    /** 预览用：模型就绪、2 个向量空间、GPU 自动。 */
+    val ready: IntelligenceStatus = evaluateIntelligence(
+        IntelligenceReadings(
+            modelName = "embeddinggemma-2-440m",
+            spaceCount = 2,
+            gpuMode = "auto",
+        ),
+    )
+
     val loaded = HomeUiState.Loaded(
         filter = HomeFilter.ALL,
         groups = listOf(
@@ -937,6 +1156,10 @@ private fun HomeContentPreview() {
             onOpenSettings = {},
             onOpenDiagnostics = null,
             onOpenDocument = {},
+            intelligence = FakeHome.ready,
+            showOnboarding = false,
+            onOpenIntelligence = {},
+            onDismissOnboarding = {},
         )
     }
 }
@@ -959,6 +1182,10 @@ private fun HomeContentDarkPreview() {
             onOpenSettings = {},
             onOpenDiagnostics = {},
             onOpenDocument = {},
+            intelligence = FakeHome.ready,
+            showOnboarding = false,
+            onOpenIntelligence = {},
+            onDismissOnboarding = {},
         )
     }
 }
@@ -981,6 +1208,10 @@ private fun HomeContentEmptyPreview() {
             onOpenSettings = {},
             onOpenDiagnostics = null,
             onOpenDocument = {},
+            intelligence = FakeHome.ready,
+            showOnboarding = false,
+            onOpenIntelligence = {},
+            onDismissOnboarding = {},
         )
     }
 }
@@ -1003,6 +1234,36 @@ private fun HomeContentLoadingPreview() {
             onOpenSettings = {},
             onOpenDiagnostics = null,
             onOpenDocument = {},
+            intelligence = FakeHome.ready,
+            showOnboarding = false,
+            onOpenIntelligence = {},
+            onDismissOnboarding = {},
+        )
+    }
+}
+
+@Preview(name = "Home · AI 未就绪（引导条）", showBackground = true, heightDp = 900)
+@Composable
+private fun HomeContentNotReadyPreview() {
+    ZhiBoxTheme(darkTheme = false) {
+        HomeContent(
+            state = FakeHome.loaded,
+            draft = "",
+            onDraftChange = {},
+            onSelectFilter = {},
+            onRetry = {},
+            onOpenGraph = {},
+            onSubmit = {},
+            onOpenImport = {},
+            onOpenChat = {},
+            onOpenSources = {},
+            onOpenSettings = {},
+            onOpenDiagnostics = null,
+            onOpenDocument = {},
+            intelligence = IntelligenceStatus.Loading,
+            showOnboarding = true,
+            onOpenIntelligence = {},
+            onDismissOnboarding = {},
         )
     }
 }

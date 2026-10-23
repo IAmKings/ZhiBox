@@ -568,7 +568,6 @@
     <!-- ==== UI-HOME 首页时间线（UI 改版：暖纸极简） ==== -->
     <string name="home_brand_title">智匣</string>
     <string name="home_brand_wordmark" translatable="false">ZHIBOX</string>
-    <string name="home_status_offline_ready">端侧离线运行就绪</string>
     <string name="home_action_search">搜索知识库</string>
     <string name="home_action_more">更多设置</string>
 
@@ -618,4 +617,16 @@
     <string name="home_more_chat">带引用问答</string>
     <string name="home_more_settings">设置</string>
     <string name="home_more_diagnostics">实验 / 诊断</string>
+
+    <!-- ==== 智能状态（M1：绿点说真话 + 首次引导条） ==== -->
+    <string name="intelligence_hub_title">智能状态</string>
+    <string name="intelligence_status_ready">智能就绪</string>
+    <string name="intelligence_status_partial">就绪，%1$d 项待处理</string>
+    <string name="intelligence_status_not_ready">未配置模型</string>
+    <string name="intelligence_status_error">需要修复</string>
+    <string name="intelligence_open_status">查看智能状态</string>
+    <string name="intelligence_onboarding_title">本地 AI 尚未就绪</string>
+    <string name="intelligence_onboarding_message">下载模型后即可导入文档并离线检索</string>
+    <string name="intelligence_onboarding_cta">去配置</string>
+    <string name="intelligence_onboarding_dismiss">稍后再说</string>
 </resources>

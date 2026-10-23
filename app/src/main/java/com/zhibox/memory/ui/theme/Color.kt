@@ -61,6 +61,12 @@ val PillInactive = Color(0xFFEFECE6)
 /** 未激活药丸文字（参考稿 `#4A443E`，8.14:1）。 */
 val PillInactiveText = Color(0xFF4A443E)
 
+/** 告警/需处理（浅色）：DESIGN.md secondary 系的暖琥珀，白字对比 5.06:1。 */
+val WarningAmber = Color(0xFFB45309)
+
+/** 告警/需处理（深色）：同一色相提亮，保证在 #121212 上可见（6.8:1）。 */
+val WarningAmberDark = Color(0xFFD98A4F)
+
 /** 分隔线（参考稿 `#E8E3DA` 80% → 与画布混色后近似值）。 */
 val Divider = Color(0xFFE8E3DA)
 
@@ -130,6 +136,8 @@ data class ZhiBoxExtendedColors(
     val divider: Color,
     val pillInactive: Color,
     val pillInactiveText: Color,
+    /** 告警/需处理（智能状态点的"部分就绪角标"与"异常"态）：可修复问题，不用错误红。 */
+    val warning: Color,
     val badgeNoteContainer: Color,
     val badgeNoteContent: Color,
     val badgeKnowledgeContainer: Color,
@@ -161,6 +169,7 @@ val LightExtendedColors = ZhiBoxExtendedColors(
     divider = Divider,
     pillInactive = PillInactive,
     pillInactiveText = PillInactiveText,
+    warning = WarningAmber,
     badgeNoteContainer = BadgeNoteContainer,
     badgeNoteContent = BadgeNoteContent,
     badgeKnowledgeContainer = BadgeKnowledgeContainer,
@@ -192,6 +201,7 @@ val DarkExtendedColors = LightExtendedColors.copy(
     divider = DividerDark,
     pillInactive = PillInactiveDark,
     pillInactiveText = PillInactiveTextDark,
+    warning = WarningAmberDark,
     // 暗色下徽标底压成同色相深底，文字用亮色，保持语义色相可辨
     badgeNoteContainer = Color(0xFF3A2C1B),
     badgeNoteContent = Color(0xFFF0C08A),
