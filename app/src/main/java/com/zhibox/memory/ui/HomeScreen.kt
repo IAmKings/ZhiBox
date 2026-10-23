@@ -383,10 +383,9 @@ private fun HomeFilterRow(
     }
 }
 
-private fun HomeFilter.pillIcon(): ImageVector? = when (this) {
+private fun HomeFilter.pillIcon(): ImageVector = when (this) {
     HomeFilter.ALL -> ZhiBoxIcons.Grid
-    // 参考稿「念头」药丸用衬线左引号字符（非图标）
-    HomeFilter.NOTE -> null
+    HomeFilter.NOTE -> ZhiBoxIcons.Pencil
     HomeFilter.IMAGE -> ZhiBoxIcons.Image
     HomeFilter.DOCUMENT -> ZhiBoxIcons.Document
 }
@@ -394,7 +393,7 @@ private fun HomeFilter.pillIcon(): ImageVector? = when (this) {
 @Composable
 private fun FilterPill(
     label: String,
-    icon: ImageVector?,
+    icon: ImageVector,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -413,23 +412,12 @@ private fun FilterPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        if (icon == null) {
-            Text(
-                text = "\u201C",
-                fontFamily = BrandSerif,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = content,
-                modifier = Modifier.padding(end = 1.dp),
-            )
-        } else {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = content,
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = content,
+        )
         Text(
             text = label,
             fontSize = 13.sp,
@@ -646,23 +634,12 @@ private fun Badge(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            if (category == HomeCategory.NOTE) {
-                // 参考稿念头徽标用衬线右引号而非图标
-                Text(
-                    text = "\u201D",
-                    fontFamily = BrandSerif,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.content,
-                )
-            } else {
-                Icon(
-                    imageVector = category.badgeIcon(),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = colors.content,
-                )
-            }
+            Icon(
+                imageVector = category.badgeIcon(),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = colors.content,
+            )
             Text(
                 text = label,
                 fontSize = 10.sp,
@@ -690,7 +667,7 @@ private fun TagPill(label: String, colors: BadgeColors) {
 }
 
 private fun HomeCategory.badgeIcon(): ImageVector = when (this) {
-    HomeCategory.NOTE -> ZhiBoxIcons.Grid
+    HomeCategory.NOTE -> ZhiBoxIcons.Pencil
     HomeCategory.IMAGE -> ZhiBoxIcons.Image
     HomeCategory.DOCUMENT -> ZhiBoxIcons.Book
     HomeCategory.SNAPSHOT -> ZhiBoxIcons.Snapshot
