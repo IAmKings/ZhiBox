@@ -5,8 +5,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
@@ -63,7 +66,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -177,7 +183,13 @@ fun HomeScreen(
     }
 }
 
-/** 无状态内容层：所有数据来自 [HomeUiState]，所有意图通过 lambda 上抛。 */
+/**
+ * 无状态内容层：所有数据来自 [HomeUiState]，所有意图通过 lambda 上抛。
+ *
+ * `WindowInsets.isImeVisible` 目前标注为实验 API，但它是判断"键盘是否展开"的唯一
+ * 官方入口（避免自己猜窗口高度）；仅用于输入岛上方那层透明点击拦截。
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HomeContent(
     state: HomeUiState,
@@ -207,6 +219,11 @@ private fun HomeContent(
     }
     // 每个分类一份滚动状态：切 tab 不再共用同一个 LazyListState（否则索引被裁剪、位置丢失）
     val listStates = rememberFilterListStates()
+
+    // 输入法打开时：点输入岛以外的任何地方只收键盘，不触发下层动作（列表卡片/筛选/顶栏）
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val imeVisible = WindowInsets.isImeVisible
 
     Box(
         modifier = modifier
@@ -296,6 +313,23 @@ private fun HomeContent(
                     }
                 }
             }
+        }
+
+        // 键盘遮罩：必须画在输入岛之前（之下），这样点输入岛仍可继续编辑，
+        // 点其它区域则先收起键盘，避免"想收键盘却跳进了文档/换了筛选"。
+        if (imeVisible) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    // 用 pointerInput 而不是 clickable：不产生无障碍焦点节点/水波纹，
+                    // 纯拦截触摸（键盘收起也可用系统返回键，读屏用户不受影响）。
+                    .pointerInput(imeVisible) {
+                        detectTapGestures {
+                            focusManager.clearFocus(force = true)
+                            keyboardController?.hide()
+                        }
+                    },
+            )
         }
 
         HomeOmniBar(
