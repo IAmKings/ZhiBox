@@ -138,7 +138,7 @@
     <string name="settings_import">导入知识库</string>
     <string name="settings_restore_latest">恢复最近自动备份</string>
     <string name="settings_restore_unavailable">没有可恢复的自动备份</string>
-    <string name="settings_migration_hint">导出包含文档、分块、全部向量与 SAG 事件层（v3 格式）；关键词索引（FTS）在导入后从原文重建。导入到新设备时需本机装有对应模型：缺失会在导入预览中列出（可在模型商店下载后重试）；GPU 向量跨 GPU 家族建议丢弃重嵌入。</string>
+    <string name="settings_migration_hint">导出包含文档、分块、全部向量与 SAG 事件层（v3 格式）；关键词索引（FTS）在导入后从原文重建。导入到新设备时需本机装有对应模型：缺失会在导入预览中列出（可在模型商店下载后重试）；GPU 向量跨 GPU 家族建议丢弃重嵌入。本机 UI 提示状态（如引导条是否看过）不导出。</string>
     <string name="settings_exporting">导出中…</string>
     <string name="settings_export_done">已导出 %1$d 条向量</string>
     <string name="settings_export_failed">导出失败：%1$s</string>

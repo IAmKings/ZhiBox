@@ -393,8 +393,9 @@ object KnowledgeBackup {
         }
         zip.closeEntry()
 
-        // app_kv 体积小（几十行），一次性读写即可（DAO 无分页接口）
-        val appKvRows = db.appKvDao().all()
+        // app_kv 体积小（几十行），一次性读写即可（DAO 无分页接口）。
+        // UI 提示类键（ui_hint_*，如"引导条已看过"）属于本机状态，不随备份迁移，避免新设备被旧提示状态压制。
+        val appKvRows = db.appKvDao().all().filterNot { isUiHintKey(it.key) }
         zip.putNextEntry(ZipEntry(ENTRY_APP_KV))
         zip.write(appKvRows.joinToString("") { appKvJson(it).toString() + "\n" }.toByteArray())
         zip.closeEntry()
@@ -1059,7 +1060,7 @@ object KnowledgeBackup {
                 value = o.optString("value", ""),
                 updatedAt = o.optLong("updatedAt", 0L),
             )
-        }
+        }.filterNot { isUiHintKey(it.key) } // UI 提示类键不恢复（导出已过滤；这里兜底旧包）
     }
 
     // ---- v3（B8）：SAG 层解析（写库前完成，坏包直接抛可读错误） ----

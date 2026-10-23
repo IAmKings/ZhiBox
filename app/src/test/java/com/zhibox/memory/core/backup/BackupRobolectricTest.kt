@@ -3,6 +3,7 @@ package com.zhibox.memory.core.backup
 import android.app.Application
 import androidx.room.withTransaction
 import com.zhibox.memory.data.db.AppDatabase
+import com.zhibox.memory.data.db.AppKvEntity
 import com.zhibox.memory.data.db.ChunkEmbeddingEntity
 import com.zhibox.memory.data.db.ChunkEntity
 import com.zhibox.memory.data.db.ChunkFtsEntity
@@ -20,13 +21,16 @@ import com.zhibox.memory.data.db.JobStage
 import com.zhibox.memory.data.db.ExtractionJobStatus
 import com.zhibox.memory.data.db.SourceEntity
 import com.zhibox.memory.core.text.BigramTokenizer
+import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -356,6 +360,68 @@ class BackupRobolectricTest {
         assertEquals(chunksBefore, db.chunkDao().allChunks().size)
         assertEquals(200, db.embeddingDao().vectorsForSpace(supportedSpace).size)
         assertTrue(KnowledgeBackup.previewFromFile(app, pkg).getOrThrow().sourceCount > 0)
+    }
+
+    /**
+     * UI 提示类键（`ui_hint_*`）不随知识库备份迁移：
+     * 1) 导出包内不得出现；
+     * 2) 旧包/手工包里即使带了，导入也不恢复；
+     * 3) 普通 app_kv（如 reembed_last_done）仍要正常往返。
+     */
+    @Test
+    fun backup_excludesUiHintKeys_onExportAndImport() = runBlocking {
+        seedSmallLibrary()
+        withContext(Dispatchers.IO) {
+            db.appKvDao().put(AppKvEntity("reembed_last_done", "111", 1L))
+            db.appKvDao().put(AppKvEntity(UI_HINT_KEY_PREFIX + "intelligence_onboarded", "1", 2L))
+        }
+        val pkg = tmp("ui-hint-backup.zip")
+        KnowledgeBackup.exportToFile(app, pkg).getOrThrow()
+
+        val entries = readZipEntries(pkg)
+        val kvText = entries.getValue(BackupValidator.ENTRY_APP_KV).toString(Charsets.UTF_8)
+        assertFalse("UI 提示键不得进入备份包：$kvText", kvText.contains("intelligence_onboarded"))
+        assertTrue("普通 app_kv 仍应导出：$kvText", kvText.contains("reembed_last_done"))
+
+        // 模拟旧包：把提示键塞回 app_kv.jsonl，导入端必须忽略
+        val patched = rewriteZipEntry(
+            src = pkg,
+            entryName = BackupValidator.ENTRY_APP_KV,
+            newBytes = (kvText +
+                """{"key":"ui_hint_intelligence_onboarded","value":"1","updatedAt":2}\n"""
+                ).toByteArray(),
+        )
+        withContext(Dispatchers.IO) { db.clearAllTables() }
+        val imported = KnowledgeBackup.importFromFileForTest(app, patched)
+        assertTrue("导入应成功：${imported.exceptionOrNull()?.message}", imported.isSuccess)
+
+        val restoredHint = withContext(Dispatchers.IO) {
+            db.appKvDao().get(UI_HINT_KEY_PREFIX + "intelligence_onboarded")
+        }
+        assertNull("UI 提示键不得被恢复", restoredHint)
+        assertEquals(
+            "普通 app_kv 应正常恢复",
+            "111",
+            withContext(Dispatchers.IO) { db.appKvDao().get("reembed_last_done") },
+        )
+    }
+
+    /** 重写 zip 中的单个 entry（其余 entry 原样复制），用于模拟"带 UI 提示键的旧备份包"。 */
+    private fun rewriteZipEntry(src: File, entryName: String, newBytes: ByteArray): File {
+        val dst = tmp("rewritten-${src.name}")
+        ZipInputStream(src.inputStream().buffered()).use { zin ->
+            ZipOutputStream(dst.outputStream().buffered()).use { zout ->
+                var entry = zin.nextEntry
+                while (entry != null) {
+                    val data = zin.readBytes()
+                    zout.putNextEntry(ZipEntry(entry.name))
+                    zout.write(if (entry.name == entryName) newBytes else data)
+                    zout.closeEntry()
+                    entry = zin.nextEntry
+                }
+            }
+        }
+        return dst
     }
 
     private fun readZipEntries(file: File): Map<String, ByteArray> {

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zhibox.memory.R
+import com.zhibox.memory.core.backup.UI_HINT_KEY_PREFIX
 import com.zhibox.memory.core.embedding.EmbeddingRuntime
 import com.zhibox.memory.core.ingest.IngestRepository
 import com.zhibox.memory.core.llm.KeystoreLlmConfigStore
@@ -239,8 +240,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
-        /** 一次性引导标记（app_kv）：用户处理/关闭后不再打扰。 */
-        const val KEY_INTELLIGENCE_ONBOARDED = "intelligence_onboarded"
+        /**
+         * 一次性引导标记（app_kv）：用户处理/关闭后不再打扰。
+         * 加 `ui_hint_` 前缀 → 不随知识库备份迁移（见 core/backup/BackupKeyPolicy.kt）。
+         */
+        const val KEY_INTELLIGENCE_ONBOARDED = UI_HINT_KEY_PREFIX + "intelligence_onboarded"
 
         /** 首页只展示最近 N 条（超出走检索/来源页），避免 LazyColumn 首帧开销。 */
         const val MAX_ITEMS = 40

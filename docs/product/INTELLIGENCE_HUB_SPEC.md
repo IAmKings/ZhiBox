@@ -188,7 +188,7 @@ A) 裸点（推荐，改动最小）        B) 点 + 文案 chip                
 
 - 首次进入首页且状态为 `NOT_READY` 时，除灰点外，在时间线区域顶部显示一条**一次性引导条**（可关闭，`rememberSaveable` + 持久化标记）：
   「本地 AI 尚未就绪 · 去下载模型」→ 点击进入面板。
-- 用户完成 L1 配置后，引导条永久不再出现（`app_kv` 持久化 `intelligence_onboarded`）。
+- 用户完成 L1 配置后，引导条永久不再出现（`app_kv` 持久化 `ui_hint_intelligence_onboarded`（`ui_hint_` 前缀 = 不随知识库备份迁移））。
 
 ---
 
@@ -564,6 +564,10 @@ data class IntelligenceStatus(
 2. 引导条 CTA 文案用「去配置」（M1 目标页是设置页，不是模型商店深链）；
 3. `IntelligenceStatus` 增加 `IntelligenceStatus.Loading` 占位（冷启动首帧不发绿、不闪）；
 4. 角标位置由"48dp 命中区右上角"改为"压在 10dp 圆点右上沿"（角上会与圆点脱开，视觉不成立）。
+
+**决策记录（2026-10-23 采纳建议 A + C）**
+- **A（维持现状）**：引导条"用户处理/关闭后不再出现"，不做定时重弹；长期兜底靠灰点 + M2 的面板/「更多」菜单入口。
+- **C（备份排除 UI 提示键）**：`core/backup/BackupKeyPolicy.kt` 定义 `ui_hint_` 前缀，导出与导入两侧都过滤；引导标记键改为 `ui_hint_intelligence_onboarded`。这样把知识库恢复到一台没有模型的新设备时，仍会正常提示下载模型。回归用例：`BackupRobolectricTest.backup_excludesUiHintKeys_onExportAndImport`（导出不含、旧包导入不恢复、普通 app_kv 正常往返）。
 
 **M1 未采集但已有判定逻辑的状态**：下载中/重嵌入中的 `Busy` 分支（当前恒 `NONE`，因为下载与重嵌入进度目前只在 `SettingsViewModel` 内，需要 M2 抽共享 Flow 才能实时驱动动效）；索引不一致（重查询，M1 恒"未检查"）。
 
