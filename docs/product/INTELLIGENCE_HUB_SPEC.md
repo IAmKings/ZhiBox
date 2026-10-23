@@ -610,6 +610,31 @@ data class IntelligenceStatus(
 
 ---
 
+## 18. 共享 Busy Flow（下载 / 重嵌入驱动快脉冲，2026-10-23）
+
+M1 遗留的"Busy 恒 NONE"已解决：下载与重嵌入进度抽成进程级单一来源，
+首页状态点可在**任意页面**感知进行中的任务并切到快脉冲。
+
+实现：
+- `core/intelligence/IntelligenceBusySource.kt`：`StateFlow<IntelligenceBusyTick>`
+  （`Idle` / `Downloading(label,pct)` / `Reembedding(done,total)`，优先级 下载 > 重嵌入）；
+  重嵌入直接观察 `ReembedScheduler.UNIQUE_WORK` 的 WorkManager progress，不依赖用户停留在设置页；
+  下载由 `SettingsViewModel.startDownload` 上报（进度回调 + finally 清理）；
+- `IntelligenceStatus` 增加 `busyPct` 与外部 busy 覆盖入参；`animates` 调整为
+  「就绪/部分就绪 **或** 有进行中任务」——未就绪时点下载也会脉冲（否则无反馈）；
+- `HomeViewModel` 订阅该 Flow，用最近一次读数重算状态（不重复 IO 扫描），
+  `WhileSubscribed(5s)` 保证离开首页不持有订阅；
+- 状态点 `stateDescription` 优先播报任务：「正在下载模型，42%」「正在同步数据，30%」「正在抽取内容」，
+  无任务时回落到四态文案；`ANIMATOR_DURATION_SCALE=0` 仍然全静止。
+
+验证与限制：
+- 纯 JVM：`IntelligenceStatusTest` 新增 5 例（下载优先级/同步覆盖抽取/抽取回落/百分比夹取/空闲静止），共 18 例通过；
+- 真机：本机无模型文件、共享目录未配置（下载会先弹 SAF 目录选择器，重嵌入 worker 无模型立即失败），
+  无法稳定复现 DOWNLOADING/SYNCING 的可见窗口；Busy 链路以单测 + 代码路径为主，
+  建议在装有模型的设备上补一次可视化走查（下载/同步进行中截图）。
+
+---
+
 ## 附录 A：与现状的差异清单（便于评审逐条确认）
 
 | 现状 | 规格后 |

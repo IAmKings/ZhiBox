@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.zhibox.memory.R
 import com.zhibox.memory.core.backup.UI_HINT_KEY_PREFIX
 import com.zhibox.memory.core.embedding.EmbeddingRuntime
+import com.zhibox.memory.core.intelligence.IntelligenceBusySource
+import com.zhibox.memory.core.intelligence.IntelligenceBusyTick
 import com.zhibox.memory.core.ingest.IngestRepository
 import com.zhibox.memory.core.llm.KeystoreLlmConfigStore
 import com.zhibox.memory.core.model.PathPreferences
@@ -54,6 +56,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.get(application)
 
+    /**
+     * 下载/重嵌入进度的进程级单一来源（设置页发起下载，首页状态点也能看到快脉冲）。
+     * 懒初始化：只在真正需要时构造 WorkManager 观察。
+     */
+    private val busySource: IntelligenceBusySource by lazy {
+        IntelligenceBusySource.get(application)
+    }
+
+    /** 最近一次读数快照：busy 变化时用它重算状态，避免重复 IO 扫描。 */
+    @Volatile
+    private var lastReadings: IntelligenceReadings? = null
+
     private val filter = MutableStateFlow(HomeFilter.ALL)
     private val timeFormat = SimpleDateFormat("M/d HH:mm", Locale.getDefault())
 
@@ -100,6 +114,33 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _intelligence = MutableStateFlow(IntelligenceStatus.Loading)
 
+    init {
+        // Busy 只影响动效/描述，不改变底色：拿到新信号后用最近一次读数重算即可。
+        // 共享 Flow 用 WhileSubscribed(5s)，首页离开后不持有订阅。
+        viewModelScope.launch {
+            busySource.state.collect { tick ->
+                val readings = lastReadings ?: return@collect
+                _intelligence.value = evaluateIntelligence(
+                    readings = readings,
+                    busyOverride = tick.toBusyOverride(),
+                    busyPct = tick.toBusyPct(),
+                )
+            }
+        }
+    }
+
+    private fun IntelligenceBusyTick.toBusyOverride(): IntelligenceBusy? = when (this) {
+        is IntelligenceBusyTick.Downloading -> IntelligenceBusy.DOWNLOADING
+        is IntelligenceBusyTick.Reembedding -> IntelligenceBusy.SYNCING
+        IntelligenceBusyTick.Idle -> null
+    }
+
+    private fun IntelligenceBusyTick.toBusyPct(): Int? = when (this) {
+        is IntelligenceBusyTick.Downloading -> pct
+        is IntelligenceBusyTick.Reembedding -> if (total > 0) done * 100 / total else null
+        IntelligenceBusyTick.Idle -> null
+    }
+
     /** 首页左上角状态点消费：四态 + 待处理项数 + 进行中任务（只影响动效）。 */
     val intelligence: StateFlow<IntelligenceStatus> = _intelligence.asStateFlow()
 
@@ -117,7 +158,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshIntelligence() {
         viewModelScope.launch {
             val readings = withContext(Dispatchers.IO) { readIntelligenceReadings() }
-            val status = evaluateIntelligence(readings)
+            lastReadings = readings
+            val tick = busySource.state.value
+            val status = evaluateIntelligence(
+                readings = readings,
+                busyOverride = tick.toBusyOverride(),
+                busyPct = tick.toBusyPct(),
+            )
             _intelligence.value = status
             val seen = withContext(Dispatchers.IO) { onboardingSeen() }
             _showOnboarding.value = status.needsOnboarding && !seen

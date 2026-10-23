@@ -25,6 +25,7 @@ import com.zhibox.memory.core.extraction.SagExtractionScheduler
 import com.zhibox.memory.core.llm.LlmTestResult
 import com.zhibox.memory.core.llm.OpenAiCompatibleLlmProvider
 import com.zhibox.memory.core.ingest.ReembedScheduler
+import com.zhibox.memory.core.intelligence.IntelligenceBusySource
 import com.zhibox.memory.core.model.ModelCatalog
 import com.zhibox.memory.core.model.PathPreferences
 import com.zhibox.memory.core.model.SharedModelStore
@@ -179,6 +180,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val db = AppDatabase.get(application)
     private val repository = IngestRepository(application)
     private val workManager = WorkManager.getInstance(application)
+
+    /** 下载进度上报给进程级 Busy 源：首页状态点据此切换快脉冲。 */
+    private val busySource by lazy { IntelligenceBusySource.get(application) }
 
     private val _state = MutableStateFlow(SettingsUiState())
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
@@ -523,6 +527,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 error = null,
             )
         }
+        busySource.reportDownload(entry.label, 0)
         safeLaunch(
             onError = { t ->
                 update {
@@ -533,7 +538,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             try {
                 val result = SharedModelStore.downloadEntry(app, entry) { p ->
                     if (p.total > 0) {
-                        update { it.copy(downloadPct = (p.downloaded * 100 / p.total).toInt()) }
+                        val pct = (p.downloaded * 100 / p.total).toInt()
+                        update { it.copy(downloadPct = pct) }
+                        busySource.reportDownload(entry.label, pct)
                     }
                 }
                 result.onSuccess {
@@ -546,6 +553,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             } catch (e: CancellationException) {
                 throw e
             } finally {
+                busySource.clearDownload()
                 update { it.copy(downloading = false, downloadEntry = null) }
                 refresh()
             }

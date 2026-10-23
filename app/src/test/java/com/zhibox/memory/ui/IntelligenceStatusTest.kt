@@ -2,6 +2,7 @@ package com.zhibox.memory.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -207,5 +208,65 @@ class IntelligenceStatusTest {
 
     private fun assertThatOnboarding(status: IntelligenceStatus) {
         assertTrue(status.needsOnboarding)
+    }
+
+    // ── 共享 Busy 源（下载/重嵌入）驱动动效 ──────────────────────
+
+    @Test
+    fun downloading_pulsesEvenWhenNotReady() {
+        // 未配置模型时点下载：应出现忙碌脉冲（否则用户看不到任何反馈）
+        val status = evaluateIntelligence(
+            readings = IntelligenceReadings(modelName = null),
+            busyOverride = IntelligenceBusy.DOWNLOADING,
+            busyPct = 42,
+        )
+        assertEquals(IntelligenceLevel.NOT_READY, status.level)
+        assertEquals(IntelligenceBusy.DOWNLOADING, status.busy)
+        assertEquals(42, status.busyPct)
+        assertTrue("下载中应有动效", status.animates)
+    }
+
+    @Test
+    fun syncing_takesPrecedenceOverExtractingFlag() {
+        val status = evaluateIntelligence(
+            readings = IntelligenceReadings(modelName = "m.litertlm", extracting = true),
+            busyOverride = IntelligenceBusy.SYNCING,
+            busyPct = 30,
+        )
+        assertEquals(IntelligenceBusy.SYNCING, status.busy)
+        assertEquals(30, status.busyPct)
+    }
+
+    @Test
+    fun extractingFlagStillDrivesBusyWhenNoSharedTick() {
+        val status = evaluateIntelligence(
+            readings = IntelligenceReadings(modelName = "m.litertlm", extracting = true),
+        )
+        assertEquals(IntelligenceBusy.EXTRACTING, status.busy)
+        assertTrue(status.animates)
+        assertNull(status.busyPct)
+    }
+
+    @Test
+    fun busyPctIsClampedTo0to100() {
+        val over = evaluateIntelligence(
+            readings = IntelligenceReadings(modelName = "m.litertlm"),
+            busyOverride = IntelligenceBusy.DOWNLOADING,
+            busyPct = 150,
+        )
+        assertEquals(100, over.busyPct)
+        val under = evaluateIntelligence(
+            readings = IntelligenceReadings(modelName = "m.litertlm"),
+            busyOverride = IntelligenceBusy.DOWNLOADING,
+            busyPct = -5,
+        )
+        assertEquals(0, under.busyPct)
+    }
+
+    @Test
+    fun idleNotReadyStaysStatic() {
+        val status = evaluateIntelligence(readings = IntelligenceReadings(modelName = null))
+        assertEquals(IntelligenceBusy.NONE, status.busy)
+        assertFalse("未就绪且无任务应静止", status.animates)
     }
 }

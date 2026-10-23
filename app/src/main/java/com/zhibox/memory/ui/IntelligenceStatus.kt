@@ -93,6 +93,8 @@ data class IntelligenceReadings(
 data class IntelligenceStatus(
     val level: IntelligenceLevel,
     val busy: IntelligenceBusy,
+    /** 进行中任务的百分比（0..100）；仅下载/同步有，其它为 null。 */
+    val busyPct: Int? = null,
     val model: ModelStatus,
     val spaces: SpaceStatus,
     val gpu: GpuStatus,
@@ -109,9 +111,15 @@ data class IntelligenceStatus(
     /** 是否需要首次引导条（仅"未就绪"）。 */
     val needsOnboarding: Boolean get() = level == IntelligenceLevel.NOT_READY
 
-    /** 是否有呼吸动效（就绪/部分就绪才动；未就绪与异常静止）。 */
+    /**
+     * 是否有动效：就绪/部分就绪慢呼吸；未就绪与异常静止，
+     * **但有进行中的任务时（下载/重嵌入/抽取）仍然脉冲**——干着活就该动，
+     * 否则用户从"未就绪"点下载后看不到任何反馈。
+     */
     val animates: Boolean
-        get() = level == IntelligenceLevel.READY || level == IntelligenceLevel.PARTIAL
+        get() = level == IntelligenceLevel.READY ||
+            level == IntelligenceLevel.PARTIAL ||
+            busy != IntelligenceBusy.NONE
 
     companion object {
         /** 冷启动首帧占位：亮灰、不动，避免"先绿后灰"的跳变。 */
@@ -139,7 +147,11 @@ data class IntelligenceStatus(
  *
  * 注意：LLM 读取失败属于 L3 待处理项，只让状态变 PARTIAL，不判 L1 异常。
  */
-fun evaluateIntelligence(readings: IntelligenceReadings): IntelligenceStatus {
+fun evaluateIntelligence(
+    readings: IntelligenceReadings,
+    busyOverride: IntelligenceBusy? = null,
+    busyPct: Int? = null,
+): IntelligenceStatus {
     val model = when {
         readings.modelFileBroken -> ModelStatus.Corrupt
         !readings.modelName.isNullOrBlank() -> ModelStatus.Ready(readings.modelName.orEmpty())
@@ -182,11 +194,18 @@ fun evaluateIntelligence(readings: IntelligenceReadings): IntelligenceStatus {
         else -> IntelligenceLevel.READY
     }
 
-    val busy = if (readings.extracting) IntelligenceBusy.EXTRACTING else IntelligenceBusy.NONE
+    // 共享 Flow 上报的下载/同步优先于 DB 抽取计数；都没有则 NONE
+    val busy = when {
+        busyOverride == IntelligenceBusy.DOWNLOADING -> IntelligenceBusy.DOWNLOADING
+        busyOverride == IntelligenceBusy.SYNCING -> IntelligenceBusy.SYNCING
+        readings.extracting -> IntelligenceBusy.EXTRACTING
+        else -> IntelligenceBusy.NONE
+    }
 
     return IntelligenceStatus(
         level = level,
         busy = busy,
+        busyPct = busyPct?.coerceIn(0, 100),
         model = model,
         spaces = spaces,
         gpu = gpu,

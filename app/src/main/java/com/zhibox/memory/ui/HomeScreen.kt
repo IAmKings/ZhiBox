@@ -444,14 +444,28 @@ private val BusyPulse = PulseSpec(1_400, 1.6f, 0.45f, 0f)
 
 /** 四态文案（同时用于 stateDescription 与无障碍播报）。 */
 @Composable
-private fun intelligenceStatusLabel(status: IntelligenceStatus): String = when (status.level) {
-    IntelligenceLevel.READY -> stringResource(R.string.intelligence_status_ready)
-    IntelligenceLevel.PARTIAL -> stringResource(
-        R.string.intelligence_status_partial,
-        status.pendingCount,
-    )
-    IntelligenceLevel.NOT_READY -> stringResource(R.string.intelligence_status_not_ready)
-    IntelligenceLevel.ERROR -> stringResource(R.string.intelligence_status_error)
+private fun intelligenceStatusLabel(status: IntelligenceStatus): String {
+    // 有进行中的任务时播报"正在下载/同步/抽取"，比四态更能解释"为什么在闪"
+    val busyLabel = when (status.busy) {
+        IntelligenceBusy.DOWNLOADING -> status.busyPct?.let {
+            stringResource(R.string.intelligence_status_downloading, it)
+        }
+        IntelligenceBusy.SYNCING -> status.busyPct?.let {
+            stringResource(R.string.intelligence_status_syncing, it)
+        }
+        IntelligenceBusy.EXTRACTING -> stringResource(R.string.intelligence_status_extracting)
+        IntelligenceBusy.NONE -> null
+    }
+    if (busyLabel != null) return busyLabel
+    return when (status.level) {
+        IntelligenceLevel.READY -> stringResource(R.string.intelligence_status_ready)
+        IntelligenceLevel.PARTIAL -> stringResource(
+            R.string.intelligence_status_partial,
+            status.pendingCount,
+        )
+        IntelligenceLevel.NOT_READY -> stringResource(R.string.intelligence_status_not_ready)
+        IntelligenceLevel.ERROR -> stringResource(R.string.intelligence_status_error)
+    }
 }
 
 /**

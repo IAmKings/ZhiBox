@@ -679,4 +679,7 @@
     <string name="settings_sub_models">模型与算力</string>
     <string name="settings_sub_ask">问答与增强</string>
     <string name="settings_sub_retrieval">检索质量</string>
+    <string name="intelligence_status_downloading">正在下载模型，%1$d%%</string>
+    <string name="intelligence_status_syncing">正在同步数据，%1$d%%</string>
+    <string name="intelligence_status_extracting">正在抽取内容</string>
 </resources>

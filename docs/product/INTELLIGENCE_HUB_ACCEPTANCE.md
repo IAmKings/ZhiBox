@@ -84,3 +84,10 @@
 | `design/main_screen/impl/impl-intel-hub-landscape.png` | 横屏面板 |
 | `design/main_screen/impl/impl-intel-hub-font200.png` | 200% 字号面板 |
 | `design/main_screen/impl/impl-settings-font200.png` | 200% 字号设置页 |
+
+## 5. 追加：共享 Busy Flow（2026-10-23 晚）
+
+- 下载/重嵌入进度已抽成 `IntelligenceBusySource`（StateFlow），首页状态点可在大盘任意页面感知并切快脉冲。
+- 纯 JVM 覆盖：`IntelligenceStatusTest` +5 例（共 18 例）。
+- 真机限制：本机无模型 + 共享目录未配置，DOWNLOADING/SYNCING 的可见窗口无法稳定复现
+  （下载会先弹 SAF 目录选择器；重嵌入 worker 无模型立即失败），建议在装有模型的设备上补走查。
