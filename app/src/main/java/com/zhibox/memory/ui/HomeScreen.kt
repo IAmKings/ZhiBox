@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -47,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.core.RepeatMode
@@ -185,6 +187,8 @@ private fun HomeContent(
         is HomeUiState.Loaded -> state.filter
         else -> HomeFilter.ALL
     }
+    // 每个分类一份滚动状态：切 tab 不再共用同一个 LazyListState（否则索引被裁剪、位置丢失）
+    val listStates = rememberFilterListStates()
 
     Box(
         modifier = modifier
@@ -228,6 +232,7 @@ private fun HomeContent(
                     is HomeUiState.Error -> HomeError(state.message, onRetry = onRetry)
                     is HomeUiState.Loaded -> HomeTimeline(
                         state = state,
+                        listState = listStates.getValue(filter),
                         onOpenDocument = onOpenDocument,
                         onOpenImport = onOpenImport,
                     )
@@ -638,11 +643,50 @@ private fun FilterPill(
     }
 }
 
+// ── 时间线滚动状态（按分类记忆） ─────────────────────────────────────
+
+/**
+ * 分类 → 滚动位置。切 tab 时每个分类保留自己的位置；用 [rememberSaveable] 存
+ * (firstVisibleItemIndex, offset)，旋转/进程重建后也能恢复。
+ *
+ * 为什么不能共用一个 LazyListState：各分类列表长度不同，共用时索引会被裁剪
+ * （全部滑到第 20 项 → 切到只有 3 项的念头 → 索引被压到 2 → 切回全部停在顶部附近）；
+ * 切到空分类时列表还会被空态替换、状态被销毁，回来必然从头开始。
+ */
+private val FilterScrollSaver = listSaver<Map<HomeFilter, LazyListState>, Any>(
+    save = { states ->
+        states.entries.flatMap { (filter, state) ->
+            listOf(filter.name, state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset)
+        }
+    },
+    restore = { flat ->
+        buildMap {
+            var i = 0
+            while (i + 2 < flat.size) {
+                val filter = HomeFilter.entries.firstOrNull { it.name == flat[i] }
+                val index = flat[i + 1] as? Int
+                val offset = flat[i + 2] as? Int
+                if (filter != null && index != null && offset != null) {
+                    put(filter, LazyListState(index, offset))
+                }
+                i += 3
+            }
+        }
+    },
+)
+
+@Composable
+private fun rememberFilterListStates(): Map<HomeFilter, LazyListState> =
+    rememberSaveable(saver = FilterScrollSaver) {
+        HomeFilter.entries.associateWith { LazyListState() }
+    }
+
 // ── 时间线 ──────────────────────────────────────────────────────────
 
 @Composable
 private fun HomeTimeline(
     state: HomeUiState.Loaded,
+    listState: LazyListState,
     onOpenDocument: (String) -> Unit,
     onOpenImport: () -> Unit,
 ) {
@@ -668,6 +712,7 @@ private fun HomeTimeline(
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 132.dp),
     ) {
