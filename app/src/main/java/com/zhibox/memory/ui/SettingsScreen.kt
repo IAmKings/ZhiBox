@@ -751,7 +751,7 @@ internal fun SettingsContent(
             }
 
             // ---- 知识库迁移 + 自动重嵌入 ----
-            item(key = "section-5") {
+            item(key = "section-5-0") {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
@@ -790,11 +790,17 @@ internal fun SettingsContent(
                                 color = MaterialTheme.colorScheme.primary,
                             )
                         }
+                    }
+                }
+            }
 
-                        HorizontalDivider()
+            item(key = "section-5-1") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             stringResource(R.string.settings_reembed_section),
                             style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
                         )
                         val showProgress = state.reembedTotal > 0 && state.reembedDone < state.reembedTotal
                         if (showProgress) {
