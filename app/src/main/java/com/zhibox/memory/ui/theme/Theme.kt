@@ -58,7 +58,9 @@ private val LightColors: ColorScheme = lightColorScheme(
     surfaceContainerLow = Color(0xFFFBF9F6),
     surfaceContainer = PaperCream,
     surfaceContainerHigh = Color(0xFFF4EFEA),
-    surfaceContainerHighest = PillInactive,
+    // M3 Card 默认容器色读 surfaceContainerHighest；这里对齐设计令牌 card-pure，
+    // 让设置/来源/图谱等页面的卡片与首页卡片同为纯白（画布仍是 paper，两色分开）。
+    surfaceContainerHighest = CardPure,
 )
 
 private val DarkColors: ColorScheme = darkColorScheme(
@@ -97,7 +99,8 @@ private val DarkColors: ColorScheme = darkColorScheme(
     surfaceContainerLow = Color(0xFF171614),
     surfaceContainer = CardPureDark,
     surfaceContainerHigh = Color(0xFF232120),
-    surfaceContainerHighest = PillInactiveDark,
+    // 深色同理：卡片用 card-pure-dark，比米色 pill 容器更接近设计稿的"卡片浮在墨底上"。
+    surfaceContainerHighest = CardPureDark,
 )
 
 /**

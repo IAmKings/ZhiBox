@@ -20,15 +20,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zhibox.memory.R
+import com.zhibox.memory.ui.theme.zhiBoxColors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -88,6 +91,14 @@ fun ZhiBoxTopBar(
                 }
             }
         },
+        // 顶栏透明，让 Scaffold 的 paper 底色透出（含状态栏区域），二级页与首页连成整块底色。
+        // scrolledContainerColor 必须同步透明：滚动容器（scrollBehavior/nested scroll）激活时
+        // M3 会切换到该颜色，若沿用默认 surfaceContainer 就会在滚动中重新出现白/灰条带。
+        // 注意：只能用 colorScheme/extended 令牌，不写裸色值（透明是唯一例外）。
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+        ),
     )
 }
 
@@ -98,7 +109,13 @@ fun ZhiBoxScreen(
     backEnabled: Boolean = true,
     content: @Composable (PaddingValues) -> Unit,
 ) {
-    Scaffold(topBar = { ZhiBoxTopBar(title, onBack, backEnabled) }) { padding ->
+    // Scaffold 默认 containerColor = colorScheme.surface（卡片白），会导致二级页画布发白；
+    // 这里显式用与首页同源的 paper 令牌。enableEdgeToEdge 下 Scaffold 铺满窗口，
+    // 其 Surface 底色同时覆盖状态栏区域，配合透明顶栏 → 全屏一个底色。
+    Scaffold(
+        containerColor = MaterialTheme.zhiBoxColors.paper,
+        topBar = { ZhiBoxTopBar(title, onBack, backEnabled) },
+    ) { padding ->
         content(padding)
     }
 }
