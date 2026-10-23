@@ -63,6 +63,9 @@
       设置/来源/检索/搜索/问答/导入/证据/图谱不再出现白色顶栏条带（证据图 impl-settings-paper-top.png / impl-sources-paper-top.png）。
 - [x] 设置页性能：内容改 `LazyColumn` + 稳定 actions/state + 进场刷新 5s 节流；
       三张超高卡（模型商店 / 索引诊断 / SAG+LLM）拆分，快速上下滑动 0 掉帧。
+- [x] M3 真机验收：状态点/面板/深链/分组逐项走查（见
+      `docs/product/INTELLIGENCE_HUB_ACCEPTANCE.md`）；修复顶栏搜索/更多、面板关闭与行标签的
+      无障碍落点；200% 字号、动画缩放=0、横屏、深色均通过；面板首帧组合 3.7ms。
 - [x] 智能状态中枢（M2）：点击状态点打开 Bottom Sheet——一句话结论 + 4 个只读 pill
       （模型/空间/GPU/LLM）+ 4 条快捷动作深链 + 待处理区（无告警隐藏）+ 底部「打开设置 · 智能」；
       深/浅色真机走查通过。

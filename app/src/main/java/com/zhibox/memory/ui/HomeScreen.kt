@@ -364,19 +364,29 @@ private fun HomeTopBar(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onOpenSearch) {
+            // 无障碍：标签必须落在可点击节点上（图标自身 contentDescription=null），
+            // 否则 TalkBack 会拆成"无标签按钮 + 无动作描述"两个节点。
+            val searchLabel = stringResource(R.string.home_action_search)
+            IconButton(
+                onClick = onOpenSearch,
+                modifier = Modifier.semantics { contentDescription = searchLabel },
+            ) {
                 Icon(
                     imageVector = ZhiBoxIcons.Search,
-                    contentDescription = stringResource(R.string.home_action_search),
+                    contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     tint = colors.ink,
                 )
             }
             Box {
-                IconButton(onClick = { menuOpen = true }) {
+                val moreLabel = stringResource(R.string.home_action_more)
+                IconButton(
+                    onClick = { menuOpen = true },
+                    modifier = Modifier.semantics { contentDescription = moreLabel },
+                ) {
                     Icon(
                         imageVector = ZhiBoxIcons.More,
-                        contentDescription = stringResource(R.string.home_action_more),
+                        contentDescription = null,
                         modifier = Modifier.size(20.dp),
                         tint = colors.ink,
                     )

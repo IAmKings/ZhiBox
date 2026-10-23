@@ -38,6 +38,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -198,10 +201,17 @@ private fun HubHeader(onClose: () -> Unit) {
             color = colors.ink,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+        val closeLabel = stringResource(R.string.intelligence_close)
+        // 无障碍：标签落在可点击节点上（图标 contentDescription=null），且命中区 ≥48dp。
+        IconButton(
+            onClick = onClose,
+            modifier = Modifier
+                .size(48.dp)
+                .semantics { contentDescription = closeLabel },
+        ) {
             Icon(
                 imageVector = ZhiBoxIcons.Close,
-                contentDescription = stringResource(R.string.intelligence_close),
+                contentDescription = null,
                 modifier = Modifier.size(18.dp),
                 tint = colors.inkMeta,
             )
@@ -361,6 +371,8 @@ private fun HubActionRow(row: HubActionRowData, onClick: () -> Unit) {
             // 用 heightIn 而不是固定 height：200% 字体缩放时允许长高，不截断（§12.2）。
             .heightIn(min = 56.dp)
             .clickable(role = Role.Button, onClick = onClick)
+            // 无障碍：整行一个节点播报"标题，副标题"，避免拆成"无标签按钮 + 两段文字"。
+            .clearAndSetSemantics { contentDescription = "${row.title}，${row.subtitle}" }
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -486,6 +498,7 @@ private fun HubPendingList(
                     .fillMaxWidth()
                     .heightIn(min = 48.dp)
                     .clickable(role = Role.Button) { onOpenSection(row.section) }
+                    .clearAndSetSemantics { contentDescription = "${row.text}，${row.action}" }
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
