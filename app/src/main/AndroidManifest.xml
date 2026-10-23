@@ -37,10 +37,17 @@
         <uses-native-library android:name="libOpenCL-pixel.so" android:required="false" />
         <uses-native-library android:name="libGLES_mali.so" android:required="false" />
 
+        <!--
+          显式 adjustResize，避免默认 adjustUnspecified 在部分 ROM 上选成 adjustPan：
+          窗口被平移 + Compose 的 imePadding 再次上推 = 悬浮输入岛被推离键盘很远。
+          enableEdgeToEdge 下窗口不会被真正 resize，IME 只以 insets 形式下发，
+          由首页输入岛的 imePadding() 负责贴住键盘。
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.ZhiBox">
+            android:theme="@style/Theme.ZhiBox"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
