@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  启动页背景（API 24–30，深色）：底色 #121212 上曜石立方体会糊掉，故保留浅色圆盘承载。
+  与 drawable/zhibox_launch_background.xml 的差别只有中间的圆盘层。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/zhibox_window_background" />
+
+    <item
+        android:width="224dp"
+        android:height="224dp"
+        android:gravity="center">
+        <shape android:shape="oval">
+            <solid android:color="@color/zhibox_splash_icon_background" />
+        </shape>
+    </item>
+
+    <item
+        android:width="184dp"
+        android:height="184dp"
+        android:drawable="@drawable/ic_launcher_foreground"
+        android:gravity="center" />
+</layer-list>

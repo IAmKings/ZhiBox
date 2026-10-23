@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 深色模式冷启动窗口背景：与 Compose DarkColors.background 对齐（B3-3） -->
-    <color name="zhibox_window_background">#FF101510</color>
+    <!--
+      深色模式冷启动窗口背景：与 Compose DarkColors.background 对齐（PaperCreamDark）。
+      改版时与 values/colors.xml 成对修改。
+    -->
+    <color name="zhibox_window_background">#FF121212</color>
+
+    <!-- 启动页图标底盘：深色下仍用浅暖白，保证曜石立方体与呼吸绿节点可辨 -->
+    <color name="zhibox_splash_icon_background">#FFF4EFEA</color>
 </resources>

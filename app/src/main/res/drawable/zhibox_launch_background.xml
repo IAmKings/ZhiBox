@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  启动页背景（API 24–30，浅色）：Android 12 之前没有系统 SplashScreen，冷启动期间只有
+  windowBackground 可见，因此在这里画「品牌底色 + logo」两层，避免旧版设备启动只闪一片纯色。
+
+  · 不画图标底盘：浅色底为纸感米色（#F7F5F0），曜石立方体对比充足，白盘会显得像贴纸；
+  · 深色模式同样需要浅色圆盘承载（否则黑色立方体融进 #121212），见 drawable-night/ 同名文件；
+  · logo 复用自适应图标前景（ic_launcher_foreground），184dp 画布内立方体视觉约 96dp（与 Android 12+ 系统启动页观感对齐）；
+  · Android 12+ 走 values-v31 的 windowSplashScreen* 属性，本文件不参与。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/zhibox_window_background" />
+
+    <item
+        android:width="184dp"
+        android:height="184dp"
+        android:drawable="@drawable/ic_launcher_foreground"
+        android:gravity="center" />
+</layer-list>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ 深色系统启动页：底色取 values-night 的 PaperCreamDark（#121212），
+  图标底盘仍为浅暖白（深色立方体需要浅底承载）；状态栏图标转浅色。
+  同样：限定符样式整份替换，item 需完整重复。
+-->
+<resources>
+    <style name="Theme.ZhiBox" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowSplashScreenBackground">@color/zhibox_window_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/zhibox_splash_icon_background</item>
+
+        <item name="android:windowBackground">@color/zhibox_window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

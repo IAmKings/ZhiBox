@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 冷启动窗口背景：与 Compose 主题 background 对齐，避免深色模式启动闪白（B3-3） -->
-    <color name="zhibox_window_background">#FFF6FBF3</color>
+    <!--
+      冷启动窗口背景：与 Compose 主题背景对齐，避免冷启动闪出上一版配色。
+      · 浅色 = ui/theme/Color.kt 的 PaperCream（DESIGN.md paper-cream）
+      · 深色见 values-night/colors.xml（PaperCreamDark）
+      改版时这里必须与 Compose 主题一起改，否则会出现「旧色闪屏 → 新色首帧」的突变。
+    -->
+    <color name="zhibox_window_background">#FFF7F5F0</color>
+
+    <!--
+      启动页图标底盘：深色立方体 logo 日夜都需要浅色底承载，
+      取 DESIGN.md card-pure（参考 Anchor 的 anchor_icon_background 做法）。
+    -->
+    <color name="zhibox_splash_icon_background">#FFFFFFFF</color>
 </resources>

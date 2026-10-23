@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+（API 31）系统启动页 / SplashScreen。
+  注意：带限定符的样式是「整份替换」而不是逐项合并，因此这里必须重复基础主题的所有 item。
+
+  · windowSplashScreenBackground：纸感底色，与 Compose PaperCream 一致，冷启动无跳变；
+  · windowSplashScreenAnimatedIcon：品牌立方体 logo（复用自适应图标前景矢量）；
+  · 不设 windowSplashScreenIconBackgroundColor：浅色底是纸感米色，曜石立方体对比已经足够，
+    白盘会显得像贴纸；深色模式仍需底盘，见 values-night-v31（那里保留）。
+  · 不做人为延时/动画时长：首帧由 Compose 决定，避免拖慢启动（参考项目 2s 红线）。
+-->
+<resources>
+    <style name="Theme.ZhiBox" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenBackground">@color/zhibox_window_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+
+        <item name="android:windowBackground">@color/zhibox_window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

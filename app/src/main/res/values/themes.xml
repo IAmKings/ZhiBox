@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  浅色基础主题。Compose 单 Activity：XML 侧只负责「首帧之前」的观感。
+  启动页分两条路径（结构参照 Anchor）：
+  · API 31+：values-v31/themes.xml 使用系统 SplashScreen 属性（底色 + logo + 图标底盘）；
+  · API 24–30：本文件 windowBackground 使用 zhibox_launch_background（底色 + 圆盘 + logo）。
+-->
 <resources>
-    <!-- Compose 单 Activity 应用：XML 侧仅需无标题栏基础主题，实际配色由 Compose Theme 提供。
-         B3-3：windowBackground 与 Compose LightColors.background 对齐，消除冷启动闪白。 -->
     <style name="Theme.ZhiBox" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@color/zhibox_window_background</item>
+        <item name="android:windowBackground">@drawable/zhibox_launch_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>

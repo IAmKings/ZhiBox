@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  深色基础主题（API 24–30 启动页）：windowBackground 同时引用 zhibox_launch_background，
+  其中底色取自 values-night/colors.xml，图标底盘固定浅暖白，避免曜石 logo 融进深色底。
+  Compose 侧仍由 isSystemInDarkTheme() 选择 DarkColors。
+-->
 <resources>
-    <!-- B3-3 深色模式基础主题：parent 切到深色 Material，windowBackground 用 values-night/colors.xml
-         的深色背景；Compose 侧由 isSystemInDarkTheme() 选择 DarkColors。 -->
     <style name="Theme.ZhiBox" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/zhibox_window_background</item>
+        <item name="android:windowBackground">@drawable/zhibox_launch_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
