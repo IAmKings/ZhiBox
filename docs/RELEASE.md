@@ -1,6 +1,6 @@
 # ZhiBox 发布手册（Release Runbook）
 
-> 适用版本：`versionName = 0.1.3`（`app/build.gradle.kts`；v0.1.1 已发布）
+> 适用版本：`versionName = 0.1.4`（`app/build.gradle.kts`；v0.1.3 已发布）
 > 对应批次：B8–B12 / R2–R3 质量修复；发布链路沿用 P2 B4（构建/依赖/发布）。相关实现：`app/build.gradle.kts`、`scripts/release.sh`、
 > `gradle/wrapper/gradle-wrapper.properties`、`gradle/verification-metadata.xml`。
 > 原则：**任何密钥/口令都不入仓库**；发布物必须可验签、可追溯、可回滚。
@@ -117,8 +117,8 @@ sed -n 's/^ZHIBOX_KEY_PASSWORD=//p' "$HOME/.zhibox-release/credentials.propertie
 ```bash
 # 1) 确认 versionName 与 tag 一致（workflow 会强校验 v<versionName>）
 # 2) 打 tag 并推送（触发 Release workflow）
-git tag -a v0.1.3 -m "ZhiBox v0.1.3"
-git push origin v0.1.3
+git tag -a v0.1.4 -m "ZhiBox v0.1.4"
+git push origin v0.1.4
 # 3) 等待 GitHub Actions "Release (signed APK)" 全绿；会自动创建 Release 并上传：
 #    zhibox-<version>-<sha7>-release-signed.apk / .apk.sha256 / -mapping.txt
 ```
@@ -299,3 +299,26 @@ Manifest / 安全（P0-3、P1-10 回归）
 - apksigner PASS；PJZ110 同签名覆盖升级成功，数据/LLM 保留，启动 smoke 通过。
 - 证据：`docs/review/evidence/V0.1.3-rc-pjz110-smoke.txt`、`V0.1.3-RELEASE_CANDIDATE.json`。
 - 尚未打 tag/发布；下一步按本手册流程触发 tag Release。
+
+---
+
+## 11. 2026-10-24 v0.1.4 发布记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **5 / 0.1.4** |
+| 基线提交 | `v0.1.4` tag（master，见 Release 页面） |
+| 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.3） |
+| 签名 | 沿用既有 release keystore（与 v0.1.3 同证书，可覆盖升级） |
+| 发布产物 | 由 `.github/workflows/release.yml` 在 tag 推送后自动构建：`zhibox-0.1.4-<sha7>-release-signed.apk` + `.sha256` + mapping（资产见 GitHub Release） |
+
+本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
+- 智能状态中枢 M1/M2/M3：真实四态状态点、引导条、Bottom Sheet 面板、设置分组与深链、无障碍修复；
+- 首页：新内容胶囊、分类滚动位置记忆、念头图标改铅笔、启动页、输入岛贴键盘与"点外部收键盘"；
+- 设置：LazyColumn + 稳定组合 + 重查询按需加载 + 超高卡片拆分（P95 滑动帧 9ms）、卡片色统一 card-pure；
+- 备份：`ui_hint_` 前缀的本机 UI 提示不随备份迁移；
+- 工程：`:benchmark` Macrobenchmark 模块（启动 + 设置页滑动基线）与依赖校验；
+- 智能任务：下载/重嵌入进度共享 Flow，状态点快脉冲 + TalkBack 播报。
+
+验收：CI（docs 一致性 + assembleDebug + 单测 + lint + androidTest 编译 + assembleRelease）通过后再打 tag；
+tag 与 versionName 由 release workflow 强校验。

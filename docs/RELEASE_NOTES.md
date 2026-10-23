@@ -1,9 +1,30 @@
-# 发布说明（v0.1.3 开发中；v0.1.1 已发布；含历史）
+# 发布说明（v0.1.4 已发布；含历史）
 
-> 适用：**v0.1.3 开发中**（v0.1.1 已发布；当前 master 含 P1 导入扩展、质量审查修复、R1/R2/R5 回归与 clean-install/upgrade smoke）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/B*_FIX_REPORT.md`、`docs/CODE_QUALITY_REVIEW_R2.md`/`R3.md`。
-> **发布状态**：v0.1.1 已发布/tag；v0.1.3 **未 tag/未发布**，发布动作由负责人确认（`docs/RELEASE.md`）。
+> 适用：**v0.1.4**（2026-10-24 发布；v0.1.3/v0.1.1/v0.1.0-mvp 为历史版本）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/`、`docs/product/INTELLIGENCE_HUB_SPEC.md` 与 `docs/product/INTELLIGENCE_HUB_ACCEPTANCE.md`。
+> **发布状态**：v0.1.4 已 tag/发布（GitHub Release 自动构建签名 APK）；v0.1.3 已发布；v0.1.1、v0.1.0-mvp 已发布。
 
-## 0. v0.1.3（开发中，未发布）
+## 0. v0.1.4（2026-10-24 发布）
+
+- **智能状态中枢（M1/M2/M3）**：首页左上角状态点改为真实四态（就绪/部分就绪/未就绪/异常）+ 首次引导条；
+  点击打开「智能状态」Bottom Sheet（结论 + 4 个只读 pill + 快捷动作 + 待处理区 + 设置入口）；
+  设置页按「智能（模型与算力/问答与增强/检索质量）→ 数据 → 诊断 → 隐私与关于」分组并提供深链锚点；
+  M3 真机走查补无障碍（状态点/顶栏按钮/面板行标签落到可点击节点、48dp 命中区、200% 字号、减少动画静止）。
+- **首页体验**：新增「N 条新内容」胶囊（新条目不再顶走阅读位置，点击回顶/切分类）；分类切换保留各自滚动位置；
+  念头分类图标改为铅笔（统一线条风格）；新增启动页（Android 12+ 系统 SplashScreen + 旧版 layer-list，日夜双资源）；
+  输入岛修复：贴住输入法（显式 adjustResize 避免系统 pan + imePadding 双重位移），键盘展开时点输入岛以外只收键盘、不误触下层动作。
+- **设置页**：卡顿治理（`LazyColumn` + 稳定 actions/state + 进场 5s 节流 + 索引/LLM/质量按需加载 + 超高卡片拆分），
+  单帧最重 compose+layout 375–465ms → 121–142ms，快速滑动 Macrobenchmark gfx P95 9ms；
+  二级页统一暖纸底色 + 透明顶栏；卡片色统一为设计令牌 `card-pure`。
+- **备份**：`ui_hint_` 前缀的本机 UI 提示状态不再随知识库备份导出/导入（跨设备恢复不会丢下载引导）。
+- **智能任务反馈**：下载/重嵌入进度抽成共享 Flow，状态点切快脉冲并在 TalkBack 播报「正在下载模型，N%」「正在同步数据，N%」。
+- **工程**：新增 `:benchmark` Macrobenchmark 模块（启动 + 设置页滑动基线，含 baseline 存档）；
+  补充依赖校验元数据；修复 CI 文档一致性/校验和问题。
+- **兼容性**：versionCode 5 / versionName 0.1.4；数据库 schema v9（本版本无迁移，可覆盖升级 v0.1.3）；
+  包名 / minSdk 24 / targetSdk 36 不变；签名沿用既有 release keystore。
+- **已知限制**：READY 呼吸动画与下载/同步脉冲未在"无模型"设备上可视化验证（单测覆盖判定与映射）；
+  Agent/问答真实质量仍 `QUALITY_CLAIM_ALLOWED=false`；启动基准存在设备噪声（建议 CI 固定环境重录基线）。
+
+## 0.1 v0.1.3（2026-10-22 发布，历史）
 
 - **质量审查修复**：R8 版本入 catalog、备份快照持久化/失败保护、来源范围检索分批/流式过滤、导出一致性 reader transaction、SharedModelStore 原子切换、备份排除规则。
 - **R1/R2/R5 回归**：快照失败不动库、生成 50 文档/200 chunk 导出导入回环、导入/重嵌入/抽取活动期间导出拒绝、来源范围端到端检索。
@@ -11,7 +32,7 @@
 - **限制**：Agent/问答真实质量仍 `QUALITY_CLAIM_ALLOWED=false`；R5 真机大库 ANR/进程中断仍建议发布前补测。
 - **签名 RC**：`dist/zhibox-0.1.3-bdc8be2-release-signed.apk`（70,164,017 bytes，SHA-256 `0f47cdffcea8eb2d4b626401904686393bc2275357f2a2d651070ee6fdf4a03b`，apksigner PASS）；PJZ110 同签名覆盖升级 smoke 通过。
 
-## 0.1 v0.1.2（历史，未发布）
+## 0.2 v0.1.2（历史，未发布）
 
 - **P1 导入扩展**：文本型 PDF（PDFBox-Android；owner-password-only 可抽取）、DOCX/PPTX/XLSX、HTML、网页 URL、SAF 多选文件；staging 白名单与 50MB 流式上限；旧 `.doc/.ppt/.xls` 返回明确的“另存为 OOXML”错误；URL 导入把原始地址写入 `source.originUrl`（staging 旁车，schema v8）；**扫描件 OCR（ML Kit 离线，默认开启）与 user-password PDF 输入密码重试**。
 - **P1 多轮问答首版（B13）**：最近 6 条历史作为上下文（不是证据），历史 `[S#]` 剥离，引用仍只来自本轮证据；见 `docs/review/B13_MULTITURN_CHAT_REPORT.md`。
