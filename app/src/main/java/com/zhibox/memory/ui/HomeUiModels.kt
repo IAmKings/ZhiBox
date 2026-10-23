@@ -87,7 +87,49 @@ sealed interface HomeUiState {
         val totalCount: Int,
         /** 当前过滤命中的条数。 */
         val shownCount: Int,
+        /** 当前分类里"用户还没看过"的新条目数（顶部胶囊用）。 */
+        val newInFilterCount: Int = 0,
+        /** 新条目落在其它分类时的分类（没有则为 null）。 */
+        val newElsewhereCategory: HomeCategory? = null,
+        /** 落在其它分类的新条目数。 */
+        val newElsewhereCount: Int = 0,
     ) : HomeUiState
 
     data class Error(val message: String) : HomeUiState
+}
+
+/**
+ * 「新内容胶囊」的计数（纯函数，便于单测）。
+ *
+ * - [inFilter]：新条目属于当前分类的数量 → 胶囊「N 条新内容」，点击回顶部；
+ * - [elsewhere]：新条目不属于当前分类时，取数量最多的那个分类 → 胶囊「「念头」新增 N 条」，
+ *   点击切到该分类并回顶部（[HomeFilter] 没有快照分类，快照归入"全部"由 UI 处理）。
+ */
+internal data class NewContentCounts(
+    val inFilter: Int = 0,
+    val elsewhere: HomeCategory? = null,
+    val elsewhereCount: Int = 0,
+) {
+    val hasAny: Boolean get() = inFilter > 0 || elsewhereCount > 0
+}
+
+internal fun countNewContent(
+    cards: List<HomeCardItem>,
+    seenIds: Set<String>,
+    filter: HomeFilter,
+): NewContentCounts {
+    val unseen = cards.filter { it.id !in seenIds }
+    if (unseen.isEmpty()) return NewContentCounts()
+    val target = filter.toCategory()
+    val inFilter = if (target == null) unseen.size else unseen.count { it.category == target }
+    if (target == null) return NewContentCounts(inFilter = inFilter)
+    val elsewhere = unseen.filter { it.category != target }
+    if (elsewhere.isEmpty()) return NewContentCounts(inFilter = inFilter)
+    val byCategory = elsewhere.groupingBy { it.category }.eachCount()
+    val top = byCategory.maxByOrNull { it.value } ?: return NewContentCounts(inFilter = inFilter)
+    return NewContentCounts(
+        inFilter = inFilter,
+        elsewhere = top.key,
+        elsewhereCount = top.value,
+    )
 }

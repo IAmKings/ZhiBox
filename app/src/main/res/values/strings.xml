@@ -629,4 +629,9 @@
     <string name="intelligence_onboarding_message">下载模型后即可导入文档并离线检索</string>
     <string name="intelligence_onboarding_cta">去配置</string>
     <string name="intelligence_onboarding_dismiss">稍后再说</string>
+
+    <!-- ==== 首页「新内容胶囊」 ==== -->
+    <string name="home_new_content_pill">%1$d 条新内容</string>
+    <string name="home_new_content_elsewhere">「%1$s」新增 %2$d 条</string>
+    <string name="home_new_content_jump">回到顶部查看</string>
 </resources>

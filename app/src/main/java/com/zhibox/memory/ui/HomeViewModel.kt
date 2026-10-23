@@ -63,6 +63,17 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
      */
     private val retryTrigger = MutableStateFlow(0)
 
+    // ── 新内容胶囊：记录"用户已经看过"的条目 id ──────────────────
+    /** 已看过的文档 id（进程内）；首次加载整批视为已看过，避免冷启动弹胶囊。 */
+    private val seenIds = mutableSetOf<String>()
+
+    /** 最近一次计算出的全量条目 id（点胶囊后整批标记为已读）。 */
+    private var lastAllIds: Set<String> = emptySet()
+    private var baselineReady = false
+
+    /** 触发重算（点胶囊后把新内容标记为已读）。 */
+    private val seenRevision = MutableStateFlow(0)
+
     val uiState: StateFlow<HomeUiState> = retryTrigger
         .flatMapLatest {
             combine(
@@ -70,7 +81,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 db.sourceDao().observeAll(SourceStatus.ACTIVE.value),
                 db.chunkDao().observeFirstChunks(),
                 filter,
-            ) { documents, sources, previews, active ->
+                seenRevision,
+            ) { documents, sources, previews, active, _ ->
                 buildState(documents, sources, previews, active)
             }
                 .catch { throwable ->
@@ -177,6 +189,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         filter.value = value
     }
 
+    /** 顶部胶囊点击后：把当前所有条目标记为已看过（胶囊消失，不改变滚动位置）。 */
+    fun markNewContentSeen() {
+        seenIds.addAll(lastAllIds)
+        seenRevision.value += 1
+    }
+
     /** 错误态重试：重新订阅数据流。 */
     fun retry() {
         retryTrigger.value += 1
@@ -208,11 +226,22 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val target = active.toCategory()
         val filtered = if (target == null) cards else cards.filter { it.category == target }
 
+        // 新内容：首次加载整批视为"已看过"；之后按 unseen 计数
+        if (!baselineReady) {
+            seenIds.addAll(cards.map { it.id })
+            baselineReady = true
+        }
+        lastAllIds = cards.map { it.id }.toSet()
+        val newContent = countNewContent(cards, seenIds.toSet(), active)
+
         return HomeUiState.Loaded(
             filter = active,
             groups = filtered.groupByDay(now),
             totalCount = documents.size,
             shownCount = filtered.size,
+            newInFilterCount = newContent.inFilter,
+            newElsewhereCategory = newContent.elsewhere,
+            newElsewhereCount = newContent.elsewhereCount,
         )
     }
 

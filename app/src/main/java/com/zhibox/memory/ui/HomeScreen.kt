@@ -48,9 +48,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -157,6 +159,7 @@ fun HomeScreen(
             onOpenIntelligence()
         },
         onDismissOnboarding = { viewModel.onOnboardingSeen() },
+        onMarkNewContentSeen = viewModel::markNewContentSeen,
     )
 }
 
@@ -180,6 +183,7 @@ private fun HomeContent(
     showOnboarding: Boolean,
     onOpenIntelligence: () -> Unit,
     onDismissOnboarding: () -> Unit,
+    onMarkNewContentSeen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.zhiBoxColors
@@ -236,6 +240,41 @@ private fun HomeContent(
                         onOpenDocument = onOpenDocument,
                         onOpenImport = onOpenImport,
                     )
+                }
+
+                // 「新内容胶囊」：浮在列表上方，不打断当前阅读位置
+                if (state is HomeUiState.Loaded) {
+                    val listState = listStates.getValue(filter)
+                    val scope = rememberCoroutineScope()
+                    val elsewhereFilter = state.newElsewhereCategory?.toFilterOrNull()
+                    when {
+                        state.newInFilterCount > 0 -> NewContentPill(
+                            text = stringResource(
+                                R.string.home_new_content_pill,
+                                state.newInFilterCount,
+                            ),
+                            contentDescription = stringResource(R.string.home_new_content_jump),
+                            onClick = {
+                                onMarkNewContentSeen()
+                                scope.launch { listState.animateScrollToItem(0) }
+                            },
+                            modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp),
+                        )
+                        state.newElsewhereCount > 0 && state.newElsewhereCategory != null ->
+                            NewContentPill(
+                                text = stringResource(
+                                    R.string.home_new_content_elsewhere,
+                                    stringResource(state.newElsewhereCategory.typeLabelRes),
+                                    state.newElsewhereCount,
+                                ),
+                                contentDescription = stringResource(R.string.home_new_content_jump),
+                                onClick = {
+                                    onMarkNewContentSeen()
+                                    onSelectFilter(elsewhereFilter ?: HomeFilter.ALL)
+                                },
+                                modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp),
+                            )
+                    }
                 }
             }
         }
@@ -643,6 +682,47 @@ private fun FilterPill(
     }
 }
 
+// ── 新内容胶囊 ──────────────────────────────────────────────────────
+
+/**
+ * 顶部「N 条新内容」胶囊：新条目不会把列表顶走（LazyColumn 按 key 锚定当前可见项），
+ * 想立刻看新内容时点它回顶部；点后标记为已读。
+ */
+@Composable
+private fun NewContentPill(
+    text: String,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .clickable(onClickLabel = contentDescription, onClick = onClick),
+        shape = RoundedCornerShape(percent = 50),
+        color = MaterialTheme.colorScheme.primary,
+        shadowElevation = 6.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = ZhiBoxIcons.ArrowUp,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onPrimary,
+            )
+            Text(
+                text = text,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+        }
+    }
+}
+
 // ── 时间线滚动状态（按分类记忆） ─────────────────────────────────────
 
 /**
@@ -919,6 +999,14 @@ private fun TagPill(label: String, colors: BadgeColors) {
             .background(colors.tagContainer)
             .padding(horizontal = 10.dp, vertical = 2.dp),
     )
+}
+
+/** 分类 → 顶部分类药丸（快照没有独立 tab，落到「全部」）。 */
+private fun HomeCategory.toFilterOrNull(): HomeFilter? = when (this) {
+    HomeCategory.NOTE -> HomeFilter.NOTE
+    HomeCategory.IMAGE -> HomeFilter.IMAGE
+    HomeCategory.DOCUMENT -> HomeFilter.DOCUMENT
+    HomeCategory.SNAPSHOT -> null
 }
 
 private fun HomeCategory.badgeIcon(): ImageVector = when (this) {
@@ -1205,6 +1293,7 @@ private fun HomeContentPreview() {
             showOnboarding = false,
             onOpenIntelligence = {},
             onDismissOnboarding = {},
+            onMarkNewContentSeen = {},
         )
     }
 }
@@ -1231,6 +1320,7 @@ private fun HomeContentDarkPreview() {
             showOnboarding = false,
             onOpenIntelligence = {},
             onDismissOnboarding = {},
+            onMarkNewContentSeen = {},
         )
     }
 }
@@ -1257,6 +1347,7 @@ private fun HomeContentEmptyPreview() {
             showOnboarding = false,
             onOpenIntelligence = {},
             onDismissOnboarding = {},
+            onMarkNewContentSeen = {},
         )
     }
 }
@@ -1283,6 +1374,7 @@ private fun HomeContentLoadingPreview() {
             showOnboarding = false,
             onOpenIntelligence = {},
             onDismissOnboarding = {},
+            onMarkNewContentSeen = {},
         )
     }
 }
@@ -1309,6 +1401,34 @@ private fun HomeContentNotReadyPreview() {
             showOnboarding = true,
             onOpenIntelligence = {},
             onDismissOnboarding = {},
+            onMarkNewContentSeen = {},
+        )
+    }
+}
+
+@Preview(name = "Home · 新内容胶囊", showBackground = true, heightDp = 900)
+@Composable
+private fun HomeContentNewContentPreview() {
+    ZhiBoxTheme(darkTheme = false) {
+        HomeContent(
+            state = FakeHome.loaded.copy(newInFilterCount = 3),
+            draft = "",
+            onDraftChange = {},
+            onSelectFilter = {},
+            onRetry = {},
+            onOpenGraph = {},
+            onSubmit = {},
+            onOpenImport = {},
+            onOpenChat = {},
+            onOpenSources = {},
+            onOpenSettings = {},
+            onOpenDiagnostics = null,
+            onOpenDocument = {},
+            intelligence = FakeHome.ready,
+            showOnboarding = false,
+            onOpenIntelligence = {},
+            onDismissOnboarding = {},
+            onMarkNewContentSeen = {},
         )
     }
 }
