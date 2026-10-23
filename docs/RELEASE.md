@@ -307,10 +307,11 @@ Manifest / 安全（P0-3、P1-10 回归）
 | 项 | 值 |
 |---|---|
 | versionCode / versionName | **5 / 0.1.4** |
-| 基线提交 | `v0.1.4` tag（master，见 Release 页面） |
+| 基线提交 | `364925a`（tag `v0.1.4`） |
 | 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.3） |
 | 签名 | 沿用既有 release keystore（与 v0.1.3 同证书，可覆盖升级） |
-| 发布产物 | 由 `.github/workflows/release.yml` 在 tag 推送后自动构建：`zhibox-0.1.4-<sha7>-release-signed.apk` + `.sha256` + mapping（资产见 GitHub Release） |
+| 发布产物 | `zhibox-0.1.4-364925a-release-signed.apk`（70,284,958 bytes）；SHA-256 `263fe529c210031707dd8138e375183cef8e901876bdbf9aef2b396ebbb2bcb7`；同名 `.sha256` 与 `zhibox-0.1.4-364925a-mapping.txt` 一并上传 |
+| 发布通道 | tag 推送 → `.github/workflows/release.yml` 自动签名构建 + apksigner/aapt2 校验 + 创建 GitHub Release |
 
 本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
 - 智能状态中枢 M1/M2/M3：真实四态状态点、引导条、Bottom Sheet 面板、设置分组与深链、无障碍修复；
