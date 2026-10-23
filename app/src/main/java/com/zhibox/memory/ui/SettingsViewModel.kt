@@ -1,6 +1,7 @@
 package com.zhibox.memory.ui
 
 import android.app.Application
+import androidx.compose.runtime.Immutable
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -73,6 +74,7 @@ data class LegacySpaceUi(val modelId: String, val vectorCount: Int)
  * 设置屏 UiState（P1-8）：所有长任务（刷新/模型下载/备份导入导出/索引重建/清空共享目录）
  * 在 `viewModelScope + Dispatchers.IO` 中执行，屏幕离开组合不取消；异常统一转为可读提示。
  */
+@Immutable
 data class SettingsUiState(
     val loading: Boolean = true,
     val model: String? = null,
@@ -190,8 +192,38 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      * R2 复审修复（P2-8）：屏幕进入时刷新快照。手动导航下 ViewModel 常驻 Activity，
      * 仅 init 刷新会在"导入/删源/切换模型后再进设置页"时展示陈旧计数
      * （Chat/Graph/Sources/Import 均已做同款进场刷新）。
+     *
+     * P0 补充：5s 节流。
+     *
+     * 原实现每次进入设置页都全量刷新一次；快速来回切换时会连续触发多轮快照 +
+     * 多次整屏状态发射。5 秒内重复进入直接跳过；数据变更后仍会在下一次进入时刷新
+     * （导入/删源等操作通常伴随页面切换，5s 窗口足够短，不会长期展示陈旧计数）。
      */
+    /** 本次会话是否已加载过 LLM 配置（Keystore 解密一次性完成，后续由保存/清除动作更新）。 */
+    @Volatile
+    private var llmLoaded = false
+
+    /**
+     * 按需加载 LLM 配置（P1）：设置页滚到「SAG 增强 / LLM」段时调用。
+     * 避免每次进入设置都做 Keystore 解密。
+     */
+    fun ensureLlmLoaded() {
+        if (llmLoaded) return
+        llmLoaded = true
+        safeLaunch(
+            onError = { t ->
+                update { it.copy(llmError = str(R.string.settings_llm_load_failed, t.readableMessage())) }
+            },
+        ) {
+            val snap = withContext(Dispatchers.IO) { readLlmSnapshot() }
+            update { it.copy(llm = snap.config, llmError = snap.error) }
+        }
+    }
+
     fun onScreenStarted() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastAutoRefreshAtMs < AUTO_REFRESH_MIN_INTERVAL_MS) return
+        lastAutoRefreshAtMs = now
         refresh()
     }
 
@@ -239,6 +271,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     /** R2（P2-13）：刷新代际——并发 refresh（进场刷新/操作收尾）时旧快照后到不得覆盖新状态。 */
     private var refreshSeq: Int = 0
 
+    /** 进场自动刷新的节流时间戳（仅自动刷新用；手动 refresh 不受限）。 */
+    private var lastAutoRefreshAtMs = 0L
+
     fun refresh() {
         val seq = ++refreshSeq
         safeLaunch(
@@ -273,12 +308,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         storeState = s.storeState,
                         sharedNames = s.sharedNames,
                         lastReembed = s.lastReembed,
-                        indexHealth = s.indexHealth,
+                        // 已检查过的健康报告保持到下次检查/修复；进场快照不再触发全表扫描
+                        indexHealth = it.indexHealth ?: s.indexHealth,
                         legacySpaces = s.legacySpaces,
                         legacySpacesError = s.legacySpacesError,
                         hasAutoBackup = s.hasAutoBackup,
-                        llm = s.llm,
-                        llmError = s.llmError,
+                        // LLM 配置是按需加载的：已加载则保留，避免 refresh 又把表单清空
+                        llm = if (llmLoaded) it.llm else s.llm,
+                        llmError = if (llmLoaded) it.llmError else s.llmError,
                         sagEnabled = s.sagEnabled,
                         answerEnabled = s.answerEnabled,
                         networkDisabled = s.networkDisabled,
@@ -292,8 +329,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         traceRecentModes = s.traceRecentModes,
                     )
                 }
-                // B15.2：质量报告在设置快照写回后单独异步读取，失败不影响其他设置展示
-                refreshExtractionQuality()
+                // P1：抽取质量是重查询（全表扫描 + 聚合），改为滚到该段时按需加载（见 UI 的 LaunchedEffect）。
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
@@ -329,8 +365,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val lastReembed = lastDone?.let {
             SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(it))
         }
-        // B3-14：完整三表健康报告（计数 + 孤儿 chunkId 集合 + reasons），供设置页明细展示
-        val indexHealth = repository.indexHealthCheck()
+        // P1：索引健康检查是 O(全部 chunk + 全部向量) 的分页全表扫描，绝不放进进场路径。
+        // 初值 null = 未检查；只有用户点「检查并修复索引」（repairIndex）时才执行。
+        val indexHealth: IngestRepository.IndexHealth? = null
         // B7：旧模型空间（非 EGemma2）检测。只展示警告、不自动删除数据；失败不影响设置页刷新，
         // 但错误要可见（审查修复：此前静默吞成空列表，用户不知道检测失败）。
         var legacySpaces: List<LegacySpaceUi> = emptyList()
@@ -347,10 +384,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 t.readableMessage(),
             )
         }
-        // B8：LLM 配置（只取掩码 key）与隐私开关。store/prefs 为同步轻量 API，此处已在 IO 上下文。
-        // load() 在配置损坏/解密失败时抛 LlmStoreException（message 中文可读）：
-        // 不静默吞——把可读原因放进 llmError 展示，同时不阻塞设置页其余内容刷新。
-        val llmSnapshot = readLlmSnapshot()
+        // P1：LLM 配置（Keystore 解密）不再在进场时读取——改为滚到 LLM 段时按需加载
+        // （ensureLlmLoaded）。这里只保留"未配置"初值，避免每次进设置都碰 Keystore。
+        val llmSnapshot = LlmSnapshot(config = null, error = null)
         val llm = llmSnapshot.config
         val llmError = llmSnapshot.error
         val sagEnabled = LlmPreferences.sagEnabled(app)
@@ -1275,6 +1311,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private companion object {
         /** B12：trace 展示条数（导出条数统一在 TraceExport.EXPORT_LIMIT）。 */
         const val TRACE_RECENT_LIMIT = 50
+
+        /** 进场自动刷新最小间隔（毫秒）。 */
+        const val AUTO_REFRESH_MIN_INTERVAL_MS = 5_000L
     }
 
     private fun observeReembedProgress() {

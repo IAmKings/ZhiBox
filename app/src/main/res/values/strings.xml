@@ -634,4 +634,7 @@
     <string name="home_new_content_pill">%1$d 条新内容</string>
     <string name="home_new_content_elsewhere">「%1$s」新增 %2$d 条</string>
     <string name="home_new_content_jump">回到顶部查看</string>
+    <string name="settings_index_not_checked">尚未检查（点下方按钮开始）</string>
+    <string name="settings_store_shared_title">共享模型目录</string>
+    <string name="settings_llm_behavior_title">SAG 增强与问答</string>
 </resources>

@@ -5,15 +5,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -93,8 +94,14 @@ fun SettingsScreen(
         ActivityResultContracts.OpenDocumentTree(),
     ) { uri -> uri?.let(viewModel::setTreeUri) }
 
+    // 供 actions remember 复用的"最新值"引用：lambda 在调用时读取，避免捕获旧状态
+    val downloadingNow by rememberUpdatedState(state.downloading)
+    val storeStateNow by rememberUpdatedState(state.storeState)
+    val answerConsentNow by rememberUpdatedState(state.answerNetworkConsent)
+    val onBackNow by rememberUpdatedState(onBack)
+
     fun attemptBack() {
-        if (state.downloading) showLeaveDialog = true else onBack()
+        if (downloadingNow) showLeaveDialog = true else onBackNow()
     }
 
     // 下载中按系统返回：给出确认提示（下载任务在 ViewModel 中继续进行）。
@@ -309,7 +316,10 @@ fun SettingsScreen(
         )
     }
 
-    val actions = SettingsActions(
+    // 设置页 section 很多：actions 若每次重组都新建（普通 class + 新 lambda），
+    // 会让所有 section 无法跳过重组。这里只构造一次，内部读取上面的 *Now 引用。
+    val actions = remember(viewModel) {
+        SettingsActions(
         onBack = ::attemptBack,
         setPreference = viewModel::setPreference,
         setGpuMode = viewModel::setGpuMode,
@@ -317,7 +327,7 @@ fun SettingsScreen(
         chooseDirectory = { dirPicker.launch(null) },
         retryRefresh = viewModel::refresh,
         download = { entry ->
-            if (state.storeState != SharedModelStore.State.CONNECTED) {
+            if (storeStateNow != SharedModelStore.State.CONNECTED) {
                 dirPicker.launch(null)
             } else {
                 viewModel.startDownload(entry)
@@ -339,7 +349,7 @@ fun SettingsScreen(
         clearLlmKey = { pendingClearLlmKey = true },
         setSagEnabled = viewModel::setSagEnabled,
         setAnswerEnabled = { enabled ->
-            if (enabled && !state.answerNetworkConsent) {
+            if (enabled && !answerConsentNow) {
                 showAnswerConsentDialog = true
             } else {
                 viewModel.setAnswerEnabled(enabled)
@@ -355,7 +365,9 @@ fun SettingsScreen(
         exportTrace = viewModel::exportTraceJson,
         refreshQuality = viewModel::refreshExtractionQuality,
         exportQualityJson = { qualityExportLauncher.launch(QUALITY_EXPORT_FILE_NAME) },
-    )
+        ensureLlmLoaded = viewModel::ensureLlmLoaded,
+        )
+    }
     SettingsContent(state = state, actions = actions)
 }
 
@@ -395,6 +407,8 @@ class SettingsActions(
     // B15.2：抽取质量诊断
     val refreshQuality: () -> Unit = {},
     val exportQualityJson: () -> Unit = {},
+    /** P1：LLM 段可见时按需加载配置（Keystore 解密）。 */
+    val ensureLlmLoaded: () -> Unit = {},
     // B12：检索预算档位
     val setBudgetTier: (SagBudgetTier) -> Unit = {},
     // P1.1：扫描件 OCR 开关
@@ -412,268 +426,293 @@ internal fun SettingsContent(
         title = stringResource(R.string.settings_title),
         onBack = actions.onBack,
     ) { padding ->
-        Column(
+        // P0：17 个 section 一次性组合 + 全内容测量是设置页卡顿主因（实测单帧 compose+layout 375–465ms）。
+        // 改 LazyColumn：只组合可见段，其余滚动到再组合。
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(padding),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // B3-5：统一加载/错误组件
             if (state.loading) {
-                LoadingState(message = stringResource(R.string.settings_loading))
+                item(key = "loading") {
+                    LoadingState(message = stringResource(R.string.settings_loading))
+
+                }
             }
             state.error?.let {
-                ErrorState(
-                    message = it,
-                    actionLabel = stringResource(R.string.action_retry),
-                    onAction = actions.retryRefresh,
-                )
+                item(key = "error") {
+                    ErrorState(
+                        message = it,
+                        actionLabel = stringResource(R.string.action_retry),
+                        onAction = actions.retryRefresh,
+                    )
+
+                }
             }
 
             // ---- 嵌入路径 ----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        stringResource(R.string.settings_section_embedding),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        state.model?.let { stringResource(R.string.settings_current_model, it) }
-                            ?: stringResource(R.string.settings_no_model),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    // B7 审查修复：新增 D·740M 后 4 个 chip 在窄屏会溢出，改 FlowRow 自动换行
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        listOf(
-                            PathPreferences.AUTO to stringResource(R.string.settings_path_auto),
-                            PathPreferences.A to stringResource(R.string.settings_path_a),
-                            PathPreferences.B to stringResource(R.string.settings_path_b),
-                            PathPreferences.D to stringResource(R.string.settings_path_d),
-                        ).forEach { (value, label) ->
-                            FilterChip(
-                                selected = state.preference == value,
-                                onClick = { actions.setPreference(value) },
-                                label = { Text(label) },
-                            )
+            item(key = "section-0") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_section_embedding),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            state.model?.let { stringResource(R.string.settings_current_model, it) }
+                                ?: stringResource(R.string.settings_no_model),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        // B7 审查修复：新增 D·740M 后 4 个 chip 在窄屏会溢出，改 FlowRow 自动换行
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            listOf(
+                                PathPreferences.AUTO to stringResource(R.string.settings_path_auto),
+                                PathPreferences.A to stringResource(R.string.settings_path_a),
+                                PathPreferences.B to stringResource(R.string.settings_path_b),
+                                PathPreferences.D to stringResource(R.string.settings_path_d),
+                            ).forEach { (value, label) ->
+                                FilterChip(
+                                    selected = state.preference == value,
+                                    onClick = { actions.setPreference(value) },
+                                    label = { Text(label) },
+                                )
+                            }
                         }
+                        Text(
+                            stringResource(R.string.settings_path_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
-                    Text(
-                        stringResource(R.string.settings_path_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
                 }
             }
 
             // ---- 模型商店（SOC 感知推荐 + SAF 共享目录）----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        stringResource(R.string.settings_section_store),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    val socText = state.socTag.ifBlank {
-                        stringResource(R.string.settings_soc_unknown)
-                    }
-                    Text(
-                        stringResource(R.string.settings_soc_line, socText),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(
-                            ModelCatalog.PERF_BALANCED to stringResource(R.string.settings_perf_balanced),
-                            ModelCatalog.PERF_FAST to stringResource(R.string.settings_perf_fast),
-                            ModelCatalog.PERF_LIGHT to stringResource(R.string.settings_perf_light),
-                        ).forEach { (value, label) ->
-                            FilterChip(
-                                selected = state.perfPref == value,
-                                onClick = { actions.setPerfMode(value) },
-                                label = { Text(label) },
-                            )
+            item(key = "section-1-0") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_section_store),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        val socText = state.socTag.ifBlank {
+                            stringResource(R.string.settings_soc_unknown)
                         }
-                    }
-                    ModelCatalog.recommend(state.perfPref, state.socTag)?.let { entry ->
-                        val inLibrary = state.sharedNames.contains(entry.fileName) ||
-                            state.models.any { it.file.name == entry.fileName }
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                stringResource(
-                                    R.string.settings_recommended,
-                                    entry.label,
-                                    entry.sizeBytes / 1024 / 1024,
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Text(
-                                ModelCatalog.recommendReason(entry, state.socTag),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            if (state.downloading && state.downloadEntry == entry && state.downloadPct >= 0) {
-                                LinearProgressIndicator(
-                                    progress = { state.downloadPct / 100f },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Text(
-                                    stringResource(R.string.settings_downloading, state.downloadPct),
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            } else if (!inLibrary) {
-                                Button(
-                                    onClick = { actions.download(entry) },
-                                    enabled = !state.downloading,
-                                ) { Text(stringResource(R.string.settings_download)) }
-                            } else {
-                                Text(
-                                    stringResource(R.string.settings_in_library),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
+                        Text(
+                            stringResource(R.string.settings_soc_line, socText),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(
+                                ModelCatalog.PERF_BALANCED to stringResource(R.string.settings_perf_balanced),
+                                ModelCatalog.PERF_FAST to stringResource(R.string.settings_perf_fast),
+                                ModelCatalog.PERF_LIGHT to stringResource(R.string.settings_perf_light),
+                            ).forEach { (value, label) ->
+                                FilterChip(
+                                    selected = state.perfPref == value,
+                                    onClick = { actions.setPerfMode(value) },
+                                    label = { Text(label) },
                                 )
                             }
                         }
-                    }
-                    HorizontalDivider()
-                    Text(
-                        when (state.storeState) {
-                            SharedModelStore.State.CONNECTED ->
-                                stringResource(R.string.settings_store_connected, state.sharedNames.size)
-                            SharedModelStore.State.PERMISSION_LOST ->
-                                stringResource(R.string.settings_store_permission_lost)
-                            SharedModelStore.State.NOT_CONFIGURED ->
-                                stringResource(R.string.settings_store_not_configured)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = actions.chooseDirectory) {
-                            Text(
-                                stringResource(
-                                    if (state.storeState == SharedModelStore.State.CONNECTED) {
-                                        R.string.settings_store_change_dir
-                                    } else {
-                                        R.string.settings_store_choose_dir
-                                    },
-                                ),
-                            )
-                        }
-                        if (state.sharedNames.isNotEmpty()) {
-                            OutlinedButton(
-                                onClick = actions.requestClearShared,
-                                enabled = !state.downloading,
-                            ) {
-                                Text(
-                                    stringResource(R.string.settings_clear_shared),
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            }
-                        }
-                    }
-                    if (state.sharedNames.isNotEmpty()) {
-                        Text(
-                            stringResource(
-                                R.string.settings_shared_list,
-                                state.sharedNames.joinToString("、") {
-                                    it.removeSuffix(".litertlm")
-                                },
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                    val linkable = state.sharedNames.filter { name ->
-                        state.models.none { it.file.name == name }
-                    }
-                    if (linkable.isNotEmpty()) {
-                        Text(
-                            stringResource(R.string.settings_enable_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        linkable.forEach { name ->
-                            OutlinedButton(onClick = { actions.enableShared(name) }) {
+                        ModelCatalog.recommend(state.perfPref, state.socTag)?.let { entry ->
+                            val inLibrary = state.sharedNames.contains(entry.fileName) ||
+                                state.models.any { it.file.name == entry.fileName }
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     stringResource(
-                                        R.string.settings_enable,
-                                        name.removeSuffix(".litertlm"),
+                                        R.string.settings_recommended,
+                                        entry.label,
+                                        entry.sizeBytes / 1024 / 1024,
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    ModelCatalog.recommendReason(entry, state.socTag),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                if (state.downloading && state.downloadEntry == entry && state.downloadPct >= 0) {
+                                    LinearProgressIndicator(
+                                        progress = { state.downloadPct / 100f },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                    Text(
+                                        stringResource(R.string.settings_downloading, state.downloadPct),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                } else if (!inLibrary) {
+                                    Button(
+                                        onClick = { actions.download(entry) },
+                                        enabled = !state.downloading,
+                                    ) { Text(stringResource(R.string.settings_download)) }
+                                } else {
+                                    Text(
+                                        stringResource(R.string.settings_in_library),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            item(key = "section-1-1") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_store_shared_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            when (state.storeState) {
+                                SharedModelStore.State.CONNECTED ->
+                                    stringResource(R.string.settings_store_connected, state.sharedNames.size)
+                                SharedModelStore.State.PERMISSION_LOST ->
+                                    stringResource(R.string.settings_store_permission_lost)
+                                SharedModelStore.State.NOT_CONFIGURED ->
+                                    stringResource(R.string.settings_store_not_configured)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = actions.chooseDirectory) {
+                                Text(
+                                    stringResource(
+                                        if (state.storeState == SharedModelStore.State.CONNECTED) {
+                                            R.string.settings_store_change_dir
+                                        } else {
+                                            R.string.settings_store_choose_dir
+                                        },
                                     ),
                                 )
                             }
+                            if (state.sharedNames.isNotEmpty()) {
+                                OutlinedButton(
+                                    onClick = actions.requestClearShared,
+                                    enabled = !state.downloading,
+                                ) {
+                                    Text(
+                                        stringResource(R.string.settings_clear_shared),
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
                         }
-                    }
-                    state.message?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                        if (state.sharedNames.isNotEmpty()) {
+                            Text(
+                                stringResource(
+                                    R.string.settings_shared_list,
+                                    state.sharedNames.joinToString("、") {
+                                        it.removeSuffix(".litertlm")
+                                    },
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        val linkable = state.sharedNames.filter { name ->
+                            state.models.none { it.file.name == name }
+                        }
+                        if (linkable.isNotEmpty()) {
+                            Text(
+                                stringResource(R.string.settings_enable_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            linkable.forEach { name ->
+                                OutlinedButton(onClick = { actions.enableShared(name) }) {
+                                    Text(
+                                        stringResource(
+                                            R.string.settings_enable,
+                                            name.removeSuffix(".litertlm"),
+                                        ),
+                                    )
+                                }
+                            }
+                        }
+                        state.message?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                     }
                 }
             }
 
             // ---- GPU 加速 ----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        stringResource(R.string.settings_section_gpu),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(
-                            PathPreferences.GPU_AUTO to stringResource(R.string.settings_gpu_auto),
-                            PathPreferences.GPU_OFF to stringResource(R.string.settings_gpu_cpu),
-                            PathPreferences.GPU_ON to stringResource(R.string.settings_gpu_gpu),
-                        ).forEach { (value, label) ->
-                            FilterChip(
-                                selected = state.gpuPref == value,
-                                onClick = { actions.setGpuMode(value) },
-                                label = { Text(label) },
-                            )
+            item(key = "section-2") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_section_gpu),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(
+                                PathPreferences.GPU_AUTO to stringResource(R.string.settings_gpu_auto),
+                                PathPreferences.GPU_OFF to stringResource(R.string.settings_gpu_cpu),
+                                PathPreferences.GPU_ON to stringResource(R.string.settings_gpu_gpu),
+                            ).forEach { (value, label) ->
+                                FilterChip(
+                                    selected = state.gpuPref == value,
+                                    onClick = { actions.setGpuMode(value) },
+                                    label = { Text(label) },
+                                )
+                            }
                         }
+                        Text(
+                            stringResource(R.string.settings_gpu_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
-                    Text(
-                        stringResource(R.string.settings_gpu_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
                 }
             }
 
             // ---- 模型文件 ----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        stringResource(R.string.settings_section_models, state.models.size),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    if (state.models.isEmpty()) {
-                        EmptyState(
-                            title = stringResource(R.string.settings_models_empty),
+            item(key = "section-3") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_section_models, state.models.size),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
                         )
-                    }
-                    state.models.forEach { item ->
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(item.file.name, style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    stringResource(
-                                        R.string.settings_model_size_line,
-                                        item.label,
-                                        item.sizeBytes / 1024 / 1024,
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                            OutlinedButton(onClick = { actions.requestDeleteModel(item.file) }) {
-                                Text(stringResource(R.string.action_delete))
+                        if (state.models.isEmpty()) {
+                            EmptyState(
+                                title = stringResource(R.string.settings_models_empty),
+                            )
+                        }
+                        state.models.forEach { item ->
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(item.file.name, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        stringResource(
+                                            R.string.settings_model_size_line,
+                                            item.label,
+                                            item.sizeBytes / 1024 / 1024,
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                                OutlinedButton(onClick = { actions.requestDeleteModel(item.file) }) {
+                                    Text(stringResource(R.string.action_delete))
+                                }
                             }
                         }
                     }
@@ -681,111 +720,115 @@ internal fun SettingsContent(
             }
 
             // ---- 向量空间注册表（维度来自 embedding_meta.dimensions，P1-6）----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        stringResource(R.string.settings_section_spaces),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    if (state.spaces.isEmpty()) {
+            item(key = "section-4") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            stringResource(R.string.settings_spaces_empty),
-                            style = MaterialTheme.typography.bodySmall,
+                            stringResource(R.string.settings_section_spaces),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
                         )
-                    } else {
-                        state.spaces.forEach { space ->
+                        if (state.spaces.isEmpty()) {
                             Text(
-                                stringResource(
-                                    R.string.settings_space_line,
-                                    space.id,
-                                    space.count,
-                                    space.dimensions,
-                                ),
+                                stringResource(R.string.settings_spaces_empty),
                                 style = MaterialTheme.typography.bodySmall,
                             )
+                        } else {
+                            state.spaces.forEach { space ->
+                                Text(
+                                    stringResource(
+                                        R.string.settings_space_line,
+                                        space.id,
+                                        space.count,
+                                        space.dimensions,
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
                         }
                     }
                 }
             }
 
             // ---- 知识库迁移 + 自动重嵌入 ----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        stringResource(R.string.settings_section_migration),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = actions.exportBackup) {
-                            Text(stringResource(R.string.settings_export))
-                        }
-                        OutlinedButton(onClick = actions.importBackup) {
-                            Text(stringResource(R.string.settings_import))
-                        }
-                    }
-                    OutlinedButton(
-                        onClick = actions.restoreBackup,
-                        enabled = state.hasAutoBackup,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.settings_restore_latest))
-                    }
-                    Text(
-                        stringResource(R.string.settings_migration_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Text(
-                        stringResource(R.string.settings_backup_privacy_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    state.migrationMessage?.let {
+            item(key = "section-5") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            stringResource(R.string.settings_section_migration),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
                         )
-                    }
-
-                    HorizontalDivider()
-                    Text(
-                        stringResource(R.string.settings_reembed_section),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    val showProgress = state.reembedTotal > 0 && state.reembedDone < state.reembedTotal
-                    if (showProgress) {
-                        LinearProgressIndicator(
-                            progress = { state.reembedDone.toFloat() / state.reembedTotal },
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = actions.exportBackup) {
+                                Text(stringResource(R.string.settings_export))
+                            }
+                            OutlinedButton(onClick = actions.importBackup) {
+                                Text(stringResource(R.string.settings_import))
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = actions.restoreBackup,
+                            enabled = state.hasAutoBackup,
                             modifier = Modifier.fillMaxWidth(),
-                        )
+                        ) {
+                            Text(stringResource(R.string.settings_restore_latest))
+                        }
                         Text(
-                            stringResource(
-                                R.string.settings_reembed_progress,
-                                state.reembedDone,
-                                state.reembedTotal,
-                            ),
+                            stringResource(R.string.settings_migration_hint),
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        OutlinedButton(onClick = actions.cancelReembed) {
-                            Text(stringResource(R.string.settings_reembed_stop))
-                        }
-                    } else {
-                        val lastDoneText = if (state.reembedTotal > 0) {
-                            stringResource(
-                                R.string.settings_reembed_last_done,
-                                state.reembedDone,
+                        Text(
+                            stringResource(R.string.settings_backup_privacy_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        state.migrationMessage?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
                             )
-                        } else {
-                            stringResource(R.string.settings_reembed_none)
                         }
+
+                        HorizontalDivider()
                         Text(
-                            state.lastReembed?.let { "$lastDoneText · $it" } ?: lastDoneText,
-                            style = MaterialTheme.typography.bodySmall,
+                            stringResource(R.string.settings_reembed_section),
+                            style = MaterialTheme.typography.titleSmall,
                         )
-                        OutlinedButton(onClick = actions.reembedNow) {
-                            Text(stringResource(R.string.settings_reembed_manual))
+                        val showProgress = state.reembedTotal > 0 && state.reembedDone < state.reembedTotal
+                        if (showProgress) {
+                            LinearProgressIndicator(
+                                progress = { state.reembedDone.toFloat() / state.reembedTotal },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.settings_reembed_progress,
+                                    state.reembedDone,
+                                    state.reembedTotal,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            OutlinedButton(onClick = actions.cancelReembed) {
+                                Text(stringResource(R.string.settings_reembed_stop))
+                            }
+                        } else {
+                            val lastDoneText = if (state.reembedTotal > 0) {
+                                stringResource(
+                                    R.string.settings_reembed_last_done,
+                                    state.reembedDone,
+                                )
+                            } else {
+                                stringResource(R.string.settings_reembed_none)
+                            }
+                            Text(
+                                state.lastReembed?.let { "$lastDoneText · $it" } ?: lastDoneText,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            OutlinedButton(onClick = actions.reembedNow) {
+                                Text(stringResource(R.string.settings_reembed_manual))
+                            }
                         }
                     }
                 }
@@ -794,695 +837,740 @@ internal fun SettingsContent(
             // ---- B7：旧模型空间警告（检测到非 EGemma2 空间时提示重新导入；不自动删数据）----
             // 审查修复：报表失败不再静默（错误可见、可重试），警告卡逐空间展示 modelId + vectorCount。
             state.legacySpacesError?.let { error ->
-                ErrorState(
-                    message = error,
-                    actionLabel = stringResource(R.string.action_retry),
-                    onAction = actions.retryRefresh,
-                )
+                item(key = "legacy-spaces-error") {
+                    ErrorState(
+                        message = error,
+                        actionLabel = stringResource(R.string.action_retry),
+                        onAction = actions.retryRefresh,
+                    )
+
+                }
             }
             if (state.legacySpaces.isNotEmpty()) {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            stringResource(
-                                R.string.settings_legacy_spaces_warning,
-                                state.legacySpaces.size,
-                            ),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        state.legacySpaces.forEach { space ->
-                            val modelLabel = space.modelId.ifBlank {
-                                stringResource(R.string.settings_legacy_unknown_model)
-                            }
+                item(key = "legacy-spaces") {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
                                 stringResource(
-                                    R.string.settings_legacy_spaces_row,
-                                    modelLabel,
-                                    space.vectorCount,
+                                    R.string.settings_legacy_spaces_warning,
+                                    state.legacySpaces.size,
                                 ),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            state.legacySpaces.forEach { space ->
+                                val modelLabel = space.modelId.ifBlank {
+                                    stringResource(R.string.settings_legacy_unknown_model)
+                                }
+                                Text(
+                                    stringResource(
+                                        R.string.settings_legacy_spaces_row,
+                                        modelLabel,
+                                        space.vectorCount,
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            Text(
+                                stringResource(R.string.settings_legacy_spaces_detail),
                                 style = MaterialTheme.typography.bodySmall,
                             )
+                            Text(
+                                stringResource(R.string.settings_legacy_spaces_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
                         }
-                        Text(
-                            stringResource(R.string.settings_legacy_spaces_detail),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Text(
-                            stringResource(R.string.settings_legacy_spaces_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
                     }
+
                 }
             }
 
             // ---- 索引诊断（B3-14：三表计数 / 孤儿明细 / 修复 before-after）----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        stringResource(R.string.settings_section_diagnostics),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    val health = state.indexHealth
-                    if (health == null) {
-                        LoadingState(message = stringResource(R.string.settings_index_checking))
-                    } else {
+            item(key = "section-6-0") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            stringResource(
-                                R.string.settings_index_counts,
-                                health.chunkCount,
-                                health.ftsCount,
-                                health.embeddingCount,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
+                            stringResource(R.string.settings_section_diagnostics),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
                         )
-                        Text(
-                            if (health.healthy) {
-                                stringResource(R.string.settings_index_healthy)
-                            } else {
-                                stringResource(R.string.settings_index_unhealthy, health.reasons.size)
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (health.healthy) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.error
-                            },
-                        )
-                        if (!health.healthy) {
+                        val health = state.indexHealth
+                        if (health == null) {
+                            // P1：进场不再自动做全表健康检查；未检查时给中性提示而不是"检查中…"
+                            Text(
+                                stringResource(R.string.settings_index_not_checked),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
                             Text(
                                 stringResource(
-                                    R.string.settings_index_orphans,
-                                    health.orphanFtsChunkIds.size,
-                                    health.orphanEmbeddingChunkIds.size,
+                                    R.string.settings_index_counts,
+                                    health.chunkCount,
+                                    health.ftsCount,
+                                    health.embeddingCount,
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            health.reasons.take(5).forEach { reason ->
+                            Text(
+                                if (health.healthy) {
+                                    stringResource(R.string.settings_index_healthy)
+                                } else {
+                                    stringResource(R.string.settings_index_unhealthy, health.reasons.size)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (health.healthy) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                },
+                            )
+                            if (!health.healthy) {
                                 Text(
-                                    "· $reason",
+                                    stringResource(
+                                        R.string.settings_index_orphans,
+                                        health.orphanFtsChunkIds.size,
+                                        health.orphanEmbeddingChunkIds.size,
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                health.reasons.take(5).forEach { reason ->
+                                    Text(
+                                        "· $reason",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = actions.repairIndex,
+                                enabled = !state.indexRepairing,
+                            ) {
+                                Text(
+                                    if (state.indexRepairing) {
+                                        stringResource(R.string.settings_index_repairing)
+                                    } else {
+                                        stringResource(R.string.settings_index_repair)
+                                    },
                                 )
                             }
                         }
+                        state.diagMessage?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        Text(
+                            stringResource(R.string.settings_fts_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                }
+            }
+            item(key = "section-6-1") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_trace_section),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        val traceTotal = state.traceTotalCount
+                        if (traceTotal == null) {
+                            LoadingState(message = stringResource(R.string.settings_index_checking))
+                        } else {
+                            Text(
+                                stringResource(R.string.settings_trace_summary, traceTotal),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            if (state.traceRecentModes.isNotEmpty()) {
+                                Text(
+                                    stringResource(
+                                        R.string.settings_trace_modes,
+                                        state.traceRecentModes.entries.joinToString(" · ") {
+                                            "${it.key} ${it.value}"
+                                        },
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
                         OutlinedButton(
-                            onClick = actions.repairIndex,
-                            enabled = !state.indexRepairing,
+                            onClick = actions.exportTrace,
+                            enabled = !state.traceExporting,
                         ) {
                             Text(
-                                if (state.indexRepairing) {
-                                    stringResource(R.string.settings_index_repairing)
+                                if (state.traceExporting) {
+                                    stringResource(R.string.settings_trace_exporting)
                                 } else {
-                                    stringResource(R.string.settings_index_repair)
+                                    stringResource(R.string.settings_trace_export)
                                 },
                             )
                         }
-                    }
-                    state.diagMessage?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                    Text(
-                        stringResource(R.string.settings_fts_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-
-                    // ---- B12：检索/问答 trace 诊断（脱敏导出，无正文）----
-                    HorizontalDivider()
-                    Text(
-                        stringResource(R.string.settings_trace_section),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    val traceTotal = state.traceTotalCount
-                    if (traceTotal == null) {
-                        LoadingState(message = stringResource(R.string.settings_index_checking))
-                    } else {
-                        Text(
-                            stringResource(R.string.settings_trace_summary, traceTotal),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        if (state.traceRecentModes.isNotEmpty()) {
+                        state.traceExportMessage?.let {
                             Text(
-                                stringResource(
-                                    R.string.settings_trace_modes,
-                                    state.traceRecentModes.entries.joinToString(" · ") {
-                                        "${it.key} ${it.value}"
-                                    },
-                                ),
+                                it,
                                 style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
-                    }
-                    OutlinedButton(
-                        onClick = actions.exportTrace,
-                        enabled = !state.traceExporting,
-                    ) {
                         Text(
-                            if (state.traceExporting) {
-                                stringResource(R.string.settings_trace_exporting)
-                            } else {
-                                stringResource(R.string.settings_trace_export)
-                            },
-                        )
-                    }
-                    state.traceExportMessage?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                    Text(
-                        stringResource(R.string.settings_trace_privacy_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                    // ---- B15.2：抽取质量（只读；脱敏 JSON 导出）----
-                    HorizontalDivider()
-                    Text(
-                        stringResource(R.string.settings_quality_section),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    val quality = state.qualityReport
-                    if (quality == null) {
-                        Text(
-                            if (state.qualityLoading) {
-                                stringResource(R.string.settings_quality_refreshing)
-                            } else {
-                                stringResource(R.string.settings_quality_empty)
-                            },
+                            stringResource(R.string.settings_trace_privacy_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    } else if (
-                        quality.documentsTotal == 0 &&
-                        quality.eventsTotal == 0 &&
-                        quality.entitiesTotal == 0
-                    ) {
+                    }
+                }
+            }
+            item(key = "section-6-2") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            stringResource(R.string.settings_quality_empty),
-                            style = MaterialTheme.typography.bodySmall,
+                            stringResource(R.string.settings_quality_section),
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    } else {
-                        Text(
-                            stringResource(
-                                R.string.settings_quality_counts,
-                                quality.documentsTotal,
-                                quality.readyDocuments,
-                                quality.eventsTotal,
-                                quality.eventsActive,
-                                quality.eventsDiscarded,
-                                quality.entitiesTotal,
-                                quality.eventEntityLinks,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Text(
-                            stringResource(
-                                R.string.settings_quality_blank,
-                                quality.blankEventFields.title,
-                                quality.blankEventFields.summary,
-                                quality.blankEventFields.content,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Text(
-                            stringResource(
-                                R.string.settings_quality_coverage,
-                                coveragePercent(
-                                    quality.documentsWithEvents,
-                                    quality.documentsTotal,
-                                ),
-                                quality.documentsWithEvents,
-                                quality.documentsTotal,
-                                quality.documentsWithoutEvents,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Text(
-                            stringResource(
-                                R.string.settings_quality_alias_coverage,
-                                ratioPercent(quality.aliasCoverage),
-                                quality.entitiesWithAliases,
-                                quality.entitiesTotal,
-                                quality.aliasesTotal,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        val statusText = formatDistribution(quality.jobsByStatus, limit = 6)
-                        Text(
-                            stringResource(
-                                R.string.settings_quality_jobs,
-                                quality.extractionJobsTotal,
-                                statusText,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        val errorCodeText = formatDistribution(quality.jobsByErrorCode, limit = 6)
-                        Text(
-                            stringResource(R.string.settings_quality_error_codes, errorCodeText),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        val typeText = formatDistribution(quality.entityTypeCounts, limit = 8)
-                        Text(
-                            stringResource(R.string.settings_quality_types, typeText),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = actions.refreshQuality,
-                            enabled = !state.qualityLoading,
-                        ) {
+                        val quality = state.qualityReport
+                        // P1：滚到该段才跑重查询；已有报告则不重复
+                        LaunchedEffect(quality == null) {
+                            if (quality == null && !state.qualityLoading) actions.refreshQuality()
+                        }
+                        if (quality == null) {
                             Text(
                                 if (state.qualityLoading) {
                                     stringResource(R.string.settings_quality_refreshing)
                                 } else {
-                                    stringResource(R.string.settings_quality_refresh)
+                                    stringResource(R.string.settings_quality_empty)
                                 },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                        }
-                        OutlinedButton(
-                            onClick = actions.exportQualityJson,
-                            enabled = state.qualityReport != null && !state.qualityExporting,
+                        } else if (
+                            quality.documentsTotal == 0 &&
+                            quality.eventsTotal == 0 &&
+                            quality.entitiesTotal == 0
                         ) {
                             Text(
-                                if (state.qualityExporting) {
-                                    stringResource(R.string.settings_quality_exporting)
-                                } else {
-                                    stringResource(R.string.settings_quality_export)
-                                },
+                                stringResource(R.string.settings_quality_empty),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            Text(
+                                stringResource(
+                                    R.string.settings_quality_counts,
+                                    quality.documentsTotal,
+                                    quality.readyDocuments,
+                                    quality.eventsTotal,
+                                    quality.eventsActive,
+                                    quality.eventsDiscarded,
+                                    quality.entitiesTotal,
+                                    quality.eventEntityLinks,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.settings_quality_blank,
+                                    quality.blankEventFields.title,
+                                    quality.blankEventFields.summary,
+                                    quality.blankEventFields.content,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.settings_quality_coverage,
+                                    coveragePercent(
+                                        quality.documentsWithEvents,
+                                        quality.documentsTotal,
+                                    ),
+                                    quality.documentsWithEvents,
+                                    quality.documentsTotal,
+                                    quality.documentsWithoutEvents,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.settings_quality_alias_coverage,
+                                    ratioPercent(quality.aliasCoverage),
+                                    quality.entitiesWithAliases,
+                                    quality.entitiesTotal,
+                                    quality.aliasesTotal,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            val statusText = formatDistribution(quality.jobsByStatus, limit = 6)
+                            Text(
+                                stringResource(
+                                    R.string.settings_quality_jobs,
+                                    quality.extractionJobsTotal,
+                                    statusText,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            val errorCodeText = formatDistribution(quality.jobsByErrorCode, limit = 6)
+                            Text(
+                                stringResource(R.string.settings_quality_error_codes, errorCodeText),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            val typeText = formatDistribution(quality.entityTypeCounts, limit = 8)
+                            Text(
+                                stringResource(R.string.settings_quality_types, typeText),
+                                style = MaterialTheme.typography.bodySmall,
                             )
                         }
-                    }
-                    state.qualityMessage?.let {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = actions.refreshQuality,
+                                enabled = !state.qualityLoading,
+                            ) {
+                                Text(
+                                    if (state.qualityLoading) {
+                                        stringResource(R.string.settings_quality_refreshing)
+                                    } else {
+                                        stringResource(R.string.settings_quality_refresh)
+                                    },
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = actions.exportQualityJson,
+                                enabled = state.qualityReport != null && !state.qualityExporting,
+                            ) {
+                                Text(
+                                    if (state.qualityExporting) {
+                                        stringResource(R.string.settings_quality_exporting)
+                                    } else {
+                                        stringResource(R.string.settings_quality_export)
+                                    },
+                                )
+                            }
+                        }
+                        state.qualityMessage?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                         Text(
-                            it,
+                            stringResource(R.string.settings_quality_privacy_hint),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Text(
-                        stringResource(R.string.settings_quality_privacy_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
 
             // ---- 知识库 ----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        stringResource(R.string.settings_section_kb),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        stringResource(
-                            R.string.settings_kb_summary,
-                            state.docReady,
-                            state.chunkCount,
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+            item(key = "section-7") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            stringResource(R.string.settings_section_kb),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            stringResource(
+                                R.string.settings_kb_summary,
+                                state.docReady,
+                                state.chunkCount,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                 }
             }
 
             // ---- B8：SAG 增强 / LLM（骨架：配置/测试/开关；未配置时离线检索零回归） ----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        stringResource(R.string.settings_section_llm),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    val llm = state.llm
-                    if (llm == null) {
+            item(key = "section-8-0") {
+                // P1：滚到该段才解密 Keystore 读 LLM 配置（进场不做）
+                LaunchedEffect(Unit) { actions.ensureLlmLoaded() }
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            stringResource(R.string.settings_llm_disabled_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            stringResource(R.string.settings_section_llm),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
                         )
-                    } else {
-                        Text(
-                            llm.maskedKey?.let { stringResource(R.string.settings_llm_masked_key, it) }
-                                ?: stringResource(R.string.settings_llm_no_key),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (llm.maskedKey != null) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                    }
-
-                    state.llmError?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-
-                    // 表单本地状态：baseUrl/model/timeout 可跨重建保留；apiKey 不用 rememberSaveable
-                    //（避免明文密钥进入 saved instance state）。
-                    var llmBaseUrl by rememberSaveable { mutableStateOf(llm?.baseUrl.orEmpty()) }
-                    var llmModel by rememberSaveable { mutableStateOf(llm?.model.orEmpty()) }
-                    var llmTimeout by rememberSaveable {
-                        mutableStateOf((llm?.timeoutSeconds ?: 30).toString())
-                    }
-                    var llmApiKey by remember { mutableStateOf("") }
-                    var llmFormMessage by remember { mutableStateOf<String?>(null) }
-                    val invalidConfigMessage = stringResource(R.string.settings_llm_invalid_config)
-                    val invalidTimeoutMessage = stringResource(R.string.settings_llm_invalid_timeout)
-                    LaunchedEffect(llm) {
-                        if (llm != null) {
-                            llmBaseUrl = llm.baseUrl
-                            llmModel = llm.model
-                            llmTimeout = llm.timeoutSeconds.toString()
-                            llmApiKey = ""
-                        }
-                    }
-
-                    OutlinedTextField(
-                        value = llmBaseUrl,
-                        onValueChange = { llmBaseUrl = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.settings_llm_base_url)) },
-                        placeholder = { Text(stringResource(R.string.settings_llm_base_url_hint)) },
-                        singleLine = true,
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_llm_opencode_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    OutlinedTextField(
-                        value = llmModel,
-                        onValueChange = { llmModel = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.settings_llm_model)) },
-                        placeholder = { Text(stringResource(R.string.settings_llm_model_hint)) },
-                        singleLine = true,
-                    )
-                    OutlinedTextField(
-                        value = llmApiKey,
-                        onValueChange = { llmApiKey = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.settings_llm_api_key)) },
-                        placeholder = { Text(stringResource(R.string.settings_llm_api_key_hint)) },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    )
-                    OutlinedTextField(
-                        value = llmTimeout,
-                        onValueChange = { input -> llmTimeout = input.filter { it.isDigit() } },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.settings_llm_timeout)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = {
-                                val timeout = llmTimeout.trim().toIntOrNull()
-                                llmFormMessage = when {
-                                    llmBaseUrl.isBlank() || llmModel.isBlank() -> invalidConfigMessage
-                                    timeout == null || timeout !in 1..120 -> invalidTimeoutMessage
-                                    else -> {
-                                        actions.saveLlmConfig(
-                                            llmBaseUrl.trim(),
-                                            llmModel.trim(),
-                                            llmApiKey,
-                                            timeout,
-                                        )
-                                        null
-                                    }
-                                }
-                            },
-                        ) { Text(stringResource(R.string.settings_llm_save)) }
-                        OutlinedButton(
-                            onClick = actions.testLlmConnection,
-                            enabled = !state.llmTesting,
-                        ) {
+                        val llm = state.llm
+                        if (llm == null) {
                             Text(
-                                if (state.llmTesting) {
-                                    stringResource(R.string.settings_llm_testing)
+                                stringResource(R.string.settings_llm_disabled_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            Text(
+                                llm.maskedKey?.let { stringResource(R.string.settings_llm_masked_key, it) }
+                                    ?: stringResource(R.string.settings_llm_no_key),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (llm.maskedKey != null) {
+                                    MaterialTheme.colorScheme.primary
                                 } else {
-                                    stringResource(R.string.settings_llm_test)
+                                    MaterialTheme.colorScheme.onSurfaceVariant
                                 },
                             )
                         }
-                        OutlinedButton(
-                            onClick = actions.clearLlmKey,
-                            // 读取/解密失败（llmError）时也允许清除，作为恢复入口
-                            enabled = state.llm?.maskedKey != null || state.llmError != null,
-                        ) { Text(stringResource(R.string.settings_llm_clear_key)) }
-                    }
-                    llmFormMessage?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                    state.llmTestMessage?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
 
-                    HorizontalDivider()
-                    SwitchRow(
-                        label = stringResource(R.string.settings_sag_toggle),
-                        checked = state.sagEnabled,
-                        onCheckedChange = actions.setSagEnabled,
-                    )
-                    SwitchRow(
-                        label = stringResource(R.string.settings_answer_toggle),
-                        checked = state.answerEnabled,
-                        onCheckedChange = actions.setAnswerEnabled,
-                    )
-                    Text(
-                        stringResource(R.string.settings_answer_consent_section),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        stringResource(R.string.settings_answer_consent_notice),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (state.answerNetworkConsent) {
-                        Text(
-                            stringResource(R.string.settings_answer_consent_agreed),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    } else {
-                        Text(
-                            stringResource(R.string.settings_answer_consent_required),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        TextButton(onClick = { actions.setAnswerNetworkConsent(true) }) {
-                            Text(stringResource(R.string.settings_answer_consent_agree))
+                        state.llmError?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
                         }
-                    }
-                    SwitchRow(
-                        label = stringResource(R.string.settings_network_disabled_toggle),
-                        checked = state.networkDisabled,
-                        onCheckedChange = actions.setNetworkDisabled,
-                    )
-                    Text(
-                        stringResource(R.string.settings_network_disabled_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Text(
-                        stringResource(R.string.settings_llm_privacy_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        stringResource(R.string.settings_llm_remote_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
 
-                    // ---- B12：检索预算档位（PRD §7.2；下一次检索/问答生效）----
-                    HorizontalDivider()
-                    Text(
-                        stringResource(R.string.settings_budget_section),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SagBudgetTier.entries.forEach { tier ->
-                            FilterChip(
-                                selected = state.budgetTier == tier,
-                                onClick = { actions.setBudgetTier(tier) },
-                                enabled = !state.budgetSaving,
-                                label = { Text(budgetTierLabel(tier)) },
+                        // 表单本地状态：baseUrl/model/timeout 可跨重建保留；apiKey 不用 rememberSaveable
+                        //（避免明文密钥进入 saved instance state）。
+                        var llmBaseUrl by rememberSaveable { mutableStateOf(llm?.baseUrl.orEmpty()) }
+                        var llmModel by rememberSaveable { mutableStateOf(llm?.model.orEmpty()) }
+                        var llmTimeout by rememberSaveable {
+                            mutableStateOf((llm?.timeoutSeconds ?: 30).toString())
+                        }
+                        var llmApiKey by remember { mutableStateOf("") }
+                        var llmFormMessage by remember { mutableStateOf<String?>(null) }
+                        val invalidConfigMessage = stringResource(R.string.settings_llm_invalid_config)
+                        val invalidTimeoutMessage = stringResource(R.string.settings_llm_invalid_timeout)
+                        LaunchedEffect(llm) {
+                            if (llm != null) {
+                                llmBaseUrl = llm.baseUrl
+                                llmModel = llm.model
+                                llmTimeout = llm.timeoutSeconds.toString()
+                                llmApiKey = ""
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = llmBaseUrl,
+                            onValueChange = { llmBaseUrl = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.settings_llm_base_url)) },
+                            placeholder = { Text(stringResource(R.string.settings_llm_base_url_hint)) },
+                            singleLine = true,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_llm_opencode_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedTextField(
+                            value = llmModel,
+                            onValueChange = { llmModel = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.settings_llm_model)) },
+                            placeholder = { Text(stringResource(R.string.settings_llm_model_hint)) },
+                            singleLine = true,
+                        )
+                        OutlinedTextField(
+                            value = llmApiKey,
+                            onValueChange = { llmApiKey = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.settings_llm_api_key)) },
+                            placeholder = { Text(stringResource(R.string.settings_llm_api_key_hint)) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        )
+                        OutlinedTextField(
+                            value = llmTimeout,
+                            onValueChange = { input -> llmTimeout = input.filter { it.isDigit() } },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.settings_llm_timeout)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    val timeout = llmTimeout.trim().toIntOrNull()
+                                    llmFormMessage = when {
+                                        llmBaseUrl.isBlank() || llmModel.isBlank() -> invalidConfigMessage
+                                        timeout == null || timeout !in 1..120 -> invalidTimeoutMessage
+                                        else -> {
+                                            actions.saveLlmConfig(
+                                                llmBaseUrl.trim(),
+                                                llmModel.trim(),
+                                                llmApiKey,
+                                                timeout,
+                                            )
+                                            null
+                                        }
+                                    }
+                                },
+                            ) { Text(stringResource(R.string.settings_llm_save)) }
+                            OutlinedButton(
+                                onClick = actions.testLlmConnection,
+                                enabled = !state.llmTesting,
+                            ) {
+                                Text(
+                                    if (state.llmTesting) {
+                                        stringResource(R.string.settings_llm_testing)
+                                    } else {
+                                        stringResource(R.string.settings_llm_test)
+                                    },
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = actions.clearLlmKey,
+                                // 读取/解密失败（llmError）时也允许清除，作为恢复入口
+                                enabled = state.llm?.maskedKey != null || state.llmError != null,
+                            ) { Text(stringResource(R.string.settings_llm_clear_key)) }
+                        }
+                        llmFormMessage?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        state.llmTestMessage?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
                     }
-                    val tierBudget = state.budgetTier.budget
-                    Text(
-                        stringResource(
-                            R.string.settings_budget_current,
-                            tierBudget.kPool,
-                            tierBudget.kSeed,
-                            tierBudget.frontier,
-                            tierBudget.kCand,
-                            tierBudget.kEvent,
-                            tierBudget.kOut,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Text(
-                        stringResource(R.string.settings_budget_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                }
+            }
+            item(key = "section-8-1") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_llm_behavior_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        SwitchRow(
+                            label = stringResource(R.string.settings_sag_toggle),
+                            checked = state.sagEnabled,
+                            onCheckedChange = actions.setSagEnabled,
+                        )
+                        SwitchRow(
+                            label = stringResource(R.string.settings_answer_toggle),
+                            checked = state.answerEnabled,
+                            onCheckedChange = actions.setAnswerEnabled,
+                        )
+                        Text(
+                            stringResource(R.string.settings_answer_consent_section),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            stringResource(R.string.settings_answer_consent_notice),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (state.answerNetworkConsent) {
+                            Text(
+                                stringResource(R.string.settings_answer_consent_agreed),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        } else {
+                            Text(
+                                stringResource(R.string.settings_answer_consent_required),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            TextButton(onClick = { actions.setAnswerNetworkConsent(true) }) {
+                                Text(stringResource(R.string.settings_answer_consent_agree))
+                            }
+                        }
+                        SwitchRow(
+                            label = stringResource(R.string.settings_network_disabled_toggle),
+                            checked = state.networkDisabled,
+                            onCheckedChange = actions.setNetworkDisabled,
+                        )
+                        Text(
+                            stringResource(R.string.settings_network_disabled_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            stringResource(R.string.settings_llm_privacy_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            stringResource(R.string.settings_llm_remote_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            item(key = "section-8-2") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_budget_section),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SagBudgetTier.entries.forEach { tier ->
+                                FilterChip(
+                                    selected = state.budgetTier == tier,
+                                    onClick = { actions.setBudgetTier(tier) },
+                                    enabled = !state.budgetSaving,
+                                    label = { Text(budgetTierLabel(tier)) },
+                                )
+                            }
+                        }
+                        val tierBudget = state.budgetTier.budget
+                        Text(
+                            stringResource(
+                                R.string.settings_budget_current,
+                                tierBudget.kPool,
+                                tierBudget.kSeed,
+                                tierBudget.frontier,
+                                tierBudget.kCand,
+                                tierBudget.kEvent,
+                                tierBudget.kOut,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            stringResource(R.string.settings_budget_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
 
-                    // ---- P1.1：扫描件 PDF 端侧 OCR（默认开启；仅文本层为空时前 20 页）----
-                    HorizontalDivider()
-                    SwitchRow(
-                        label = stringResource(R.string.settings_pdf_ocr_toggle),
-                        checked = state.pdfOcrEnabled,
-                        onCheckedChange = actions.setPdfOcrEnabled,
-                    )
-                    Text(
-                        stringResource(R.string.settings_pdf_ocr_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                        // ---- P1.1：扫描件 PDF 端侧 OCR（默认开启；仅文本层为空时前 20 页）----
+                        HorizontalDivider()
+                        SwitchRow(
+                            label = stringResource(R.string.settings_pdf_ocr_toggle),
+                            checked = state.pdfOcrEnabled,
+                            onCheckedChange = actions.setPdfOcrEnabled,
+                        )
+                        Text(
+                            stringResource(R.string.settings_pdf_ocr_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
             // ---- B9：SAG 两阶段抽取状态（与导入状态独立；失败不影响离线检索） ----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        stringResource(R.string.settings_sag_section),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    val counts = state.extractionCounts
-                    Text(
-                        stringResource(
-                            R.string.settings_sag_counts,
-                            counts.queued,
-                            counts.running,
-                            counts.done,
-                            counts.failed,
-                            counts.notIndexed,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    if (!counts.hasJobs) {
+            item(key = "section-9") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            stringResource(R.string.settings_sag_no_jobs),
+                            stringResource(R.string.settings_sag_section),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        val counts = state.extractionCounts
+                        Text(
+                            stringResource(
+                                R.string.settings_sag_counts,
+                                counts.queued,
+                                counts.running,
+                                counts.done,
+                                counts.failed,
+                                counts.notIndexed,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        if (!counts.hasJobs) {
+                            Text(
+                                stringResource(R.string.settings_sag_no_jobs),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (!state.sagAvailable) {
+                            Text(
+                                stringResource(R.string.settings_sag_unavailable),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        // B12：抽取并发度（1..4；Worker 下一批领取任务时生效）
+                        Text(
+                            stringResource(R.string.settings_extraction_parallelism_section),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            for (value in 1..4) {
+                                FilterChip(
+                                    selected = state.extractionParallelism == value,
+                                    onClick = { actions.setExtractionParallelism(value) },
+                                    enabled = !state.extractionParallelismSaving,
+                                    label = {
+                                        Text(
+                                            stringResource(
+                                                R.string.settings_extraction_parallelism_value,
+                                                value,
+                                            ),
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                        Text(
+                            stringResource(R.string.settings_extraction_parallelism_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                    if (!state.sagAvailable) {
-                        Text(
-                            stringResource(R.string.settings_sag_unavailable),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                    // B12：抽取并发度（1..4；Worker 下一批领取任务时生效）
-                    Text(
-                        stringResource(R.string.settings_extraction_parallelism_section),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for (value in 1..4) {
-                            FilterChip(
-                                selected = state.extractionParallelism == value,
-                                onClick = { actions.setExtractionParallelism(value) },
-                                enabled = !state.extractionParallelismSaving,
-                                label = {
-                                    Text(
-                                        stringResource(
-                                            R.string.settings_extraction_parallelism_value,
-                                            value,
-                                        ),
-                                    )
-                                },
-                            )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = actions.backfillExtraction,
+                                enabled = state.sagAvailable && !state.extractionWorking,
+                            ) {
+                                Text(
+                                    if (state.extractionWorking) {
+                                        stringResource(R.string.settings_sag_working)
+                                    } else {
+                                        stringResource(R.string.settings_sag_backfill)
+                                    },
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = actions.retryFailedExtraction,
+                                enabled = state.sagAvailable &&
+                                    !state.extractionWorking &&
+                                    counts.failed > 0,
+                            ) {
+                                Text(stringResource(R.string.settings_sag_retry_failed))
+                            }
                         }
-                    }
-                    Text(
-                        stringResource(R.string.settings_extraction_parallelism_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = actions.backfillExtraction,
-                            enabled = state.sagAvailable && !state.extractionWorking,
-                        ) {
+                        state.extractionMessage?.let {
                             Text(
-                                if (state.extractionWorking) {
-                                    stringResource(R.string.settings_sag_working)
-                                } else {
-                                    stringResource(R.string.settings_sag_backfill)
-                                },
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
-                        OutlinedButton(
-                            onClick = actions.retryFailedExtraction,
-                            enabled = state.sagAvailable &&
-                                !state.extractionWorking &&
-                                counts.failed > 0,
-                        ) {
-                            Text(stringResource(R.string.settings_sag_retry_failed))
-                        }
-                    }
-                    state.extractionMessage?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
                     }
                 }
             }
 
             // ---- 隐私与离线声明 ----
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        stringResource(R.string.settings_section_privacy),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        stringResource(R.string.settings_privacy_text),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+            item(key = "section-10") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            stringResource(R.string.settings_section_privacy),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            stringResource(R.string.settings_privacy_text),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
             }
         }

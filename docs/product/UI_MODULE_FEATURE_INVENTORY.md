@@ -59,6 +59,10 @@
       计数为纯函数 `countNewContent`（6 个 JVM 用例），首次加载整批视为已读避免冷启动弹胶囊。
 - [ ] ⚠️ 新增内容后的定位策略（余下部分）：用户显式完成导入并返回首页时是否自动回顶+高亮、
       空库首次导入是否自动切「全部」，仍待定。
+- [x] 二级页统一底色：`ZhiBoxScreen` 顶栏透明 + `Scaffold` 用 paper 底色，
+      设置/来源/检索/搜索/问答/导入/证据/图谱不再出现白色顶栏条带（证据图 impl-settings-paper-top.png / impl-sources-paper-top.png）。
+- [x] 设置页性能：内容改 `LazyColumn` + 稳定 actions/state + 进场刷新 5s 节流；
+      三张超高卡（模型商店 / 索引诊断 / SAG+LLM）拆分，快速上下滑动 0 掉帧。
 - [x] 智能状态点（M1）：左上角信号点改为真实四态（就绪/部分就绪/未就绪/异常），
       48dp 可点、待处理琥珀角标、无模型时给一次性引导条；入口当前落到设置页，
       状态中枢面板见 `docs/product/INTELLIGENCE_HUB_SPEC.md`（M2）。
