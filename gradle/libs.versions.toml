@@ -82,6 +82,17 @@ pdfboxAndroid = "2.0.27.0"
 # license = ML Kit Terms of Service（https://developers.google.com/ml-kit/terms，**非 Apache**）。
 mlkitTextRecognitionChinese = "16.0.1"
 
+# Macrobenchmark（性能防回归）：与本机离线缓存严格一致（benchmark-macro-junit4/macro 1.5.0；
+# uiautomator 2.4.0 是 benchmark-macro 1.5.0 的传递需求，故 benchmark 模块与 app 的 2.3.0 不同版本，
+# 二者 classpath 独立，互不影响）。仅在 :benchmark 模块使用，不进入 app APK。
+benchmarkMacro = "1.5.0"
+benchmarkUiautomator = "2.4.0"
+
+# Macrobenchmark 测试 APK 的 JUnit4 runner（@RunWith(AndroidJUnit4::class)）。
+# benchmark-macro-junit4 只在 runtime classpath 传递 ext:junit，编译期需显式声明；
+# 版本与 benchmark-macro 1.5.0 要求的 1.2.1 一致（离线缓存已有）。
+androidxTestExtJunit = "1.2.1"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
@@ -134,6 +145,12 @@ mlkit-text-recognition-chinese = { group = "com.google.mlkit", name = "text-reco
 #   · ui-test-manifest：debugImplementation（androidTest 宿主）+ testImplementation（JVM 宿主）
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+
+# Macrobenchmark：仅 :benchmark（com.android.test）classpath；离线缓存已存在，构建须 --offline。
+benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacro" }
+androidx-test-uiautomator-benchmark = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "benchmarkUiautomator" }
+
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

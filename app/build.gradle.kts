@@ -117,6 +117,22 @@ android {
             // 未配置签名材料时保持 unsigned；配置后走 signingConfigs.release
             signingConfig = if (zhHasReleaseSigning) signingConfigs.getByName("release") else null
         }
+
+        // ------------------------------------------------------------------
+        // Macrobenchmark 被测变体（:benchmark/com.android.test 的 targetProjectPath=":app"）。
+        // 语义要求：与 release 同样的 R8 优化 + isDebuggable=false（=false 才能采集真实帧耗时），
+        // 但必须可安装——release 在无签名材料时是 unsigned（装不上），因此这里固定用 debug 签名。
+        // 仅新增变体，不改变 debug / release 既有语义；profileable 清单见
+        // app/src/benchmark/AndroidManifest.xml（仅该变体合并）。
+        // 运行方式：./gradlew :benchmark:connectedBenchmarkAndroidTest --offline
+        // ------------------------------------------------------------------
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            // 目标工程缺少同名变体时回落 release（:benchmark 与这里都按名称匹配 "benchmark"）
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+        }
     }
 
     compileOptions {
@@ -133,6 +149,11 @@ android {
     sourceSets {
         // W4-5 迁移测试：Room 导出的 schema JSON 供 MigrationTestHelper 读取
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
+        // Macrobenchmark 变体：R8 + isDebuggable=false，语义等同 release，因此必须复用
+        // src/release 里的非 debuggable 实现（BenchmarkScreen stub）——debug 版实验屏只在
+        // src/debug，若不加这一行，MainActivity 引用 BenchmarkScreen 会编译失败。
+        // 仅复用 release 源集，不引入 debug 源集；debug/release 既有语义不变。
+        getByName("benchmark").java.srcDir("src/release/java")
     }
 
     packaging {

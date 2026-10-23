@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Macrobenchmark 被测变体（:app buildType "benchmark"）专用清单覆盖。
+
+  为什么需要：Android 10（API 29）起，非 debuggable 进程只有声明 profileable 才允许
+  shell/perfetto 采样。Macrobenchmark 的 FrameTimingMetric / StartupTimingMetric 通过
+  perfetto 读取 frame timeline，未声明会报 “app is not profileable”。
+  仅 app/src/benchmark 源集合并，debug/release 产物完全不受影响。
+
+  tools:targetApi="29"：<profileable> 自 API 29 才有；minSdk 24 设备上该标签被系统忽略。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <profileable
+            android:shell="true"
+            tools:targetApi="29" />
+    </application>
+</manifest>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  :benchmark（com.android.test）测试 APK 的清单。
+  测试代码在 main 源集（self-instrumenting），Activity/权限由被测应用（:app）提供，
+  本模块不需要声明任何组件；runner 在 benchmark/build.gradle.kts 的 defaultConfig 配置。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
