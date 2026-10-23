@@ -573,6 +573,26 @@ data class IntelligenceStatus(
 
 ---
 
+## 16. 实现进度（M2，2026-10-23 晚）
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| P1-1 状态中枢面板 | ✅ 已实现 | `ui/IntelligenceHubSheet.kt`（ModalBottomSheet）：标题 + 一句话结论 + 空态补充行 + 4 个只读 pill（横滚）+ 快捷动作 4 行 + 待处理区（无告警隐藏）+ 底部「打开设置 · 智能」；深/浅色真机走查通过 |
+| P1-2 设置页分组 + 深链 | ✅ 已实现 | 设置页按 §7.1 重排为「智能（模型与算力 / 问答与增强 / 检索质量）→ 数据 → 诊断 → 隐私与关于」；`ui/IntelligenceSection.kt` 定义深链目标，`SettingsContent(initialSection)` 在数据加载完 + 首帧布局后 `scrollToItem`（已改 LazyColumn，故采用 §7.2 方案 B 而非 offset 记录）；索引按"当前实际 emit 的 item"计算（loading/error/旧空间告警是条件项），6 个 JVM 用例覆盖 |
+| P1-3 空态/异常文案 | ✅ 已实现 | 面板内 E1/E3/E15 与「未配置/未知/未启用」pill 值；M1 的引导条继续保留 |
+
+**M2 与规格的偏差（均已在代码注释说明）**
+1. **深链方案用 B（LazyColumn + scrollToItem）**：设置页在性能治理中已改为 LazyColumn，无需 §7.2 的 offset 记录；索引由 `SettingsItemOrder` 纯函数计算，条件项不 emit 时自动跳过。
+2. **待处理行不做就地写**：面板不持有 SettingsViewModel，统一改「去处理/详情」深链（Migration / Sag / Diagnostics / ModelStoreShared / Llm），符合规格"幂等动作才可就地写"的边界。
+3. **嵌入路径副标题**显示「当前生效：<模型名>」：`IntelligenceStatus` 尚未携带 `PathPreferences` 偏好，避免在面板里猜「自动/440M 优先」。
+4. **滚到锚点后未做 1.2s 高亮**：规格 §6.5 的视觉增强项，验收标准未要求，先留作 M3 走查项。
+5. **状态点点击行为变更**：由"直接进设置页"改为"打开状态中枢面板"；引导条 CTA 也打开面板（仍先写 `ui_hint_intelligence_onboarded` 标记）。
+6. 面板内额外覆盖 `STORE_PERMISSION_LOST` / `LLM_LOAD_ERROR` 两种待处理项，保证「待处理（N）」与行数一致。
+
+**M2 未采集但仍存在的能力**：Busy（下载中/重嵌入中）实时脉冲仍恒 `NONE`——下载与重嵌入进度目前只在 `SettingsViewModel` 内，需要把进度抽成共享 Flow 才能驱动首页动效（列为 M3 可选）。
+
+---
+
 ## 附录 A：与现状的差异清单（便于评审逐条确认）
 
 | 现状 | 规格后 |

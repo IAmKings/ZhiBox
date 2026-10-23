@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -32,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zhibox.memory.R
 import com.zhibox.memory.core.ingest.IngestRepository
@@ -52,6 +55,7 @@ import com.zhibox.memory.core.model.PathPreferences
 import com.zhibox.memory.core.model.SharedModelStore
 import com.zhibox.memory.core.sag.SagBudgetTier
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
+import com.zhibox.memory.ui.theme.zhiBoxColors
 import java.io.File
 
 /**
@@ -64,6 +68,7 @@ import java.io.File
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit = {},
+    initialSection: IntelligenceSection? = null,
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -368,7 +373,7 @@ fun SettingsScreen(
         ensureLlmLoaded = viewModel::ensureLlmLoaded,
         )
     }
-    SettingsContent(state = state, actions = actions)
+    SettingsContent(state = state, actions = actions, initialSection = initialSection)
 }
 
 /** 设置屏动作集合：无状态内容组件通过它回调有状态包装层（便于 @Preview 传默认空实现）。 */
@@ -415,12 +420,37 @@ class SettingsActions(
     val setPdfOcrEnabled: (Boolean) -> Unit = {},
 )
 
+/** 设置页分组标题（智能 / 数据 / 诊断 / 隐私与关于）。 */
+@Composable
+private fun SettingsGroupHeader(text: String) {
+    Text(
+        text = text,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.zhiBoxColors.inkMeta,
+        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 2.dp),
+    )
+}
+
+/** 设置页分组内二级小标题（模型与算力 / 问答与增强 / 检索质量）。 */
+@Composable
+private fun SettingsGroupSubHeader(text: String) {
+    Text(
+        text = text,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.zhiBoxColors.inkMeta,
+        modifier = Modifier.padding(start = 4.dp, top = 6.dp, bottom = 0.dp),
+    )
+}
+
 /** 无状态设置内容：供 [SettingsScreen] 与 @Preview / UI 测试直接渲染（B3-7）。 */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun SettingsContent(
     state: SettingsUiState,
     actions: SettingsActions,
+    initialSection: IntelligenceSection? = null,
 ) {
     ZhiBoxScreen(
         title = stringResource(R.string.settings_title),
@@ -428,7 +458,26 @@ internal fun SettingsContent(
     ) { padding ->
         // P0：17 个 section 一次性组合 + 全内容测量是设置页卡顿主因（实测单帧 compose+layout 375–465ms）。
         // 改 LazyColumn：只组合可见段，其余滚动到再组合。
+        val listState = rememberLazyListState()
+        // 深链：等数据加载完成 + 首帧布局后再滚动，避免闪跳/滚到错误位置。
+        val visibility = SettingsItemVisibility(
+            loading = state.loading,
+            hasError = state.error != null,
+            hasLegacySpacesError = state.legacySpacesError != null,
+            hasLegacySpaces = state.legacySpaces.isNotEmpty(),
+        )
+        var deepLinkApplied by remember(initialSection) { mutableStateOf(false) }
+        LaunchedEffect(initialSection, state.loading) {
+            if (initialSection != null && !deepLinkApplied && !state.loading) {
+                withFrameNanos { }
+                listState.scrollToItem(
+                    SettingsItemOrder.settingsItemIndex(initialSection, visibility),
+                )
+                deepLinkApplied = true
+            }
+        }
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -452,6 +501,14 @@ internal fun SettingsContent(
 
                 }
             }
+            item(key = "header-intelligence") {
+                SettingsGroupHeader(stringResource(R.string.settings_group_intelligence))
+            }
+
+            item(key = "sub-models") {
+                SettingsGroupSubHeader(stringResource(R.string.settings_sub_models))
+            }
+
 
             // ---- 嵌入路径 ----
             item(key = "section-0") {
@@ -749,6 +806,385 @@ internal fun SettingsContent(
                     }
                 }
             }
+            item(key = "sub-ask") {
+                SettingsGroupSubHeader(stringResource(R.string.settings_sub_ask))
+            }
+
+
+            // ---- B8：SAG 增强 / LLM（骨架：配置/测试/开关；未配置时离线检索零回归） ----
+            item(key = "section-8-0") {
+                // P1：滚到该段才解密 Keystore 读 LLM 配置（进场不做）
+                LaunchedEffect(Unit) { actions.ensureLlmLoaded() }
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_section_llm),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        val llm = state.llm
+                        if (llm == null) {
+                            Text(
+                                stringResource(R.string.settings_llm_disabled_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            Text(
+                                llm.maskedKey?.let { stringResource(R.string.settings_llm_masked_key, it) }
+                                    ?: stringResource(R.string.settings_llm_no_key),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (llm.maskedKey != null) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
+
+                        state.llmError?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+
+                        // 表单本地状态：baseUrl/model/timeout 可跨重建保留；apiKey 不用 rememberSaveable
+                        //（避免明文密钥进入 saved instance state）。
+                        var llmBaseUrl by rememberSaveable { mutableStateOf(llm?.baseUrl.orEmpty()) }
+                        var llmModel by rememberSaveable { mutableStateOf(llm?.model.orEmpty()) }
+                        var llmTimeout by rememberSaveable {
+                            mutableStateOf((llm?.timeoutSeconds ?: 30).toString())
+                        }
+                        var llmApiKey by remember { mutableStateOf("") }
+                        var llmFormMessage by remember { mutableStateOf<String?>(null) }
+                        val invalidConfigMessage = stringResource(R.string.settings_llm_invalid_config)
+                        val invalidTimeoutMessage = stringResource(R.string.settings_llm_invalid_timeout)
+                        LaunchedEffect(llm) {
+                            if (llm != null) {
+                                llmBaseUrl = llm.baseUrl
+                                llmModel = llm.model
+                                llmTimeout = llm.timeoutSeconds.toString()
+                                llmApiKey = ""
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = llmBaseUrl,
+                            onValueChange = { llmBaseUrl = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.settings_llm_base_url)) },
+                            placeholder = { Text(stringResource(R.string.settings_llm_base_url_hint)) },
+                            singleLine = true,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_llm_opencode_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedTextField(
+                            value = llmModel,
+                            onValueChange = { llmModel = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.settings_llm_model)) },
+                            placeholder = { Text(stringResource(R.string.settings_llm_model_hint)) },
+                            singleLine = true,
+                        )
+                        OutlinedTextField(
+                            value = llmApiKey,
+                            onValueChange = { llmApiKey = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.settings_llm_api_key)) },
+                            placeholder = { Text(stringResource(R.string.settings_llm_api_key_hint)) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        )
+                        OutlinedTextField(
+                            value = llmTimeout,
+                            onValueChange = { input -> llmTimeout = input.filter { it.isDigit() } },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.settings_llm_timeout)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    val timeout = llmTimeout.trim().toIntOrNull()
+                                    llmFormMessage = when {
+                                        llmBaseUrl.isBlank() || llmModel.isBlank() -> invalidConfigMessage
+                                        timeout == null || timeout !in 1..120 -> invalidTimeoutMessage
+                                        else -> {
+                                            actions.saveLlmConfig(
+                                                llmBaseUrl.trim(),
+                                                llmModel.trim(),
+                                                llmApiKey,
+                                                timeout,
+                                            )
+                                            null
+                                        }
+                                    }
+                                },
+                            ) { Text(stringResource(R.string.settings_llm_save)) }
+                            OutlinedButton(
+                                onClick = actions.testLlmConnection,
+                                enabled = !state.llmTesting,
+                            ) {
+                                Text(
+                                    if (state.llmTesting) {
+                                        stringResource(R.string.settings_llm_testing)
+                                    } else {
+                                        stringResource(R.string.settings_llm_test)
+                                    },
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = actions.clearLlmKey,
+                                // 读取/解密失败（llmError）时也允许清除，作为恢复入口
+                                enabled = state.llm?.maskedKey != null || state.llmError != null,
+                            ) { Text(stringResource(R.string.settings_llm_clear_key)) }
+                        }
+                        llmFormMessage?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        state.llmTestMessage?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+            }
+            item(key = "section-8-1") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_llm_behavior_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        SwitchRow(
+                            label = stringResource(R.string.settings_sag_toggle),
+                            checked = state.sagEnabled,
+                            onCheckedChange = actions.setSagEnabled,
+                        )
+                        SwitchRow(
+                            label = stringResource(R.string.settings_answer_toggle),
+                            checked = state.answerEnabled,
+                            onCheckedChange = actions.setAnswerEnabled,
+                        )
+                        Text(
+                            stringResource(R.string.settings_answer_consent_section),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            stringResource(R.string.settings_answer_consent_notice),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (state.answerNetworkConsent) {
+                            Text(
+                                stringResource(R.string.settings_answer_consent_agreed),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        } else {
+                            Text(
+                                stringResource(R.string.settings_answer_consent_required),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            TextButton(onClick = { actions.setAnswerNetworkConsent(true) }) {
+                                Text(stringResource(R.string.settings_answer_consent_agree))
+                            }
+                        }
+                        SwitchRow(
+                            label = stringResource(R.string.settings_network_disabled_toggle),
+                            checked = state.networkDisabled,
+                            onCheckedChange = actions.setNetworkDisabled,
+                        )
+                        Text(
+                            stringResource(R.string.settings_network_disabled_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            stringResource(R.string.settings_llm_privacy_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            stringResource(R.string.settings_llm_remote_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            item(key = "sub-retrieval") {
+                SettingsGroupSubHeader(stringResource(R.string.settings_sub_retrieval))
+            }
+
+            item(key = "section-8-2") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_budget_section),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SagBudgetTier.entries.forEach { tier ->
+                                FilterChip(
+                                    selected = state.budgetTier == tier,
+                                    onClick = { actions.setBudgetTier(tier) },
+                                    enabled = !state.budgetSaving,
+                                    label = { Text(budgetTierLabel(tier)) },
+                                )
+                            }
+                        }
+                        val tierBudget = state.budgetTier.budget
+                        Text(
+                            stringResource(
+                                R.string.settings_budget_current,
+                                tierBudget.kPool,
+                                tierBudget.kSeed,
+                                tierBudget.frontier,
+                                tierBudget.kCand,
+                                tierBudget.kEvent,
+                                tierBudget.kOut,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            stringResource(R.string.settings_budget_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
+                        // ---- P1.1：扫描件 PDF 端侧 OCR（默认开启；仅文本层为空时前 20 页）----
+                        HorizontalDivider()
+                        SwitchRow(
+                            label = stringResource(R.string.settings_pdf_ocr_toggle),
+                            checked = state.pdfOcrEnabled,
+                            onCheckedChange = actions.setPdfOcrEnabled,
+                        )
+                        Text(
+                            stringResource(R.string.settings_pdf_ocr_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            // ---- B9：SAG 两阶段抽取状态（与导入状态独立；失败不影响离线检索） ----
+            item(key = "section-9") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            stringResource(R.string.settings_sag_section),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        val counts = state.extractionCounts
+                        Text(
+                            stringResource(
+                                R.string.settings_sag_counts,
+                                counts.queued,
+                                counts.running,
+                                counts.done,
+                                counts.failed,
+                                counts.notIndexed,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        if (!counts.hasJobs) {
+                            Text(
+                                stringResource(R.string.settings_sag_no_jobs),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (!state.sagAvailable) {
+                            Text(
+                                stringResource(R.string.settings_sag_unavailable),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        // B12：抽取并发度（1..4；Worker 下一批领取任务时生效）
+                        Text(
+                            stringResource(R.string.settings_extraction_parallelism_section),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            for (value in 1..4) {
+                                FilterChip(
+                                    selected = state.extractionParallelism == value,
+                                    onClick = { actions.setExtractionParallelism(value) },
+                                    enabled = !state.extractionParallelismSaving,
+                                    label = {
+                                        Text(
+                                            stringResource(
+                                                R.string.settings_extraction_parallelism_value,
+                                                value,
+                                            ),
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                        Text(
+                            stringResource(R.string.settings_extraction_parallelism_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = actions.backfillExtraction,
+                                enabled = state.sagAvailable && !state.extractionWorking,
+                            ) {
+                                Text(
+                                    if (state.extractionWorking) {
+                                        stringResource(R.string.settings_sag_working)
+                                    } else {
+                                        stringResource(R.string.settings_sag_backfill)
+                                    },
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = actions.retryFailedExtraction,
+                                enabled = state.sagAvailable &&
+                                    !state.extractionWorking &&
+                                    counts.failed > 0,
+                            ) {
+                                Text(stringResource(R.string.settings_sag_retry_failed))
+                            }
+                        }
+                        state.extractionMessage?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+            }
+            item(key = "header-data") {
+                SettingsGroupHeader(stringResource(R.string.settings_group_data))
+            }
+
 
             // ---- 知识库迁移 + 自动重嵌入 ----
             item(key = "section-5-0") {
@@ -892,6 +1328,31 @@ internal fun SettingsContent(
 
                 }
             }
+
+            // ---- 知识库 ----
+            item(key = "section-7") {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            stringResource(R.string.settings_section_kb),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            stringResource(
+                                R.string.settings_kb_summary,
+                                state.docReady,
+                                state.chunkCount,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+            }
+            item(key = "header-diagnostics") {
+                SettingsGroupHeader(stringResource(R.string.settings_group_diagnostics))
+            }
+
 
             // ---- 索引诊断（B3-14：三表计数 / 孤儿明细 / 修复 before-after）----
             item(key = "section-6-0") {
@@ -1174,394 +1635,10 @@ internal fun SettingsContent(
                     }
                 }
             }
-
-            // ---- 知识库 ----
-            item(key = "section-7") {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            stringResource(R.string.settings_section_kb),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            stringResource(
-                                R.string.settings_kb_summary,
-                                state.docReady,
-                                state.chunkCount,
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
+            item(key = "header-privacy") {
+                SettingsGroupHeader(stringResource(R.string.settings_group_privacy))
             }
 
-            // ---- B8：SAG 增强 / LLM（骨架：配置/测试/开关；未配置时离线检索零回归） ----
-            item(key = "section-8-0") {
-                // P1：滚到该段才解密 Keystore 读 LLM 配置（进场不做）
-                LaunchedEffect(Unit) { actions.ensureLlmLoaded() }
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            stringResource(R.string.settings_section_llm),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        val llm = state.llm
-                        if (llm == null) {
-                            Text(
-                                stringResource(R.string.settings_llm_disabled_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            Text(
-                                llm.maskedKey?.let { stringResource(R.string.settings_llm_masked_key, it) }
-                                    ?: stringResource(R.string.settings_llm_no_key),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (llm.maskedKey != null) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            )
-                        }
-
-                        state.llmError?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-
-                        // 表单本地状态：baseUrl/model/timeout 可跨重建保留；apiKey 不用 rememberSaveable
-                        //（避免明文密钥进入 saved instance state）。
-                        var llmBaseUrl by rememberSaveable { mutableStateOf(llm?.baseUrl.orEmpty()) }
-                        var llmModel by rememberSaveable { mutableStateOf(llm?.model.orEmpty()) }
-                        var llmTimeout by rememberSaveable {
-                            mutableStateOf((llm?.timeoutSeconds ?: 30).toString())
-                        }
-                        var llmApiKey by remember { mutableStateOf("") }
-                        var llmFormMessage by remember { mutableStateOf<String?>(null) }
-                        val invalidConfigMessage = stringResource(R.string.settings_llm_invalid_config)
-                        val invalidTimeoutMessage = stringResource(R.string.settings_llm_invalid_timeout)
-                        LaunchedEffect(llm) {
-                            if (llm != null) {
-                                llmBaseUrl = llm.baseUrl
-                                llmModel = llm.model
-                                llmTimeout = llm.timeoutSeconds.toString()
-                                llmApiKey = ""
-                            }
-                        }
-
-                        OutlinedTextField(
-                            value = llmBaseUrl,
-                            onValueChange = { llmBaseUrl = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.settings_llm_base_url)) },
-                            placeholder = { Text(stringResource(R.string.settings_llm_base_url_hint)) },
-                            singleLine = true,
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_llm_opencode_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        OutlinedTextField(
-                            value = llmModel,
-                            onValueChange = { llmModel = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.settings_llm_model)) },
-                            placeholder = { Text(stringResource(R.string.settings_llm_model_hint)) },
-                            singleLine = true,
-                        )
-                        OutlinedTextField(
-                            value = llmApiKey,
-                            onValueChange = { llmApiKey = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.settings_llm_api_key)) },
-                            placeholder = { Text(stringResource(R.string.settings_llm_api_key_hint)) },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        )
-                        OutlinedTextField(
-                            value = llmTimeout,
-                            onValueChange = { input -> llmTimeout = input.filter { it.isDigit() } },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.settings_llm_timeout)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = {
-                                    val timeout = llmTimeout.trim().toIntOrNull()
-                                    llmFormMessage = when {
-                                        llmBaseUrl.isBlank() || llmModel.isBlank() -> invalidConfigMessage
-                                        timeout == null || timeout !in 1..120 -> invalidTimeoutMessage
-                                        else -> {
-                                            actions.saveLlmConfig(
-                                                llmBaseUrl.trim(),
-                                                llmModel.trim(),
-                                                llmApiKey,
-                                                timeout,
-                                            )
-                                            null
-                                        }
-                                    }
-                                },
-                            ) { Text(stringResource(R.string.settings_llm_save)) }
-                            OutlinedButton(
-                                onClick = actions.testLlmConnection,
-                                enabled = !state.llmTesting,
-                            ) {
-                                Text(
-                                    if (state.llmTesting) {
-                                        stringResource(R.string.settings_llm_testing)
-                                    } else {
-                                        stringResource(R.string.settings_llm_test)
-                                    },
-                                )
-                            }
-                            OutlinedButton(
-                                onClick = actions.clearLlmKey,
-                                // 读取/解密失败（llmError）时也允许清除，作为恢复入口
-                                enabled = state.llm?.maskedKey != null || state.llmError != null,
-                            ) { Text(stringResource(R.string.settings_llm_clear_key)) }
-                        }
-                        llmFormMessage?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                        state.llmTestMessage?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    }
-                }
-            }
-            item(key = "section-8-1") {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            stringResource(R.string.settings_llm_behavior_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        SwitchRow(
-                            label = stringResource(R.string.settings_sag_toggle),
-                            checked = state.sagEnabled,
-                            onCheckedChange = actions.setSagEnabled,
-                        )
-                        SwitchRow(
-                            label = stringResource(R.string.settings_answer_toggle),
-                            checked = state.answerEnabled,
-                            onCheckedChange = actions.setAnswerEnabled,
-                        )
-                        Text(
-                            stringResource(R.string.settings_answer_consent_section),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            stringResource(R.string.settings_answer_consent_notice),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (state.answerNetworkConsent) {
-                            Text(
-                                stringResource(R.string.settings_answer_consent_agreed),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        } else {
-                            Text(
-                                stringResource(R.string.settings_answer_consent_required),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                            TextButton(onClick = { actions.setAnswerNetworkConsent(true) }) {
-                                Text(stringResource(R.string.settings_answer_consent_agree))
-                            }
-                        }
-                        SwitchRow(
-                            label = stringResource(R.string.settings_network_disabled_toggle),
-                            checked = state.networkDisabled,
-                            onCheckedChange = actions.setNetworkDisabled,
-                        )
-                        Text(
-                            stringResource(R.string.settings_network_disabled_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Text(
-                            stringResource(R.string.settings_llm_privacy_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            stringResource(R.string.settings_llm_remote_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-            item(key = "section-8-2") {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            stringResource(R.string.settings_budget_section),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SagBudgetTier.entries.forEach { tier ->
-                                FilterChip(
-                                    selected = state.budgetTier == tier,
-                                    onClick = { actions.setBudgetTier(tier) },
-                                    enabled = !state.budgetSaving,
-                                    label = { Text(budgetTierLabel(tier)) },
-                                )
-                            }
-                        }
-                        val tierBudget = state.budgetTier.budget
-                        Text(
-                            stringResource(
-                                R.string.settings_budget_current,
-                                tierBudget.kPool,
-                                tierBudget.kSeed,
-                                tierBudget.frontier,
-                                tierBudget.kCand,
-                                tierBudget.kEvent,
-                                tierBudget.kOut,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Text(
-                            stringResource(R.string.settings_budget_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-
-                        // ---- P1.1：扫描件 PDF 端侧 OCR（默认开启；仅文本层为空时前 20 页）----
-                        HorizontalDivider()
-                        SwitchRow(
-                            label = stringResource(R.string.settings_pdf_ocr_toggle),
-                            checked = state.pdfOcrEnabled,
-                            onCheckedChange = actions.setPdfOcrEnabled,
-                        )
-                        Text(
-                            stringResource(R.string.settings_pdf_ocr_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            // ---- B9：SAG 两阶段抽取状态（与导入状态独立；失败不影响离线检索） ----
-            item(key = "section-9") {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            stringResource(R.string.settings_sag_section),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        val counts = state.extractionCounts
-                        Text(
-                            stringResource(
-                                R.string.settings_sag_counts,
-                                counts.queued,
-                                counts.running,
-                                counts.done,
-                                counts.failed,
-                                counts.notIndexed,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        if (!counts.hasJobs) {
-                            Text(
-                                stringResource(R.string.settings_sag_no_jobs),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        if (!state.sagAvailable) {
-                            Text(
-                                stringResource(R.string.settings_sag_unavailable),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                        // B12：抽取并发度（1..4；Worker 下一批领取任务时生效）
-                        Text(
-                            stringResource(R.string.settings_extraction_parallelism_section),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            for (value in 1..4) {
-                                FilterChip(
-                                    selected = state.extractionParallelism == value,
-                                    onClick = { actions.setExtractionParallelism(value) },
-                                    enabled = !state.extractionParallelismSaving,
-                                    label = {
-                                        Text(
-                                            stringResource(
-                                                R.string.settings_extraction_parallelism_value,
-                                                value,
-                                            ),
-                                        )
-                                    },
-                                )
-                            }
-                        }
-                        Text(
-                            stringResource(R.string.settings_extraction_parallelism_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(
-                                onClick = actions.backfillExtraction,
-                                enabled = state.sagAvailable && !state.extractionWorking,
-                            ) {
-                                Text(
-                                    if (state.extractionWorking) {
-                                        stringResource(R.string.settings_sag_working)
-                                    } else {
-                                        stringResource(R.string.settings_sag_backfill)
-                                    },
-                                )
-                            }
-                            OutlinedButton(
-                                onClick = actions.retryFailedExtraction,
-                                enabled = state.sagAvailable &&
-                                    !state.extractionWorking &&
-                                    counts.failed > 0,
-                            ) {
-                                Text(stringResource(R.string.settings_sag_retry_failed))
-                            }
-                        }
-                        state.extractionMessage?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    }
-                }
-            }
 
             // ---- 隐私与离线声明 ----
             item(key = "section-10") {
@@ -1578,8 +1655,7 @@ internal fun SettingsContent(
                         )
                     }
                 }
-            }
-        }
+            }}
     }
 }
 

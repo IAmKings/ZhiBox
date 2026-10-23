@@ -98,6 +98,10 @@ data class IntelligenceStatus(
     val gpu: GpuStatus,
     val llm: LlmStatus,
     val pending: List<PendingItem>,
+    /** 旧模型空间数量（0 = 无；用于面板待处理行文案）。 */
+    val legacySpaceCount: Int = 0,
+    /** 抽取失败的分块数（0 = 无；用于面板待处理行文案）。 */
+    val extractionFailedCount: Int = 0,
 ) {
     /** 角标数字 = 待处理项数（不是分块数）。 */
     val pendingCount: Int get() = pending.size
@@ -188,5 +192,7 @@ fun evaluateIntelligence(readings: IntelligenceReadings): IntelligenceStatus {
         gpu = gpu,
         llm = llm,
         pending = pending,
+        legacySpaceCount = readings.legacySpaceCount.coerceAtLeast(0),
+        extractionFailedCount = readings.extractionFailedCount.coerceAtLeast(0),
     )
 }

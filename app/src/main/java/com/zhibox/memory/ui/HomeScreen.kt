@@ -119,10 +119,12 @@ fun HomeScreen(
     onOpenDiagnostics: (() -> Unit)? = null,
     onOpenDocument: (documentId: String) -> Unit = {},
     /**
-     * 智能状态入口。M1 先落到设置页（模型商店/嵌入路径/GPU/LLM 都在那里）；
-     * M2 接入「智能状态」面板后只需改这一处映射。
+     * 智能状态面板的深链出口：null = 打开设置页顶部（「智能」分组）。
+     *
+     * M2 起左上角状态点不再直接跳设置页，而是先打开「智能状态中枢」面板
+     * （[IntelligenceHubSheet]），面板内动作再经此回调落到设置页对应锚点。
      */
-    onOpenIntelligence: () -> Unit = {},
+    onOpenSettingsSection: (IntelligenceSection?) -> Unit = {},
     viewModel: HomeViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -133,6 +135,8 @@ fun HomeScreen(
     LaunchedEffect(Unit) { viewModel.refreshIntelligence() }
     // 输入框内容属于用户输入：rememberSaveable 保证旋转/进程重建后不丢
     var draft by rememberSaveable { mutableStateOf("") }
+    // 状态中枢面板的展开态：rememberSaveable 保证旋转/进程重建后仍保留（规格 §11 B7）
+    var hubOpen by rememberSaveable { mutableStateOf(false) }
 
     HomeContent(
         state = state,
@@ -153,14 +157,24 @@ fun HomeScreen(
         onOpenDocument = onOpenDocument,
         intelligence = intelligence,
         showOnboarding = showOnboarding,
-        // 点引导条 CTA = 表示"我看到了"，先落标记再跳转；关闭同理（不再打扰）
-        onOpenIntelligence = {
-            viewModel.onOnboardingSeen()
-            onOpenIntelligence()
-        },
+        // 点状态点 = 打开面板（幂等：已开时再点不会叠加 sheet，规格 §11 B9）
+        onOpenHub = { hubOpen = true },
         onDismissOnboarding = { viewModel.onOnboardingSeen() },
         onMarkNewContentSeen = viewModel::markNewContentSeen,
     )
+
+    if (hubOpen) {
+        IntelligenceHubSheet(
+            status = intelligence,
+            onDismissRequest = { hubOpen = false },
+            // 面板内部先收起再回调（dismiss-then-navigate），这里只负责转发目标锚点。
+            onOpenSection = onOpenSettingsSection,
+            counts = IntelligenceHubCounts(
+                legacySpaces = intelligence.legacySpaceCount,
+                extractionFailed = intelligence.extractionFailedCount,
+            ),
+        )
+    }
 }
 
 /** 无状态内容层：所有数据来自 [HomeUiState]，所有意图通过 lambda 上抛。 */
@@ -181,7 +195,7 @@ private fun HomeContent(
     onOpenDocument: (String) -> Unit,
     intelligence: IntelligenceStatus,
     showOnboarding: Boolean,
-    onOpenIntelligence: () -> Unit,
+    onOpenHub: () -> Unit,
     onDismissOnboarding: () -> Unit,
     onMarkNewContentSeen: () -> Unit,
     modifier: Modifier = Modifier,
@@ -209,7 +223,7 @@ private fun HomeContent(
         ) {
             HomeTopBar(
                 status = intelligence,
-                onOpenIntelligence = onOpenIntelligence,
+                onOpenHub = onOpenHub,
                 onOpenSearch = { onSubmit() },
                 onOpenChat = onOpenChat,
                 onOpenSources = onOpenSources,
@@ -223,7 +237,12 @@ private fun HomeContent(
             )
             if (showOnboarding) {
                 IntelligenceOnboardingBanner(
-                    onOpen = onOpenIntelligence,
+                    // CTA = "我看到了 + 打开面板"：先落标记（不再打扰），再开面板；
+                    // 关闭同理只落标记（规格 §5.3）。
+                    onOpen = {
+                        onDismissOnboarding()
+                        onOpenHub()
+                    },
                     onDismiss = onDismissOnboarding,
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
@@ -296,7 +315,7 @@ private fun HomeContent(
 @Composable
 private fun HomeTopBar(
     status: IntelligenceStatus,
-    onOpenIntelligence: () -> Unit,
+    onOpenHub: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenChat: () -> Unit,
     onOpenSources: () -> Unit,
@@ -316,7 +335,7 @@ private fun HomeTopBar(
     ) {
         // 左：端侧离线就绪指示（呼吸绿点 + ping 扩散）
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            OfflineReadyDot(status = status, onClick = onOpenIntelligence)
+            OfflineReadyDot(status = status, onClick = onOpenHub)
         }
 
         // 中：品牌锁版（中文用系统 serif 复现参考稿宋体观感，拉丁用 Plus Jakarta Sans）
@@ -1291,7 +1310,7 @@ private fun HomeContentPreview() {
             onOpenDocument = {},
             intelligence = FakeHome.ready,
             showOnboarding = false,
-            onOpenIntelligence = {},
+            onOpenHub = {},
             onDismissOnboarding = {},
             onMarkNewContentSeen = {},
         )
@@ -1318,7 +1337,7 @@ private fun HomeContentDarkPreview() {
             onOpenDocument = {},
             intelligence = FakeHome.ready,
             showOnboarding = false,
-            onOpenIntelligence = {},
+            onOpenHub = {},
             onDismissOnboarding = {},
             onMarkNewContentSeen = {},
         )
@@ -1345,7 +1364,7 @@ private fun HomeContentEmptyPreview() {
             onOpenDocument = {},
             intelligence = FakeHome.ready,
             showOnboarding = false,
-            onOpenIntelligence = {},
+            onOpenHub = {},
             onDismissOnboarding = {},
             onMarkNewContentSeen = {},
         )
@@ -1372,7 +1391,7 @@ private fun HomeContentLoadingPreview() {
             onOpenDocument = {},
             intelligence = FakeHome.ready,
             showOnboarding = false,
-            onOpenIntelligence = {},
+            onOpenHub = {},
             onDismissOnboarding = {},
             onMarkNewContentSeen = {},
         )
@@ -1399,7 +1418,7 @@ private fun HomeContentNotReadyPreview() {
             onOpenDocument = {},
             intelligence = IntelligenceStatus.Loading,
             showOnboarding = true,
-            onOpenIntelligence = {},
+            onOpenHub = {},
             onDismissOnboarding = {},
             onMarkNewContentSeen = {},
         )
@@ -1426,7 +1445,7 @@ private fun HomeContentNewContentPreview() {
             onOpenDocument = {},
             intelligence = FakeHome.ready,
             showOnboarding = false,
-            onOpenIntelligence = {},
+            onOpenHub = {},
             onDismissOnboarding = {},
             onMarkNewContentSeen = {},
         )

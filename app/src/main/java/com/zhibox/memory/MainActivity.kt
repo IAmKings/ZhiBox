@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import com.zhibox.memory.ui.BenchmarkScreen
 import com.zhibox.memory.ui.ChatScreen
 import com.zhibox.memory.ui.HomeScreen
+import com.zhibox.memory.ui.IntelligenceSection
 import com.zhibox.memory.ui.ImportScreen
 import com.zhibox.memory.ui.SearchScreen
 import com.zhibox.memory.ui.SettingsScreen
@@ -69,6 +70,8 @@ class MainActivity : ComponentActivity() {
                 // 避免再次进入导入屏时重放（不再依赖 ImportViewModel 内部布尔兜底）。
                 var pendingImport by remember { mutableStateOf(autoStart.import) }
                 var pendingImportCancel by remember { mutableStateOf(autoStart.importCancel) }
+                // M2 深链：面板 → 设置页锚点；null = 打开设置页顶部（智能分组）
+                var settingsSection by remember { mutableStateOf<IntelligenceSection?>(null) }
                 val goHome = {
                     pendingAutoStart = AutoStart()
                     pendingImport = false
@@ -88,7 +91,10 @@ class MainActivity : ComponentActivity() {
                         autoStart = pendingImport,
                         autoCancel = pendingImportCancel,
                         onBack = goHome,
-                        onOpenSettings = { screen = "settings" },
+                        onOpenSettings = {
+                            settingsSection = null
+                            screen = "settings"
+                        },
                     )
                     "search" -> SearchScreen(
                         onBack = goHome,
@@ -99,7 +105,13 @@ class MainActivity : ComponentActivity() {
                         onBack = goHome,
                         onOpenImport = { screen = "import" },
                     )
-                    "settings" -> SettingsScreen(onBack = goHome)
+                    "settings" -> SettingsScreen(
+                        onBack = {
+                            settingsSection = null
+                            goHome()
+                        },
+                        initialSection = settingsSection,
+                    )
                     else -> HomeScreen(
                         // 首页输入岛/搜索图标 → 检索屏；query 为空时沿用检索屏上次输入
                         onOpenSearch = { query ->
@@ -109,7 +121,10 @@ class MainActivity : ComponentActivity() {
                         onOpenImport = { screen = "import" },
                         onOpenChat = { screen = "chat" },
                         onOpenSources = { screen = "sources" },
-                        onOpenSettings = { screen = "settings" },
+                        onOpenSettings = {
+                            settingsSection = null
+                            screen = "settings"
+                        },
                         // P0-3：仅 debug 构建暴露实验/诊断入口（收进首页「更多」菜单）
                         onOpenDiagnostics = if (isDebug) {
                             { screen = "benchmark" }
@@ -118,8 +133,11 @@ class MainActivity : ComponentActivity() {
                         },
                         // 文档详情屏尚未落地：先落到来源页（见 HomeScreen 顶部注释）
                         onOpenDocument = { screen = "sources" },
-                        // M1：智能状态入口先落到设置页；M2 接入「智能状态」面板后改这里
-                        onOpenIntelligence = { screen = "settings" },
+                        // M2：状态点打开「智能状态」面板；面板动作带 section 深链到设置页对应锚点
+                        onOpenSettingsSection = { section ->
+                            settingsSection = section
+                            screen = "settings"
+                        },
                     )
                 }
             }

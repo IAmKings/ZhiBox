@@ -637,4 +637,46 @@
     <string name="settings_index_not_checked">尚未检查（点下方按钮开始）</string>
     <string name="settings_store_shared_title">共享模型目录</string>
     <string name="settings_llm_behavior_title">SAG 增强与问答</string>
+
+    <!-- ==== M2：智能状态中枢面板（P1-1） ==== -->
+    <string name="intelligence_conclusion_ready">本地模型已就绪 · 端侧推理</string>
+    <string name="intelligence_conclusion_partial">本地模型已就绪 · %1$d 项待处理</string>
+    <string name="intelligence_conclusion_not_ready">还没有可用的本地模型</string>
+    <string name="intelligence_conclusion_error">索引或模型需要修复</string>
+    <string name="intelligence_pill_model">模型</string>
+    <string name="intelligence_pill_space">空间</string>
+    <string name="intelligence_pill_gpu">GPU</string>
+    <string name="intelligence_pill_llm">LLM</string>
+    <string name="intelligence_pill_value_none">未配置</string>
+    <string name="intelligence_pill_value_unknown">未知</string>
+    <string name="intelligence_pill_value_not_enabled">未启用</string>
+    <string name="intelligence_pill_gpu_auto">自动（首次推理时探测）</string>
+    <string name="intelligence_row_model_value">%1$s · %2$s</string>
+    <string name="intelligence_section_quick">快捷动作</string>
+    <string name="intelligence_section_pending">待处理（%1$d）</string>
+    <string name="intelligence_row_model">嵌入模型</string>
+    <string name="intelligence_row_path">嵌入路径</string>
+    <string name="intelligence_row_gpu">GPU 加速</string>
+    <string name="intelligence_row_llm">LLM 配置</string>
+    <string name="intelligence_open_settings">打开设置 · 智能</string>
+    <string name="intelligence_pending_legacy_spaces">%1$d 个旧模型空间的数据未参与检索</string>
+    <string name="intelligence_pending_extraction">%1$d 个分块抽取失败</string>
+    <string name="intelligence_pending_index">索引可能有孤儿行</string>
+    <string name="intelligence_pending_action_handle">去处理</string>
+    <string name="intelligence_pending_action_retry">重试</string>
+    <string name="intelligence_pending_action_repair">修复</string>
+    <string name="intelligence_pending_action_detail">详情</string>
+    <string name="intelligence_empty_kb">模型就绪 · 知识库还是空的</string>
+    <string name="intelligence_models_found_not_enabled">已检测到 %1$d 个模型文件，尚未启用</string>
+    <string name="intelligence_model_corrupt">模型文件需要重新下载</string>
+    <string name="intelligence_close">关闭</string>
+
+    <!-- ==== M2：设置页分组（P1-2） ==== -->
+    <string name="settings_group_intelligence">智能</string>
+    <string name="settings_group_data">数据</string>
+    <string name="settings_group_diagnostics">诊断</string>
+    <string name="settings_group_privacy">隐私与关于</string>
+    <string name="settings_sub_models">模型与算力</string>
+    <string name="settings_sub_ask">问答与增强</string>
+    <string name="settings_sub_retrieval">检索质量</string>
 </resources>
