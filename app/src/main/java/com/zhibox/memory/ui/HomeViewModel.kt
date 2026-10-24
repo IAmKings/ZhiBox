@@ -6,10 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.zhibox.memory.R
 import com.zhibox.memory.core.backup.UI_HINT_KEY_PREFIX
 import com.zhibox.memory.core.embedding.EmbeddingRuntime
+import com.zhibox.memory.core.extraction.SagExtractionScheduler
 import com.zhibox.memory.core.intelligence.IntelligenceBusySource
 import com.zhibox.memory.core.intelligence.IntelligenceBusyTick
 import com.zhibox.memory.core.ingest.IngestRepository
+import com.zhibox.memory.core.ingest.ReembedScheduler
 import com.zhibox.memory.core.llm.KeystoreLlmConfigStore
+import com.zhibox.memory.core.llm.LlmPreferences
 import com.zhibox.memory.core.model.PathPreferences
 import com.zhibox.memory.core.model.SharedModelStore
 import com.zhibox.memory.data.db.AppDatabase
@@ -19,6 +22,7 @@ import com.zhibox.memory.data.db.DocumentPreviewRow
 import com.zhibox.memory.data.db.DocStatus
 import com.zhibox.memory.data.db.SourceEntity
 import com.zhibox.memory.data.db.SourceStatus
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -120,14 +124,25 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             busySource.state.collect { tick ->
                 val readings = lastReadings ?: return@collect
-                _intelligence.value = evaluateIntelligence(
-                    readings = readings,
-                    busyOverride = tick.toBusyOverride(),
-                    busyPct = tick.toBusyPct(),
-                )
+                _intelligence.value = statusOf(readings, tick)
             }
         }
     }
+
+    /**
+     * 读数 + 进行中任务 → 聚合状态（busy 的三个通道一起映射，避免各调用点漏字段）：
+     * - `busyLabel`：下载中的模型名（E12 行标题）；
+     * - `busyDone/busyTotal`：重嵌入进度（E13 进度文案；total 未知为 null）。
+     */
+    private fun statusOf(readings: IntelligenceReadings, tick: IntelligenceBusyTick): IntelligenceStatus =
+        evaluateIntelligence(
+            readings = readings,
+            busyOverride = tick.toBusyOverride(),
+            busyPct = tick.toBusyPct(),
+            busyLabel = tick.toBusyLabel(),
+            busyDone = tick.toBusyDone(),
+            busyTotal = tick.toBusyTotal(),
+        )
 
     private fun IntelligenceBusyTick.toBusyOverride(): IntelligenceBusy? = when (this) {
         is IntelligenceBusyTick.Downloading -> IntelligenceBusy.DOWNLOADING
@@ -139,6 +154,22 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         is IntelligenceBusyTick.Downloading -> pct
         is IntelligenceBusyTick.Reembedding -> if (total > 0) done * 100 / total else null
         IntelligenceBusyTick.Idle -> null
+    }
+
+    private fun IntelligenceBusyTick.toBusyLabel(): String? = when (this) {
+        is IntelligenceBusyTick.Downloading -> modelLabel
+        else -> null
+    }
+
+    private fun IntelligenceBusyTick.toBusyDone(): Int? = when (this) {
+        is IntelligenceBusyTick.Reembedding -> done
+        else -> null
+    }
+
+    private fun IntelligenceBusyTick.toBusyTotal(): Int? = when (this) {
+        // total <= 0 = 总量未知：映射成 null，面板用不确定进度条（§10.3）。
+        is IntelligenceBusyTick.Reembedding -> total.takeIf { it > 0 }
+        else -> null
     }
 
     /** 首页左上角状态点消费：四态 + 待处理项数 + 进行中任务（只影响动效）。 */
@@ -159,16 +190,80 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val readings = withContext(Dispatchers.IO) { readIntelligenceReadings() }
             lastReadings = readings
-            val tick = busySource.state.value
-            val status = evaluateIntelligence(
-                readings = readings,
-                busyOverride = tick.toBusyOverride(),
-                busyPct = tick.toBusyPct(),
-            )
+            val status = statusOf(readings, busySource.state.value)
             _intelligence.value = status
             val seen = withContext(Dispatchers.IO) { onboardingSeen() }
             _showOnboarding.value = status.needsOnboarding && !seen
         }
+    }
+
+    // ─────────────────── 面板内就地动作（§6.4 幂等写操作） ───────────────────
+
+    /** 就地动作防重入（简单 busy 标记）：连点只触发一次，避免重复入队/重复修复。 */
+    @Volatile
+    private var retryingExtraction = false
+
+    @Volatile
+    private var repairingIndex = false
+
+    /**
+     * E10 待处理行「重试」：把终态 failed 的抽取任务重新排队。
+     *
+     * 与设置页 `SettingsViewModel.retryFailedExtraction` 走同一 core 入口
+     * [SagExtractionScheduler.retryFailed]；面板内就地执行，不跳设置页、不关闭面板。
+     * SAG 不可用时 core 直接返回 0（任务保持 failed，待处理行不消失），不抛给 UI。
+     */
+    fun retryExtractionFailed() {
+        if (retryingExtraction) return
+        retryingExtraction = true
+        viewModelScope.launch {
+            try {
+                val app = getApplication<Application>()
+                withContext(Dispatchers.IO) { SagExtractionScheduler.retryFailed(app, db) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                // 就地动作失败不崩溃：保留失败计数，用户可再次点击重试。
+            } finally {
+                retryingExtraction = false
+            }
+            // 入队成功后任务转为 queued/running，刷新一次让 busy/待处理行即时更新。
+            refreshIntelligence()
+        }
+    }
+
+    /**
+     * E11 待处理行「修复」：就地执行索引修复（清理孤儿 FTS/向量行，必要时重建 FTS）。
+     *
+     * 复用 [IngestRepository.repairIndex]（与设置页「检查并修复索引」同一实现），
+     * 面板不关闭；完成后重新读数，待处理行随索引恢复自动消失。
+     */
+    fun repairIndexNow() {
+        if (repairingIndex) return
+        repairingIndex = true
+        viewModelScope.launch {
+            try {
+                val app = getApplication<Application>()
+                withContext(Dispatchers.IO) { IngestRepository(app).repairIndex() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                // 修复失败不崩溃：读数保持"不一致"，用户可再次点击。
+            } finally {
+                repairingIndex = false
+            }
+            refreshIntelligence()
+        }
+    }
+
+    /**
+     * E13「停止同步」：就地取消唯一重嵌入工作流。
+     *
+     * 取消是幂等的（无任务时无副作用）；busy 由 [IntelligenceBusySource] 观察 WorkManager，
+     * 取消后信号自动回到 Idle，面板进度行随状态刷新消失。
+     */
+    fun cancelReembedSync() {
+        runCatching { ReembedScheduler.cancel(getApplication()) }
     }
 
     /** 用户点过引导条 CTA 或关闭：持久化标记，不再打扰（模型缺失时状态点仍保持灰色提示）。 */
@@ -211,6 +306,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }.getOrDefault(-1)
         // SAG 抽取计数：失败按未知，不误报
         val counts = runCatching { db.extractionJobDao().readCounts() }.getOrNull()
+        // E1/E2：候选模型文件数（纯文件扫描；读取失败 -1——既不判 E1 也不判 E2，
+        // 避免把"读不到文件数"伪装成"全新安装"）。
+        val modelFileCount = runCatching { PathPreferences.candidates(app).size }.getOrDefault(-1)
+        // E3/E11：chunk 总数与 FTS 行数（各一次 COUNT(*)，不做 indexHealthCheck 全表扫描）
+        val chunkCount = runCatching { db.chunkDao().count() }.getOrDefault(-1)
+        val ftsCount = runCatching { db.chunkDao().ftsCount() }.getOrDefault(-1)
+        // E8/E14：L3 可选能力开关（读取失败按未知 null，pill 不展示，§10.3）
+        val sagEnabled = runCatching { LlmPreferences.sagEnabled(app) }.getOrNull()
+        val networkDisabled = runCatching { !LlmPreferences.networkAllowed(app) }.getOrNull()
+        val answerConsentGranted = runCatching {
+            LlmPreferences.answerNetworkConsent(app)
+        }.getOrNull()
 
         return IntelligenceReadings(
             modelName = modelFile?.name,
@@ -223,8 +330,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             extractionFailedCount = counts?.failed ?: -1,
             extracting = (counts?.running ?: 0) > 0,
             storePermissionLost = storeState == SharedModelStore.State.PERMISSION_LOST,
-            // M1 不做索引全表检查（重查询，代价高）：保持"未检查"
-            indexUnhealthy = false,
+            // E11：轻量索引一致性探测——chunk 行数与 FTS 行数不一致即视为不一致。
+            // 完整检查（孤儿集合）仍只在设置页「检查并修复索引」里执行；
+            // 任一计数读取失败（-1）按"未知"处理，不误报待处理。
+            indexUnhealthy = chunkCount >= 0 && ftsCount >= 0 && chunkCount != ftsCount,
+            storeNotConfigured = storeState == SharedModelStore.State.NOT_CONFIGURED,
+            modelFileCount = modelFileCount,
+            chunkCount = chunkCount,
+            sagEnabled = sagEnabled,
+            networkDisabled = networkDisabled,
+            answerConsentGranted = answerConsentGranted,
         )
     }
 

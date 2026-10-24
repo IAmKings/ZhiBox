@@ -27,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -53,21 +54,22 @@ import com.zhibox.memory.ui.theme.zhiBoxColors
 import kotlinx.coroutines.launch
 
 /**
- * 智能状态中枢面板（M2 P1-1）。
+ * 智能状态中枢面板（M2 P1-1；M4 补齐 §4 空态/busy 行与就地动作）。
  *
- * 规格：`docs/product/INTELLIGENCE_HUB_SPEC.md` §6（IA/线框）、§8.3/§8.4（文案）、§9（视觉令牌）。
+ * 规格：`docs/product/INTELLIGENCE_HUB_SPEC.md` §4（E1–E15 矩阵）、§6（IA/线框）、
+ * §8.3/§8.4（文案）、§9（视觉令牌）。
  *
  * 信息架构（首屏"三问"，§6.2）：
- * 1. 能不能用？ → 标题 + 一句话结论（按 [IntelligenceLevel] 四态）；
- * 2. 哪里没配好？ → 4 个只读 pill（模型 / 空间 / GPU / LLM），超长横向滚动；
- * 3. 下一步点什么？ → 快捷动作 4 行（嵌入模型 / 嵌入路径 / GPU 加速 / LLM 配置）+ 底部「打开设置 · 智能」。
+ * 1. 能不能用？ → 标题 + 一句话结论（按 [IntelligenceLevel] 四态）+ 首屏关键行；
+ * 2. 哪里没配好？ → 4 个只读 pill（模型 / 空间 / GPU / LLM）+ 附加 pill（E4/E8/E14）；
+ * 3. 下一步点什么？ → 空态主 CTA / 快捷动作 4 行 + 底部「打开设置 · 智能」。
+ *
+ * 首屏关键行由纯逻辑 [resolvePrimary]（[HubPrimary]）决定，渲染顺序与 §4 一致：
+ * E1 下载模型 / E2 去启用 / E15 重新下载 / E12 下载进度 / E13 同步进度+停止 / E3 去导入。
  *
  * 禁令（§6.4）：面板内不放任何输入框/表单/开关组；需要输入的（LLM Key、目录选择）一律跳设置。
- *
- * **与规格的偏差（有意降级）**：§6.4/§6.5 允许"就地写"的幂等动作（重试抽取 / 修复索引）在 M2 不做，
- * 因为面板只拿到 [IntelligenceStatus] 快照，没有 ViewModel/仓库引用。待处理行统一降级为深链
- * （旧空间 → [IntelligenceSection.Migration]，抽取失败 → [IntelligenceSection.Sag]，
- * 索引 → [IntelligenceSection.Diagnostics]），满足"每个写操作 ≤1 击到达目标"的验收口径。
+ * 允许的"就地写"只有幂等动作（§6.4）：重试抽取 / 修复索引 / 停止同步——通过
+ * [IntelligenceHubSheet] 的对应回调在面板内直接执行，不关闭面板、不跳设置页。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +78,14 @@ fun IntelligenceHubSheet(
     onDismissRequest: () -> Unit,
     onOpenSection: (IntelligenceSection?) -> Unit,
     counts: IntelligenceHubCounts = IntelligenceHubCounts(),
+    /** E3「去导入」：关闭面板后打开导入屏。 */
+    onOpenImport: () -> Unit = {},
+    /** E10 待处理行「重试」：就地重新排队失败抽取（不关闭面板）。 */
+    onRetryExtraction: () -> Unit = {},
+    /** E11 待处理行「修复」：就地修复索引（不关闭面板）。 */
+    onRepairIndex: () -> Unit = {},
+    /** E13「停止同步」：就地取消重嵌入（不关闭面板）。 */
+    onCancelSync: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val scope = rememberCoroutineScope()
@@ -109,6 +119,12 @@ fun IntelligenceHubSheet(
             counts = counts,
             onClose = { closeThen {} },
             onOpenSection = { section -> closeThen { onOpenSection(section) } },
+            // 深链类动作（下载模型/去启用/去导入）先收面板再跳页；
+            // 就地动作（重试/修复/停止同步）原样下发——不关闭面板，状态随 Flow 实时刷新。
+            onOpenImport = { closeThen { onOpenImport() } },
+            onRetryExtraction = onRetryExtraction,
+            onRepairIndex = onRepairIndex,
+            onCancelSync = onCancelSync,
         )
     }
 }
@@ -133,6 +149,10 @@ private fun IntelligenceHubContent(
     counts: IntelligenceHubCounts,
     onClose: () -> Unit,
     onOpenSection: (IntelligenceSection?) -> Unit,
+    onOpenImport: () -> Unit = {},
+    onRetryExtraction: () -> Unit = {},
+    onRepairIndex: () -> Unit = {},
+    onCancelSync: () -> Unit = {},
 ) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // §6.1：内容自适应，最大屏高 70%；超出内部滚动。
@@ -146,8 +166,24 @@ private fun IntelligenceHubContent(
                 .padding(horizontal = 20.dp),
         ) {
             HubHeader(onClose = onClose)
-            HubConclusion(status = status)
+            // 首屏关键行只解析一次：E1 的标题与四态结论句完全相同（「还没有可用的本地模型」），
+            // 同时渲染会重复播报/重复占行，因此 E1 时由卡片单独承担该句。
+            val primary = resolvePrimary(status)
+            if (primary != HubPrimary.E1) {
+                HubConclusion(status = status)
+            }
+            // §4 首屏关键行（E1/E2/E15/E12/E13/E3）：宁可多一行可执行提示，也不让用户猜下一步。
+            HubPrimaryCard(
+                content = hubPrimaryContent(
+                    primary = primary,
+                    status = status,
+                    onOpenSection = onOpenSection,
+                    onOpenImport = onOpenImport,
+                    onCancelSync = onCancelSync,
+                ),
+            )
             HubPills(status = status)
+            HubInfoPills(status = status, onOpenSection = onOpenSection)
 
             HubSectionTitle(stringResource(R.string.intelligence_section_quick))
             HubQuickActions(status = status, onOpenSection = onOpenSection)
@@ -157,8 +193,13 @@ private fun IntelligenceHubContent(
                     stringResource(R.string.intelligence_section_pending, status.pendingCount),
                 )
                 HubPendingList(
-                    rows = pendingRows(status = status, counts = counts),
-                    onOpenSection = onOpenSection,
+                    rows = pendingRows(
+                        status = status,
+                        counts = counts,
+                        onOpenSection = onOpenSection,
+                        onRetryExtraction = onRetryExtraction,
+                        onRepairIndex = onRepairIndex,
+                    ),
                 )
             }
 
@@ -219,7 +260,7 @@ private fun HubHeader(onClose: () -> Unit) {
     }
 }
 
-/** 一句话结论 + 空态补充行（§6.2 问题 1；§8.4 E1/E3/E15）。 */
+/** 一句话结论（§6.2 问题 1）。空态/异常的具体补充行交给 [HubPrimaryCard]（§4 首屏关键行）。 */
 @Composable
 private fun HubConclusion(status: IntelligenceStatus) {
     val colors = MaterialTheme.zhiBoxColors
@@ -238,24 +279,231 @@ private fun HubConclusion(status: IntelligenceStatus) {
         color = colors.inkSecondary,
         modifier = Modifier.padding(top = 2.dp),
     )
+}
 
-    // 空态/异常补充：只加一行说明，不放输入框（§6.4 禁令）。
-    val hint = when {
-        // E15：模型文件损坏 → 需要重新下载
-        status.model is ModelStatus.Corrupt -> stringResource(R.string.intelligence_model_corrupt)
-        // E1：没有任何模型 → 给出下一步（下载后可导入/离线检索）
-        status.model is ModelStatus.Missing -> stringResource(R.string.intelligence_onboarding_message)
-        // E3：模型就绪但知识库为空（空库仍是 READY，不做灰色惩罚）
-        status.spaces is SpaceStatus.None -> stringResource(R.string.intelligence_empty_kb)
-        else -> null
-    }
-    if (hint != null) {
-        Text(
-            text = hint,
-            fontSize = 12.sp,
-            color = colors.inkMeta,
-            modifier = Modifier.padding(top = 6.dp),
+// ── §4 首屏关键行（E1/E2/E15/E12/E13/E3） ────────────────────────────
+
+/**
+ * 首屏关键行的纯展示数据（文案已在 @Composable 内解析成 String）。
+ *
+ * [progressValue] 语义：`null` = 不展示进度条；`< 0` = 不确定进度（总量未知）；`0..1` = 确定进度。
+ */
+private data class HubPrimaryContent(
+    val title: String,
+    val message: String? = null,
+    val actionLabel: String? = null,
+    val onAction: (() -> Unit)? = null,
+    val progressValue: Float? = null,
+    val warning: Boolean = false,
+)
+
+/** 把 [resolvePrimary] 的结果映射为面板首屏关键行；[HubPrimary.NORMAL] 不展示。 */
+@Composable
+private fun hubPrimaryContent(
+    primary: HubPrimary,
+    status: IntelligenceStatus,
+    onOpenSection: (IntelligenceSection?) -> Unit,
+    onOpenImport: () -> Unit,
+    onCancelSync: () -> Unit,
+): HubPrimaryContent? = when (primary) {
+    // E1：全新安装、全空 → 下载模型
+    HubPrimary.E1 -> HubPrimaryContent(
+        title = stringResource(R.string.intelligence_empty_title),
+        message = stringResource(R.string.intelligence_empty_message),
+        actionLabel = stringResource(R.string.intelligence_action_download),
+        onAction = { onOpenSection(IntelligenceSection.ModelStore) },
+    )
+
+    // E2：已有模型文件但未启用 → 去启用（选择嵌入路径）
+    HubPrimary.E2 -> HubPrimaryContent(
+        title = stringResource(
+            R.string.intelligence_models_found_not_enabled,
+            status.modelFileCount,
+        ),
+        actionLabel = stringResource(R.string.intelligence_action_enable),
+        onAction = { onOpenSection(IntelligenceSection.Embedding) },
+    )
+
+    // E15：模型文件损坏 → 重新下载（可修复问题用 warning 色，不吓人，§8.5）
+    HubPrimary.E15 -> HubPrimaryContent(
+        title = stringResource(R.string.intelligence_model_corrupt),
+        warning = true,
+        actionLabel = stringResource(R.string.intelligence_action_redownload),
+        onAction = { onOpenSection(IntelligenceSection.ModelStore) },
+    )
+
+    // E12：下载中（§4 要求「无 CTA，禁用其他行」；这里只展示进度，不做额外动作）
+    HubPrimary.E12 -> {
+        val pct = status.busyPct
+        HubPrimaryContent(
+            title = status.busyLabel ?: stringResource(R.string.intelligence_row_model),
+            message = pct?.let { stringResource(R.string.settings_downloading, it) },
+            progressValue = pct?.let { it / 100f } ?: -1f,
         )
+    }
+
+    // E13：重嵌入同步中 → 就地停止
+    HubPrimary.E13 -> {
+        val total = status.busyTotal
+        val done = status.busyDone ?: 0
+        // 总量未知（null / <=0）时用不确定进度条，不编造分母（§10.3）。
+        if (total == null || total <= 0) {
+            HubPrimaryContent(
+                title = stringResource(R.string.intelligence_syncing_unknown),
+                progressValue = -1f,
+                actionLabel = stringResource(R.string.settings_reembed_stop),
+                onAction = onCancelSync,
+            )
+        } else {
+            HubPrimaryContent(
+                title = stringResource(R.string.settings_reembed_progress, done, total),
+                progressValue = (done.toFloat() / total).coerceIn(0f, 1f),
+                actionLabel = stringResource(R.string.settings_reembed_stop),
+                onAction = onCancelSync,
+            )
+        }
+    }
+
+    // E3：模型就绪、知识库为空 → 去导入（空库仍是 READY，不做灰色惩罚）
+    HubPrimary.E3 -> HubPrimaryContent(
+        title = stringResource(R.string.intelligence_ready_empty_kb),
+        actionLabel = stringResource(R.string.home_go_import),
+        onAction = onOpenImport,
+    )
+
+    HubPrimary.NORMAL -> null
+}
+
+/** 首屏关键行卡片：发丝线 + 14sp 标题 + 可选说明/进度/主 CTA（§9.2）。 */
+@Composable
+private fun HubPrimaryCard(content: HubPrimaryContent?) {
+    if (content == null) return
+    val colors = MaterialTheme.zhiBoxColors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .border(
+                width = 1.dp,
+                color = colors.border,
+                shape = RoundedCornerShape(ZhiBoxRadius.card),
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = content.title,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            // 可修复问题用 warning 令牌（不是错误红）；其余用主墨色。
+            color = if (content.warning) colors.warning else colors.ink,
+        )
+        content.message?.let { message ->
+            Text(
+                text = message,
+                fontSize = 12.sp,
+                color = colors.inkMeta,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        content.progressValue?.let { value ->
+            // §4 E12/E13：确定总量用确定进度条；总量未知（-1f）用不确定进度条。
+            if (value < 0f) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                )
+            } else {
+                LinearProgressIndicator(
+                    progress = { value.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                )
+            }
+        }
+        val actionLabel = content.actionLabel
+        val onAction = content.onAction
+        if (actionLabel != null && onAction != null) {
+            Button(
+                onClick = onAction,
+                modifier = Modifier
+                    .padding(top = 10.dp)
+                    .height(36.dp),
+                shape = RoundedCornerShape(ZhiBoxRadius.pill),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            ) {
+                Text(
+                    text = actionLabel,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+    }
+}
+
+// ── §4 附加信息 pill（E4/E8/E14，只读但可点击跳对应设置锚点） ────────
+
+/** E4/E8/E14 的额外 pill；顺序与 §4 一致，未知（null）不展示（§10.3）。 */
+@Composable
+private fun HubInfoPills(
+    status: IntelligenceStatus,
+    onOpenSection: (IntelligenceSection?) -> Unit,
+) {
+    val colors = MaterialTheme.zhiBoxColors
+    val pills = infoPills(status)
+    if (pills.isEmpty()) return
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(vertical = 2.dp),
+    ) {
+        items(pills.size) { index ->
+            val pill = pills[index]
+            val text = when (pill.kind) {
+                HubInfoPill.Kind.STORE_NOT_CONFIGURED ->
+                    stringResource(R.string.settings_store_not_configured)
+                HubInfoPill.Kind.SAG_DISABLED ->
+                    stringResource(R.string.settings_sag_unavailable)
+                HubInfoPill.Kind.NETWORK_DISABLED ->
+                    stringResource(R.string.intelligence_network_disabled)
+                HubInfoPill.Kind.ANSWER_CONSENT_REQUIRED ->
+                    stringResource(R.string.settings_answer_consent_required)
+            }
+            val section = when (pill.kind) {
+                // E4：共享目录在「共享模型目录」里配置（§6.5）
+                HubInfoPill.Kind.STORE_NOT_CONFIGURED -> IntelligenceSection.ModelStoreShared
+                // E8/E14：SAG/联网/问答同意都在「SAG 增强 / LLM」分组
+                HubInfoPill.Kind.SAG_DISABLED,
+                HubInfoPill.Kind.NETWORK_DISABLED,
+                HubInfoPill.Kind.ANSWER_CONSENT_REQUIRED,
+                -> IntelligenceSection.Llm
+            }
+            Box(
+                modifier = Modifier
+                    .heightIn(min = 28.dp)
+                    .background(colors.pillInactive, RoundedCornerShape(ZhiBoxRadius.pill))
+                    .clickable(role = Role.Button) { onOpenSection(section) }
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = text,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.pillInactiveText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
@@ -408,7 +656,9 @@ private fun HubActionRow(row: HubActionRowData, onClick: () -> Unit) {
 private data class HubPendingRowData(
     val text: String,
     val action: String,
-    val section: IntelligenceSection,
+    val onClick: () -> Unit,
+    /** 就地动作（重试/修复）不显示「›」：点了直接执行，而不是"跳到别处"。 */
+    val inPlace: Boolean = false,
 )
 
 /**
@@ -417,14 +667,23 @@ private data class HubPendingRowData(
  * 数量来自 [IntelligenceHubCounts]（= IntelligenceStatus 的两个计数字段），
  * 行文案与 §8.3 的 `%1$d` 文案一一对应；枚举与计数不一致时（理论上不会发生）
  * 以计数为准，0 表示该行不展示。
+ *
+ * 动作口径（§6.4 ③ / §6.5）：抽取失败「重试」与索引不一致「修复」是**就地执行**的
+ * 幂等写操作（不关闭面板）；旧空间/授权丢失/LLM 读取失败仍深链到设置页对应锚点。
  */
 @Composable
 private fun pendingRows(
     status: IntelligenceStatus,
     counts: IntelligenceHubCounts,
+    onOpenSection: (IntelligenceSection?) -> Unit,
+    onRetryExtraction: () -> Unit,
+    onRepairIndex: () -> Unit,
 ): List<HubPendingRowData> = buildList {
     val handle = stringResource(R.string.intelligence_pending_action_handle)
     val detail = stringResource(R.string.intelligence_pending_action_detail)
+    val retry = stringResource(R.string.intelligence_pending_action_retry)
+    val repair = stringResource(R.string.intelligence_pending_action_repair)
+    val configure = stringResource(R.string.intelligence_pending_action_configure)
     status.pending.forEach { item ->
         when (item) {
             PendingItem.LEGACY_SPACES -> add(
@@ -435,31 +694,43 @@ private fun pendingRows(
                     ),
                     action = handle,
                     // 旧空间数据在「知识库迁移」卡（备份/旧数据同步入口）里处理。
-                    section = IntelligenceSection.Migration,
+                    onClick = { onOpenSection(IntelligenceSection.Migration) },
                 ),
             )
-            PendingItem.EXTRACTION_FAILED -> add(
-                HubPendingRowData(
-                    text = stringResource(
-                        R.string.intelligence_pending_extraction,
-                        counts.extractionFailed,
+            PendingItem.EXTRACTION_FAILED -> {
+                val retryable = canRetryExtraction(status)
+                add(
+                    HubPendingRowData(
+                        text = stringResource(
+                            R.string.intelligence_pending_extraction,
+                            counts.extractionFailed,
+                        ),
+                        // §6.4：SAG 可用时就地重试（幂等）；不可用时重试是空操作，
+                        // 改跳 LLM 配置（否则用户点了没反应）。
+                        action = if (retryable) retry else configure,
+                        onClick = if (retryable) {
+                            onRetryExtraction
+                        } else {
+                            { onOpenSection(IntelligenceSection.Llm) }
+                        },
+                        inPlace = retryable,
                     ),
-                    action = detail,
-                    section = IntelligenceSection.Sag,
-                ),
-            )
+                )
+            }
             PendingItem.INDEX_UNHEALTHY -> add(
                 HubPendingRowData(
                     text = stringResource(R.string.intelligence_pending_index),
-                    action = detail,
-                    section = IntelligenceSection.Diagnostics,
+                    action = repair,
+                    // §6.4：面板内就地修复索引（清理孤儿行 + 必要时重建 FTS），不跳设置页。
+                    onClick = onRepairIndex,
+                    inPlace = true,
                 ),
             )
             PendingItem.STORE_PERMISSION_LOST -> add(
                 HubPendingRowData(
                     text = stringResource(R.string.settings_store_permission_lost),
                     action = handle,
-                    section = IntelligenceSection.ModelStoreShared,
+                    onClick = { onOpenSection(IntelligenceSection.ModelStoreShared) },
                 ),
             )
             PendingItem.LLM_LOAD_ERROR -> add(
@@ -469,7 +740,7 @@ private fun pendingRows(
                         stringResource(R.string.intelligence_pill_value_unknown),
                     ),
                     action = detail,
-                    section = IntelligenceSection.Llm,
+                    onClick = { onOpenSection(IntelligenceSection.Llm) },
                 ),
             )
         }
@@ -477,10 +748,7 @@ private fun pendingRows(
 }
 
 @Composable
-private fun HubPendingList(
-    rows: List<HubPendingRowData>,
-    onOpenSection: (IntelligenceSection?) -> Unit,
-) {
+private fun HubPendingList(rows: List<HubPendingRowData>) {
     val colors = MaterialTheme.zhiBoxColors
     Column(
         modifier = Modifier
@@ -496,8 +764,9 @@ private fun HubPendingList(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    // 就地动作也是整行可点（≥48dp 命中区），比小按钮更易触达（§12.2）。
                     .heightIn(min = 48.dp)
-                    .clickable(role = Role.Button) { onOpenSection(row.section) }
+                    .clickable(role = Role.Button) { row.onClick() }
                     .clearAndSetSemantics { contentDescription = "${row.text}，${row.action}" }
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -514,16 +783,19 @@ private fun HubPendingList(
                     text = row.action,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = colors.inkSecondary,
+                    // 就地动作更醒目（点了就执行），深链动作弱一档。
+                    color = if (row.inPlace) colors.ink else colors.inkSecondary,
                     maxLines = 1,
                     modifier = Modifier.padding(start = 8.dp),
                 )
-                Text(
-                    text = "›",
-                    fontSize = 16.sp,
-                    color = colors.inkFaint,
-                    modifier = Modifier.padding(start = 2.dp),
-                )
+                if (!row.inPlace) {
+                    Text(
+                        text = "›",
+                        fontSize = 16.sp,
+                        color = colors.inkFaint,
+                        modifier = Modifier.padding(start = 2.dp),
+                    )
+                }
             }
         }
     }
@@ -603,9 +875,13 @@ private object FakeHub {
         gpu = GpuStatus.AUTO,
         llm = LlmStatus.NotConfigured,
         pending = listOf(PendingItem.LEGACY_SPACES, PendingItem.EXTRACTION_FAILED),
+        extractionFailedCount = 12,
+        legacySpaceCount = 3,
+        modelFileCount = 1,
+        chunkCount = 128,
     )
 
-    /** 未就绪：无模型（E1）。 */
+    /** 未就绪：无模型 + 无候选文件（E1）。 */
     val notReady = IntelligenceStatus(
         level = IntelligenceLevel.NOT_READY,
         busy = IntelligenceBusy.NONE,
@@ -614,6 +890,10 @@ private object FakeHub {
         gpu = GpuStatus.UNKNOWN,
         llm = LlmStatus.Unknown,
         pending = emptyList(),
+        modelFileCount = 0,
+        chunkCount = 0,
+        sagEnabled = false,
+        networkDisabled = true,
     )
 
     /** 异常：模型文件损坏（E15）。 */
@@ -625,6 +905,39 @@ private object FakeHub {
         gpu = GpuStatus.OFF,
         llm = LlmStatus.LoadError,
         pending = listOf(PendingItem.INDEX_UNHEALTHY),
+        modelFileCount = 1,
+        chunkCount = 64,
+    )
+
+    /** 就绪 + 下载中（E12）：带确定进度。 */
+    val downloading = IntelligenceStatus(
+        level = IntelligenceLevel.READY,
+        busy = IntelligenceBusy.DOWNLOADING,
+        busyPct = 42,
+        busyLabel = "embeddinggemma-2-440m",
+        model = ModelStatus.Ready("embeddinggemma-2-440m"),
+        spaces = SpaceStatus.Ready(2),
+        gpu = GpuStatus.AUTO,
+        llm = LlmStatus.Configured,
+        pending = emptyList(),
+        modelFileCount = 1,
+        chunkCount = 128,
+    )
+
+    /** 就绪 + 同步中（E13）：带确定进度。 */
+    val syncing = IntelligenceStatus(
+        level = IntelligenceLevel.READY,
+        busy = IntelligenceBusy.SYNCING,
+        busyPct = 30,
+        busyDone = 30,
+        busyTotal = 100,
+        model = ModelStatus.Ready("embeddinggemma-2-440m"),
+        spaces = SpaceStatus.Ready(2),
+        gpu = GpuStatus.AUTO,
+        llm = LlmStatus.Configured,
+        pending = emptyList(),
+        modelFileCount = 1,
+        chunkCount = 128,
     )
 }
 
@@ -680,6 +993,36 @@ private fun IntelligenceHubCorruptPreview() {
         Surface(color = MaterialTheme.zhiBoxColors.card) {
             IntelligenceHubContent(
                 status = FakeHub.corrupt,
+                counts = IntelligenceHubCounts(),
+                onClose = {},
+                onOpenSection = {},
+            )
+        }
+    }
+}
+
+@Preview(name = "智能状态中枢 · 下载中（E12）", showBackground = true, heightDp = 640)
+@Composable
+private fun IntelligenceHubDownloadingPreview() {
+    ZhiBoxTheme(darkTheme = false) {
+        Surface(color = MaterialTheme.zhiBoxColors.card) {
+            IntelligenceHubContent(
+                status = FakeHub.downloading,
+                counts = IntelligenceHubCounts(),
+                onClose = {},
+                onOpenSection = {},
+            )
+        }
+    }
+}
+
+@Preview(name = "智能状态中枢 · 同步中（E13）", showBackground = true, heightDp = 640)
+@Composable
+private fun IntelligenceHubSyncingPreview() {
+    ZhiBoxTheme(darkTheme = true) {
+        Surface(color = MaterialTheme.zhiBoxColors.card) {
+            IntelligenceHubContent(
+                status = FakeHub.syncing,
                 counts = IntelligenceHubCounts(),
                 onClose = {},
                 onOpenSection = {},

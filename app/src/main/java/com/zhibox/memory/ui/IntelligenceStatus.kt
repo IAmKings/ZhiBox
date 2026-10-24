@@ -85,8 +85,20 @@ data class IntelligenceReadings(
     val extracting: Boolean = false,
     /** 共享目录授权丢失。 */
     val storePermissionLost: Boolean = false,
-    /** 索引不一致；M1 未做重查询，恒 false（面板显示「未检查」）。 */
+    /** 索引不一致（轻量探测：chunk 行数 vs FTS 行数不一致）。 */
     val indexUnhealthy: Boolean = false,
+    /** 共享目录未配置（E4）。 */
+    val storeNotConfigured: Boolean = false,
+    /** 候选模型文件数（E1/E2 区分依据）；-1 = 读取失败。 */
+    val modelFileCount: Int = -1,
+    /** 知识库 chunk 总数（E3 空库判定依据）；-1 = 读取失败。 */
+    val chunkCount: Int = -1,
+    /** SAG 增强是否开启（E8）；null = 读取失败（未知，不展示 pill）。 */
+    val sagEnabled: Boolean? = null,
+    /** 是否处于「禁止网络」（E8）；null = 读取失败。 */
+    val networkDisabled: Boolean? = null,
+    /** 问答首次联网隐私说明是否已同意（E14）；null = 读取失败。 */
+    val answerConsentGranted: Boolean? = null,
 )
 
 /** 面板/状态点消费的聚合结果。 */
@@ -104,6 +116,24 @@ data class IntelligenceStatus(
     val legacySpaceCount: Int = 0,
     /** 抽取失败的分块数（0 = 无；用于面板待处理行文案）。 */
     val extractionFailedCount: Int = 0,
+    /** 候选模型文件数；-1 = 读取失败（E1/E2 区分依据）。 */
+    val modelFileCount: Int = -1,
+    /** 知识库 chunk 总数；-1 = 读取失败（E3 空库判定依据）。 */
+    val chunkCount: Int = -1,
+    /** 共享目录未配置（E4 pill）。 */
+    val storeNotConfigured: Boolean = false,
+    /** SAG 增强开关；null = 读取失败（E8 pill 未知则不展示）。 */
+    val sagEnabled: Boolean? = null,
+    /** 是否「禁止网络」；null = 读取失败（E8 pill 未知则不展示）。 */
+    val networkDisabled: Boolean? = null,
+    /** 问答首次联网同意是否授予；null = 读取失败（E14 pill 未知则不展示）。 */
+    val answerConsentGranted: Boolean? = null,
+    /** 下载中的模型名（E12 行标题）。 */
+    val busyLabel: String? = null,
+    /** 重嵌入已完成数（E13 进度）。 */
+    val busyDone: Int? = null,
+    /** 重嵌入总数；null = 未知（E13 用不确定进度条）。 */
+    val busyTotal: Int? = null,
 ) {
     /** 角标数字 = 待处理项数（不是分块数）。 */
     val pendingCount: Int get() = pending.size
@@ -151,6 +181,9 @@ fun evaluateIntelligence(
     readings: IntelligenceReadings,
     busyOverride: IntelligenceBusy? = null,
     busyPct: Int? = null,
+    busyLabel: String? = null,
+    busyDone: Int? = null,
+    busyTotal: Int? = null,
 ): IntelligenceStatus {
     val model = when {
         readings.modelFileBroken -> ModelStatus.Corrupt
@@ -213,5 +246,14 @@ fun evaluateIntelligence(
         pending = pending,
         legacySpaceCount = readings.legacySpaceCount.coerceAtLeast(0),
         extractionFailedCount = readings.extractionFailedCount.coerceAtLeast(0),
+        modelFileCount = readings.modelFileCount,
+        chunkCount = readings.chunkCount,
+        storeNotConfigured = readings.storeNotConfigured,
+        sagEnabled = readings.sagEnabled,
+        networkDisabled = readings.networkDisabled,
+        answerConsentGranted = readings.answerConsentGranted,
+        busyLabel = busyLabel,
+        busyDone = busyDone,
+        busyTotal = busyTotal,
     )
 }

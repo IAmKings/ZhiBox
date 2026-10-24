@@ -60,8 +60,13 @@ adb shell settings put global animator_duration_scale 0
 | `gfxFrameTime99thPercentileMs` | 11 | 13 | 24 |
 | `gfxFrameJankPercent` | 3.08% | 6.15% | 11.76% |
 
-`StartupBenchmark`（冷启动，`CompilationMode.Partial`）：TTLD median 342.7ms，
-`frameDurationCpuMs` P90 133.3 / P95 150.1；`CompilationMode.None` 下 TTLD median 365.7ms。
+`StartupBenchmark`（冷启动）历史记录：
+- v0.1.4 发布前（2026-10-23）：`CompilationMode.Partial` TTLD median **342.7ms**，
+  `CompilationMode.None` 365.7ms（单次 run，设备状态与后台负载未固定，噪声较大）。
+- 智能中枢 A–D 补齐后（2026-10-24）：`Partial` **397.4ms**（min 372.4 / max 448.6）、
+  `None` 425.9ms（min 393.5 / max 555.2）；同一天改动前复测为 Partial 397.1ms / None 424.2ms
+  → 本轮改动 **+0.3ms / +1.7ms**（在噪声范围内）。基线 JSON 见 `baseline/2026-10-24-23078PND5G-startup.json`。
+  建议：以固定设备状态（飞行模式/清后台/充电）重录启动基线后再作为 CI 门槛。
 
 建议 CI 门槛（设置页）：`gfxFrameTime95thPercentileMs ≤ 16`、`gfxFrameJankPercent ≤ 10`；
 启动：TTLD median 不超过基线 +10%。

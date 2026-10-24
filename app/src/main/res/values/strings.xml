@@ -666,9 +666,16 @@
     <string name="intelligence_pending_action_retry">重试</string>
     <string name="intelligence_pending_action_repair">修复</string>
     <string name="intelligence_pending_action_detail">详情</string>
-    <string name="intelligence_empty_kb">模型就绪 · 知识库还是空的</string>
+    <string name="intelligence_empty_title">还没有可用的本地模型</string>
+    <string name="intelligence_empty_message">下载模型后即可导入文档并离线检索</string>
+    <string name="intelligence_ready_empty_kb">模型就绪 · 知识库还是空的</string>
     <string name="intelligence_models_found_not_enabled">已检测到 %1$d 个模型文件，尚未启用</string>
     <string name="intelligence_model_corrupt">模型文件需要重新下载</string>
+    <string name="intelligence_action_download">下载模型</string>
+    <string name="intelligence_action_enable">去启用</string>
+    <string name="intelligence_action_redownload">重新下载</string>
+    <string name="intelligence_network_disabled">网络已禁用</string>
+    <string name="intelligence_syncing_unknown">正在同步旧数据</string>
     <string name="intelligence_close">关闭</string>
 
     <!-- ==== M2：设置页分组（P1-2） ==== -->
@@ -682,4 +689,5 @@
     <string name="intelligence_status_downloading">正在下载模型，%1$d%%</string>
     <string name="intelligence_status_syncing">正在同步数据，%1$d%%</string>
     <string name="intelligence_status_extracting">正在抽取内容</string>
+    <string name="intelligence_pending_action_configure">去配置</string>
 </resources>

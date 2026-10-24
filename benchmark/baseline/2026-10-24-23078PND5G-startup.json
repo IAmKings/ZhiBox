@@ -1,0 +1,325 @@
+{
+    "context": {
+        "build": {
+            "brand": "Xiaomi",
+            "device": "corot",
+            "fingerprint": "Redmi/corot/corot:13/TP1A.220624.014/V816.0.22.0.UMLCNXM:user/release-keys",
+            "id": "UP1A.230905.011",
+            "model": "23078PND5G",
+            "type": "user",
+            "version": {
+                "codename": "REL",
+                "sdk": 34
+            }
+        },
+        "cpuCoreCount": 8,
+        "cpuLocked": true,
+        "cpuMaxFreqHz": 3350000000,
+        "memTotalBytes": 16101818368,
+        "sustainedPerformanceModeEnabled": false,
+        "artMainlineVersion": 340090000,
+        "osCodenameAbbreviated": "U",
+        "compilationMode": "run-from-apk",
+        "payload": {}
+    },
+    "benchmarks": [
+        {
+            "name": "startupColdCompilationNone",
+            "params": {},
+            "className": "com.zhibox.benchmark.StartupBenchmark",
+            "totalRunTimeNs": 28049392079,
+            "metrics": {
+                "frameCount": {
+                    "minimum": 4.0,
+                    "maximum": 5.0,
+                    "median": 4.0,
+                    "coefficientOfVariation": 0.1244823994329923,
+                    "runs": [
+                        4.0,
+                        4.0,
+                        5.0,
+                        5.0,
+                        4.0
+                    ]
+                },
+                "timeToInitialDisplayMs": {
+                    "minimum": 393.543615,
+                    "maximum": 555.191461,
+                    "median": 425.851385,
+                    "coefficientOfVariation": 0.14925964262629943,
+                    "runs": [
+                        555.191461,
+                        400.507385,
+                        428.698769,
+                        425.851385,
+                        393.543615
+                    ]
+                }
+            },
+            "sampledMetrics": {
+                "frameDurationCpuMs": {
+                    "P50": 7.841846500000001,
+                    "P90": 108.69028460000001,
+                    "P95": 109.74213040000001,
+                    "P99": 118.43205997999999,
+                    "runs": [
+                        [
+                            3.978847,
+                            14.136231,
+                            4.824923,
+                            4.034538
+                        ],
+                        [
+                            3.010154,
+                            7.840385,
+                            109.029923,
+                            4.466153
+                        ],
+                        [
+                            2.850769,
+                            7.843308,
+                            2.999308,
+                            109.779615,
+                            11.928077
+                        ],
+                        [
+                            13.827615,
+                            3.093154,
+                            9.624538,
+                            120.732077,
+                            8.117462
+                        ],
+                        [
+                            4.730769,
+                            6.574384,
+                            105.633539,
+                            71.441847
+                        ]
+                    ]
+                },
+                "frameOverrunMs": {
+                    "P50": 15.867193499999999,
+                    "P90": 113.05701,
+                    "P95": 119.90639389999998,
+                    "P99": 149.23872708999997,
+                    "runs": [
+                        [
+                            -3.213996,
+                            14.150946,
+                            9.428895,
+                            -1.995669
+                        ],
+                        [
+                            -1.872007,
+                            6.367453,
+                            113.062364,
+                            101.934782
+                        ],
+                        [
+                            -0.451802,
+                            5.948447,
+                            6.846057,
+                            104.917615,
+                            98.089826
+                        ],
+                        [
+                            17.583441,
+                            7.219424,
+                            24.88914,
+                            120.266606,
+                            113.008824
+                        ],
+                        [
+                            156.940177,
+                            -1.466843,
+                            103.775243,
+                            97.33839
+                        ]
+                    ]
+                }
+            },
+            "warmupIterations": 0,
+            "repeatIterations": 5,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "StartupBenchmark_startupColdCompilationNone_iter000_2026-10-24-05-29-52.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "StartupBenchmark_startupColdCompilationNone_iter001_2026-10-24-05-29-56.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "StartupBenchmark_startupColdCompilationNone_iter002_2026-10-24-05-30-00.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "StartupBenchmark_startupColdCompilationNone_iter003_2026-10-24-05-30-04.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "StartupBenchmark_startupColdCompilationNone_iter004_2026-10-24-05-30-08.perfetto-trace"
+                }
+            ]
+        },
+        {
+            "name": "startupColdCompilationPartial",
+            "params": {},
+            "className": "com.zhibox.benchmark.StartupBenchmark",
+            "totalRunTimeNs": 25957783002,
+            "metrics": {
+                "frameCount": {
+                    "minimum": 3.0,
+                    "maximum": 7.0,
+                    "median": 5.0,
+                    "coefficientOfVariation": 0.31622776601683794,
+                    "runs": [
+                        3.0,
+                        5.0,
+                        4.0,
+                        6.0,
+                        7.0
+                    ]
+                },
+                "timeToInitialDisplayMs": {
+                    "minimum": 372.437923,
+                    "maximum": 448.555616,
+                    "median": 397.359692,
+                    "coefficientOfVariation": 0.08569379369708324,
+                    "runs": [
+                        438.773847,
+                        377.977462,
+                        397.359692,
+                        372.437923,
+                        448.555616
+                    ]
+                }
+            },
+            "sampledMetrics": {
+                "frameDurationCpuMs": {
+                    "P50": 4.806077,
+                    "P90": 74.22266160000001,
+                    "P95": 91.60961559999994,
+                    "P99": 101.78469247999999,
+                    "runs": [
+                        [
+                            28.622461,
+                            103.885154,
+                            77.515154
+                        ],
+                        [
+                            5.509538,
+                            3.715461,
+                            4.576923,
+                            51.717,
+                            19.30923
+                        ],
+                        [
+                            8.923462,
+                            4.806077,
+                            69.283923,
+                            7.806231
+                        ],
+                        [
+                            3.006154,
+                            3.278231,
+                            4.675461,
+                            4.305462,
+                            47.991769,
+                            4.242153
+                        ],
+                        [
+                            3.388615,
+                            4.051692,
+                            3.449847,
+                            2.404923,
+                            3.233538,
+                            95.133231,
+                            43.445923
+                        ]
+                    ]
+                },
+                "frameOverrunMs": {
+                    "P50": 1.345301,
+                    "P90": 85.737503,
+                    "P95": 97.78744579999997,
+                    "P99": 101.19836803999999,
+                    "runs": [
+                        [
+                            22.519783,
+                            100.080139,
+                            101.551493
+                        ],
+                        [
+                            -1.904934,
+                            -2.875894,
+                            -0.823601,
+                            46.022631,
+                            38.355759
+                        ],
+                        [
+                            -0.408437,
+                            6.35725,
+                            62.173484,
+                            55.841468
+                        ],
+                        [
+                            -5.784747,
+                            -1.240161,
+                            -3.19162,
+                            -3.368496,
+                            39.548242,
+                            32.922384
+                        ],
+                        [
+                            -0.420898,
+                            1.345301,
+                            -2.638499,
+                            -6.685796,
+                            -5.164678,
+                            88.616673,
+                            81.418748
+                        ]
+                    ]
+                }
+            },
+            "warmupIterations": 0,
+            "repeatIterations": 5,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "StartupBenchmark_startupColdCompilationPartial_iter000_2026-10-24-05-30-19.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "StartupBenchmark_startupColdCompilationPartial_iter001_2026-10-24-05-30-23.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "StartupBenchmark_startupColdCompilationPartial_iter002_2026-10-24-05-30-27.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "StartupBenchmark_startupColdCompilationPartial_iter003_2026-10-24-05-30-31.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "StartupBenchmark_startupColdCompilationPartial_iter004_2026-10-24-05-30-36.perfetto-trace"
+                }
+            ]
+        }
+    ]
+}

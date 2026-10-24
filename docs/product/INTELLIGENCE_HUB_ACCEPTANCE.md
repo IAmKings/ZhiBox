@@ -91,3 +91,68 @@
 - 纯 JVM 覆盖：`IntelligenceStatusTest` +5 例（共 18 例）。
 - 真机限制：本机无模型 + 共享目录未配置，DOWNLOADING/SYNCING 的可见窗口无法稳定复现
   （下载会先弹 SAF 目录选择器；重嵌入 worker 无模型立即失败），建议在装有模型的设备上补走查。
+
+---
+
+## 6. A→D 补齐验收（2026-10-24，规格「完全验收」轮）
+
+> 本轮把上一轮遗留的 A（E1–E15 空态/busy）、B（E11 可达 + 就地动作）、C（深链高亮 1.2s）、
+> D（Robolectric/真 TalkBack/冷启动基线）全部落地。真机：Redmi 23078PND5G（K60U，debug 包，可 run-as 造状态）。
+
+### 6.1 §4 空态/异常矩阵（E1–E15）
+
+| # | 场景 | 验证方式 | 结果 |
+|---|---|---|---|
+| E1 | 全新安装全空 | 真机（无模型/无候选文件） | ✅ 主卡「还没有可用的本地模型 / 下载模型后即可导入文档并离线检索」+ CTA「下载模型」；`impl-hub-e1.png` |
+| E2 | 有候选文件但模型未生效 | 单测（`IntelligenceHubModelTest`） | ✅ 判定 `Missing && modelFileCount>0` →「已检测到 N 个模型文件，尚未启用」+「去启用」；该分支仅在 resolve 抛异常/IO 失败时可达（真实异常路径） |
+| E3 | 模型就绪、知识库为空 | 真机（1MB 假模型 + 清空 document） | ✅「模型就绪 · 知识库还是空的」+「去导入」；`impl-hub-e3.png` |
+| E4 | 共享目录未配置 | 真机（默认状态） | ✅ info pill「共享目录未配置（模型将存于应用私有目录，卸载即删）」→ 共享模型目录 |
+| E5 | 共享目录授权丢失 | 单测（pending 分支） | ✅ 待处理行「共享目录授权失效」→ 重选目录 |
+| E6 | LLM 未配置 | 真机 | ✅ 顶部 pill「LLM 未启用」 |
+| E7 | LLM 密钥解密失败 | 单测（pending 分支） | ✅ 待处理行「LLM 配置读取失败」→ 去设置 |
+| E8 | SAG 关闭 / 禁网 | 真机（默认状态） | ✅ info pill「SAG 抽取不可用…」+「网络已禁用」 |
+| E9 | 旧模型空间存在 | 真机（注入 legacy space + embedding） | ✅ 待处理行「1 个旧模型空间的数据未参与检索 / 去处理」；`impl-hub-e10-e9.png` |
+| E10 | 抽取失败 | 真机（注入 failed job） | ✅ 待处理行「1 个分块抽取失败 / 重试」（SAG 可用时就地重试）；`impl-hub-e10-e9.png` |
+| E11 | 索引不一致 | 真机（chunk 0 / FTS 5 孤儿） | ✅ 待处理行「索引可能有孤儿行 / 修复」；点「修复」后就地重建 FTS，待处理区消失（DB chunk=0/fts=0）；`impl-hub-e11-repair.png` / `impl-hub-e11-after.png` |
+| E12 | 模型下载中 | Robolectric 面板渲染测试 | ✅ 进度行「正在下载 <模型> · N%」+ 进度条（`e12_rendersDownloadingProgress`） |
+| E13 | 重嵌入同步中 | Robolectric 面板渲染测试 | ✅「正在同步旧数据 done/total」+「停止同步」就地动作（`e13_rendersSyncingProgressAndStopIsWiredInPlace`） |
+| E14 | 首次联网同意未授予 | 真机 + 单测 | ✅ info pill「问答首次联网未同意」 |
+| E15 | 模型文件损坏 | 真机（0 字节模型文件） | ✅「模型文件需要重新下载 / 重新下载」+ pill「需要修复」；`impl-hub-e15.png` |
+
+优先级按规格 §4：`E1 > E2 > E15 > E12 > E13 > E9/E10/E11 > E3` 短路；取消/冲突矩阵由
+`IntelligenceHubModelTest`（22 个纯 JVM 用例）覆盖（含 E1 胜 E12、E15 胜 E12、E12/E13 胜 E3）。
+
+### 6.2 §6.4 就地动作
+
+| 动作 | 验证 | 结果 |
+|---|---|---|
+| 抽取失败「重试」 | 真机 + 单测 | ✅ SAG 可用时 `SagExtractionScheduler.retryFailed` 就地执行；**SAG 不可用时按钮自动改为「去配置」并深链到 LLM 配置**（真机验证行 desc=`1 个分块抽取失败，去配置`，点击落到「问答与增强 → SAG 增强 / LLM」）——避免点了没反应 |
+| 索引不一致「修复」 | 真机 | ✅ `IngestRepository.repairIndex()` 就地执行，完成后待处理行消失 |
+| 同步中「停止同步」 | Robolectric | ✅ 回调接 `ReembedScheduler.cancel`，面板不关闭 |
+| 深链类（旧空间/授权丢失/LLM 读取失败） | 真机 + 单测 | ✅ 保持跳转语义 |
+
+### 6.3 §6.5 深链高亮
+
+- 面板点「嵌入模型」→ 设置页滚动到「嵌入路径」后，卡片出现 1.2s 半透明主色覆盖块（浅色 #E3E3E3 级、深色 #343330 级），随后 300ms 淡出；`impl-settings-deeplink-highlight.png` 为亮起瞬间。
+- 仅在深链进入时触发一次；普通进入设置页 / 重复进入不高亮；`ANIMATOR_DURATION_SCALE=0` 时 tween(0)。
+
+### 6.4 §12 其余验收项
+
+| 项 | 结果 | 证据 |
+|---|---|---|
+| §12.1「§4 E1–E15 全部可达」 | ✅ | 见 6.1 |
+| §12.2 状态点 TalkBack | ✅ | 真机开启 TalkBack 服务：状态点出现绿色焦点框（48dp），系统 TTS 处于合成状态；`impl-hub-talkback-focus.png`；标签/stateDescription 由 `uiautomator` dump 佐证 |
+| §12.2 面板行/关闭按钮标签 | ✅ | 行级 `clearAndSetSemantics`（标题+副标题），关闭 48dp |
+| §12.2 200% 字号 / 横屏 / 减少动画 | ✅ | M3 已验收（`impl-intel-hub-font200/landscape` 等） |
+| §12.3 面板首帧 ≤200ms | ✅ | M3 实测组合帧 3.7ms |
+| §12.3 `indexHealth` 不自动跑 | ✅ | 设置页进场仍显示「尚未检查」；面板用轻量计数探测（chunk vs FTS） |
+| §12.3 冷启动 ≤ 基线 +50ms | ✅（同环境） | `StartupBenchmark` TTLD median：Partial **397.4ms**（本轮改动前同设备 397.1ms，+0.3ms）、None 425.9ms（改动前 424.2ms，+1.7ms）；旧记录 342.7ms 为不同设备状态，建议 CI 固定环境重录 |
+| §12.5 Robolectric：状态点文案/无动画分支 | ✅ | 新增 `IntelligenceDotRobolectricTest`（8 用例）：四态/忙碌文案渲染、`shouldAnimateDot` 矩阵、无动画时 Dot 单节点渲染；另有 `IntelligenceHubSheetRenderTest`（9 用例）覆盖 E1/E2/E15/E12/E13 与三个就地动作接线 |
+| §12.4 回归 | ✅ | 设置页 17 项、首页时间线/筛选/输入岛、浅深色/横屏；`assembleDebug + testDebugUnitTest + lintDebug` 全绿 |
+
+### 6.5 已知偏差与决策（本轮新增）
+
+1. **E1 优先于 E12（按规格）**：首次安装点「下载模型」时面板仍显示 E1（此时候选文件数=0），看不到下载进度；已有模型切换下载时 E12 可见。若需首次下载也显示进度，需改 §4 优先级（本轮未改，保持规格一致）。
+2. **E8 默认态即出现两条 info pill**（SAG 默认关、网络默认禁）：符合 §4，但默认面板 pill 偏多；如觉噪音可改为「用户主动更改过才提示」。
+3. **E11 为计数级轻量探测**（chunk 数 vs FTS 行数），不是完整孤儿明细；导入并发瞬间可能短暂误报，下次 refresh 自愈；设置页仍是完整检查+修复。
+4. 深链高亮在旋转/进程重建后会重放一次（`remember` 非 saveable，刻意未扩大改动）。

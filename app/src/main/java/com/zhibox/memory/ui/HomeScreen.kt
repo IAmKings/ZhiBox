@@ -179,6 +179,12 @@ fun HomeScreen(
                 legacySpaces = intelligence.legacySpaceCount,
                 extractionFailed = intelligence.extractionFailedCount,
             ),
+            // E3「去导入」：先收面板再打开导入屏。
+            onOpenImport = onOpenImport,
+            // E10/E11/E13 的幂等写操作：面板内就地执行，不关闭面板、不跳设置页。
+            onRetryExtraction = viewModel::retryExtractionFailed,
+            onRepairIndex = viewModel::repairIndexNow,
+            onCancelSync = viewModel::cancelReembedSync,
         )
     }
 }
@@ -476,9 +482,9 @@ private data class PulseSpec(
 private val CalmBreath = PulseSpec(4_000, 1.15f, 0.35f, 0.12f)
 private val BusyPulse = PulseSpec(1_400, 1.6f, 0.45f, 0f)
 
-/** 四态文案（同时用于 stateDescription 与无障碍播报）。 */
+/** 四态文案（同时用于 stateDescription 与无障碍播报；可见性放宽到 internal 供 Robolectric 断言）。 */
 @Composable
-private fun intelligenceStatusLabel(status: IntelligenceStatus): String {
+internal fun intelligenceStatusLabel(status: IntelligenceStatus): String {
     // 有进行中的任务时播报"正在下载/同步/抽取"，比四态更能解释"为什么在闪"
     val busyLabel = when (status.busy) {
         IntelligenceBusy.DOWNLOADING -> status.busyPct?.let {
@@ -521,14 +527,31 @@ private fun rememberAnimationsEnabled(): Boolean {
 }
 
 /**
+ * 状态点是否播放动效（纯函数，便于 JVM/Robolectric 断言）。
+ *
+ * 两个条件同时成立才动：系统允许动画（`ANIMATOR_DURATION_SCALE > 0`）**且**状态本身需要动效
+ * （就绪/部分就绪慢呼吸；下载/同步/抽取中快脉冲；未就绪/异常且空闲时静止，§3.4）。
+ */
+internal fun shouldAnimateDot(status: IntelligenceStatus, animationsEnabled: Boolean): Boolean =
+    animationsEnabled && status.animates
+
+/**
  * 智能状态点：
  * - 颜色只表达 L1（就绪=呼吸绿 / 未就绪=灰 / 异常=琥珀），L3 可选能力不用灰色惩罚；
  * - L4 待处理项用琥珀角标（数字=项数）；
  * - 可点击（≥48dp），TalkBack 播报「智能状态 + 四态文案」；
  * - 未就绪/异常或系统关闭动画时完全静止。
+ *
+ * 可见性 internal + [animationsEnabledOverride] 是为了让 Robolectric（D 阶段）能直接断言
+ * 文案/动效分支，而不必依赖真机的系统动画设置。
  */
 @Composable
-private fun OfflineReadyDot(status: IntelligenceStatus, onClick: () -> Unit) {
+internal fun OfflineReadyDot(
+    status: IntelligenceStatus,
+    onClick: () -> Unit,
+    /** 测试注入：null = 读系统设置；传 false 可关闭无限动画（Robolectric 主线程不排队）。 */
+    animationsEnabledOverride: Boolean? = null,
+) {
     val colors = MaterialTheme.zhiBoxColors
     val label = intelligenceStatusLabel(status)
     val title = stringResource(R.string.intelligence_hub_title)
@@ -538,8 +561,12 @@ private fun OfflineReadyDot(status: IntelligenceStatus, onClick: () -> Unit) {
         IntelligenceLevel.NOT_READY -> colors.inkMeta
         IntelligenceLevel.ERROR -> colors.warning
     }
-    val animationsEnabled = rememberAnimationsEnabled()
-    val animate = animationsEnabled && status.animates
+    val animationsEnabled = if (animationsEnabledOverride != null) {
+        animationsEnabledOverride
+    } else {
+        rememberAnimationsEnabled()
+    }
+    val animate = shouldAnimateDot(status, animationsEnabled)
     val busy = status.busy != IntelligenceBusy.NONE
 
     // 外层不裁剪：角标要能压到命中区边缘之外；裁剪只作用于内层（水波纹仍是圆形）

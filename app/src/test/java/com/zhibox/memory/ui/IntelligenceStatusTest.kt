@@ -269,4 +269,84 @@ class IntelligenceStatusTest {
         assertEquals(IntelligenceBusy.NONE, status.busy)
         assertFalse("未就绪且无任务应静止", status.animates)
     }
+
+    // ── M4：E1–E15 新读数透传（空态/busy 行） ────────────────────
+
+    @Test
+    fun newReadings_passThroughToStatus() {
+        val status = evaluateIntelligence(
+            IntelligenceReadings(
+                modelName = "m.litertlm",
+                modelFileCount = 2,
+                chunkCount = 0,
+                storeNotConfigured = true,
+                sagEnabled = false,
+                networkDisabled = true,
+                answerConsentGranted = false,
+            ),
+        )
+        assertEquals(2, status.modelFileCount)
+        assertEquals(0, status.chunkCount)
+        assertTrue(status.storeNotConfigured)
+        assertEquals(false, status.sagEnabled)
+        assertEquals(true, status.networkDisabled)
+        assertEquals(false, status.answerConsentGranted)
+    }
+
+    @Test
+    fun newReadings_defaultToUnknownNotFakeHealthy() {
+        // 不传新字段时：计数 -1 / 可选能力 null = 未知，pill 不展示、E1/E2/E3 不误判。
+        val status = evaluateIntelligence(IntelligenceReadings(modelName = "m.litertlm"))
+        assertEquals(-1, status.modelFileCount)
+        assertEquals(-1, status.chunkCount)
+        assertFalse(status.storeNotConfigured)
+        assertNull(status.sagEnabled)
+        assertNull(status.networkDisabled)
+        assertNull(status.answerConsentGranted)
+        assertTrue("未知读数不应产生任何 info pill", infoPills(status).isEmpty())
+    }
+
+    @Test
+    fun busyLabelAndSyncProgress_passThrough() {
+        val downloading = evaluateIntelligence(
+            readings = IntelligenceReadings(modelName = "m.litertlm"),
+            busyOverride = IntelligenceBusy.DOWNLOADING,
+            busyPct = 42,
+            busyLabel = "embeddinggemma-2-440m",
+        )
+        assertEquals("embeddinggemma-2-440m", downloading.busyLabel)
+        assertNull("下载没有 done/total", downloading.busyDone)
+        assertNull("下载没有 done/total", downloading.busyTotal)
+
+        val syncing = evaluateIntelligence(
+            readings = IntelligenceReadings(modelName = "m.litertlm"),
+            busyOverride = IntelligenceBusy.SYNCING,
+            busyPct = 30,
+            busyDone = 30,
+            busyTotal = 100,
+        )
+        assertEquals(30, syncing.busyDone)
+        assertEquals(100, syncing.busyTotal)
+        assertNull("同步没有模型名", syncing.busyLabel)
+    }
+
+    @Test
+    fun indexUnhealthy_producesPendingItem() {
+        // E11：索引不一致 → L4 待处理（PARTIAL），不是 L1 异常。
+        val status = evaluateIntelligence(
+            IntelligenceReadings(modelName = "m.litertlm", indexUnhealthy = true),
+        )
+        assertEquals(IntelligenceLevel.PARTIAL, status.level)
+        assertEquals(listOf(PendingItem.INDEX_UNHEALTHY), status.pending)
+        assertEquals(1, status.pendingCount)
+    }
+
+    @Test
+    fun indexHealthy_doesNotProducePendingItem() {
+        val status = evaluateIntelligence(
+            IntelligenceReadings(modelName = "m.litertlm", indexUnhealthy = false),
+        )
+        assertEquals(IntelligenceLevel.READY, status.level)
+        assertFalse(status.pending.contains(PendingItem.INDEX_UNHEALTHY))
+    }
 }

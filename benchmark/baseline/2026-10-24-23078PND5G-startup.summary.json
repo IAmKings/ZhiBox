@@ -1,0 +1,32 @@
+{
+  "device": {
+    "brand": "Xiaomi",
+    "device": "corot",
+    "fingerprint": "Redmi/corot/corot:13/TP1A.220624.014/V816.0.22.0.UMLCNXM:user/release-keys",
+    "id": "UP1A.230905.011",
+    "model": "23078PND5G",
+    "type": "user",
+    "version": {
+      "codename": "REL",
+      "sdk": 34
+    }
+  },
+  "benchmarks": [
+    {
+      "name": "startupColdCompilationNone",
+      "timeToInitialDisplayMs": {
+        "minimum": 393.543615,
+        "median": 425.851385,
+        "maximum": 555.191461
+      }
+    },
+    {
+      "name": "startupColdCompilationPartial",
+      "timeToInitialDisplayMs": {
+        "minimum": 372.437923,
+        "median": 397.359692,
+        "maximum": 448.555616
+      }
+    }
+  ]
+}
