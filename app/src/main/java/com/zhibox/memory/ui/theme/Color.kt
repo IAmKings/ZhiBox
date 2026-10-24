@@ -128,6 +128,8 @@ data class ZhiBoxExtendedColors(
     /** 底部悬浮输入岛底色：浅色下与卡片同白，暗色下需比画布抬一档否则整条不可见。 */
     val omniBar: Color,
     val border: Color,
+    /** 浮层阴影色：暖黑低透明度（DESIGN.md：扩散、低透明度、暖色调）。卡片不使用。 */
+    val shadow: Color,
     val ink: Color,
     val inkSecondary: Color,
     val inkBody: Color,
@@ -161,6 +163,7 @@ val LightExtendedColors = ZhiBoxExtendedColors(
     card = CardPure,
     omniBar = CardPure,
     border = BorderSubtle,
+    shadow = Color(0x142D2319),
     ink = Ink,
     inkSecondary = InkSecondary,
     inkBody = InkBody,
@@ -193,6 +196,7 @@ val DarkExtendedColors = LightExtendedColors.copy(
     card = CardPureDark,
     omniBar = Color(0xFF262320),
     border = BorderSubtleDark,
+    shadow = Color(0x66000000),
     ink = InkDark,
     inkSecondary = InkSecondaryDark,
     inkBody = InkBodyDark,

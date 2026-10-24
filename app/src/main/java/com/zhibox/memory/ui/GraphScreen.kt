@@ -655,7 +655,7 @@ private fun ExploreSelectedCard(
     onOpenEventById: (Long) -> Unit,
     onSwitchToList: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    ZhiBoxCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 stringResource(R.string.graph_explore_selected),
@@ -734,7 +734,7 @@ private const val EXPLORE_MAX_PITCH = 1.2
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GraphEventCard(event: GraphEventUi, onClick: () -> Unit) {
-    Card(
+    ZhiBoxCard(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
@@ -973,7 +973,7 @@ private fun GraphDetailBody(
                 )
             } else {
                 detail.entities.forEach { entity ->
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(
                             Modifier.padding(10.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -1037,7 +1037,7 @@ private fun GraphDetailBody(
                 )
             } else {
                 detail.relatedEvents.forEach { related ->
-                    Card(
+                    ZhiBoxCard(
                         Modifier
                             .fillMaxWidth()
                             .clickable { onOpenRelated(related.id) },
@@ -1090,7 +1090,7 @@ private fun GraphDetailBody(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Card(Modifier.fillMaxWidth()) {
+                ZhiBoxCard(Modifier.fillMaxWidth()) {
                     Text(
                         content,
                         modifier = Modifier.padding(12.dp),

@@ -563,7 +563,7 @@ internal fun SettingsContent(
 
                 // ---- 嵌入路径 ----
                 item(key = "section-0") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_section_embedding),
@@ -603,7 +603,7 @@ internal fun SettingsContent(
 
                 // ---- 模型商店（SOC 感知推荐 + SAF 共享目录）----
                 item(key = "section-1-0") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_section_store),
@@ -674,7 +674,7 @@ internal fun SettingsContent(
                     }
                 }
                 item(key = "section-1-1") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_store_shared_title),
@@ -759,7 +759,7 @@ internal fun SettingsContent(
 
                 // ---- GPU 加速 ----
                 item(key = "section-2") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_section_gpu),
@@ -789,7 +789,7 @@ internal fun SettingsContent(
 
                 // ---- 模型文件 ----
                 item(key = "section-3") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_section_models, state.models.size),
@@ -829,7 +829,7 @@ internal fun SettingsContent(
 
                 // ---- 向量空间注册表（维度来自 embedding_meta.dimensions，P1-6）----
                 item(key = "section-4") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
                                 stringResource(R.string.settings_section_spaces),
@@ -866,7 +866,7 @@ internal fun SettingsContent(
                 item(key = "section-8-0") {
                     // P1：滚到该段才解密 Keystore 读 LLM 配置（进场不做）
                     LaunchedEffect(Unit) { actions.ensureLlmLoaded() }
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_section_llm),
@@ -1015,7 +1015,7 @@ internal fun SettingsContent(
                     }
                 }
                 item(key = "section-8-1") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_llm_behavior_title),
@@ -1085,7 +1085,7 @@ internal fun SettingsContent(
                 }
 
                 item(key = "section-8-2") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_budget_section),
@@ -1139,7 +1139,7 @@ internal fun SettingsContent(
 
                 // ---- B9：SAG 两阶段抽取状态（与导入状态独立；失败不影响离线检索） ----
                 item(key = "section-9") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_sag_section),
@@ -1239,7 +1239,7 @@ internal fun SettingsContent(
 
                 // ---- 知识库迁移 + 自动重嵌入 ----
                 item(key = "section-5-0") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_section_migration),
@@ -1282,7 +1282,7 @@ internal fun SettingsContent(
                 }
 
                 item(key = "section-5-1") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_reembed_section),
@@ -1341,7 +1341,7 @@ internal fun SettingsContent(
                 }
                 if (state.legacySpaces.isNotEmpty()) {
                     item(key = "legacy-spaces") {
-                        Card(Modifier.fillMaxWidth()) {
+                        ZhiBoxCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     stringResource(
@@ -1382,7 +1382,7 @@ internal fun SettingsContent(
 
                 // ---- 知识库 ----
                 item(key = "section-7") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
                                 stringResource(R.string.settings_section_kb),
@@ -1407,7 +1407,7 @@ internal fun SettingsContent(
 
                 // ---- 索引诊断（B3-14：三表计数 / 孤儿明细 / 修复 before-after）----
                 item(key = "section-6-0") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_section_diagnostics),
@@ -1492,7 +1492,7 @@ internal fun SettingsContent(
                     }
                 }
                 item(key = "section-6-1") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_trace_section),
@@ -1547,7 +1547,7 @@ internal fun SettingsContent(
                     }
                 }
                 item(key = "section-6-2") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 stringResource(R.string.settings_quality_section),
@@ -1693,7 +1693,7 @@ internal fun SettingsContent(
 
                 // ---- 隐私与离线声明 ----
                 item(key = "section-10") {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
                                 stringResource(R.string.settings_section_privacy),

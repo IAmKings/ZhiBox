@@ -59,6 +59,10 @@
       计数为纯函数 `countNewContent`（6 个 JVM 用例），首次加载整批视为已读避免冷启动弹胶囊。
 - [ ] ⚠️ 新增内容后的定位策略（余下部分）：用户显式完成导入并返回首页时是否自动回顶+高亮、
       空库首次导入是否自动切「全部」，仍待定。
+- [x] 卡片扁平化（DESIGN.md「Flat Surfaces」）：全仓卡片收敛为 `ZhiBoxCard`
+      （0 阴影 + 1dp 发丝描边 + 16dp 圆角 + card 白底），移除首页卡片 2dp 阴影；
+      浮层阴影收口到 `ZhiBoxElevation`（输入岛 12dp→8dp，新内容胶囊 6dp→0），
+      阴影颜色提升为 theme 令牌（浅色 `#142D2319` / 深色 `#66000000`）。
 - [x] 二级页统一底色：`ZhiBoxScreen` 顶栏透明 + `Scaffold` 用 paper 底色，
       设置/来源/检索/搜索/问答/导入/证据/图谱不再出现白色顶栏条带（证据图 impl-settings-paper-top.png / impl-sources-paper-top.png）。
 - [x] 设置页性能：内容改 `LazyColumn` + 稳定 actions/state + 进场刷新 5s 节流；

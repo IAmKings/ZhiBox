@@ -38,7 +38,7 @@ fun EvidenceScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Card(Modifier.fillMaxWidth()) {
+            ZhiBoxCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         hit.docTitle,
@@ -67,7 +67,7 @@ fun EvidenceScreen(
                     )
                 }
             }
-            Card(Modifier.fillMaxWidth()) {
+            ZhiBoxCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(R.string.evidence_content), style = MaterialTheme.typography.titleSmall)
                     Text(hit.content, style = MaterialTheme.typography.bodyMedium)

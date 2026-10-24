@@ -469,7 +469,7 @@ private fun JobCard(
     // 只向用户展示 decode 后的 userMessage，绝不直接显示编码串。
     val rawError = job.error
     val pipelineError = remember(rawError) { PipelineError.decode(rawError) }
-    Card(Modifier.fillMaxWidth()) {
+    ZhiBoxCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 stringResource(R.string.import_job_stage, stageLabel(job.stage), job.progress),

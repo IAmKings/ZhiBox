@@ -2,14 +2,20 @@ package com.zhibox.memory.ui
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CardElevation
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,12 +31,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zhibox.memory.R
+import com.zhibox.memory.ui.theme.ZhiBoxRadius
 import com.zhibox.memory.ui.theme.zhiBoxColors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -188,6 +196,36 @@ fun EmptyState(
 }
 
 /**
+ * 全仓卡片唯一入口（DESIGN.md「Flat Surfaces」细则）。
+ *
+ * 与 M3 `Card` 的差异：**0 阴影 + 1dp 发丝描边 + 16dp 圆角 + card 令牌底色**——
+ * 层级只靠描边/底色/间距表达，不再叠加阴影；需要浮层阴影的元素走 [com.zhibox.memory.ui.theme.ZhiBoxElevation]。
+ * 页面里不要再直接调 `Card(...)`，避免"有的卡有描边、有的卡有阴影"的漂移。
+ */
+@Composable
+fun ZhiBoxCard(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(ZhiBoxRadius.card),
+    colors: CardColors = CardDefaults.cardColors(
+        containerColor = MaterialTheme.zhiBoxColors.card,
+    ),
+    border: BorderStroke? = BorderStroke(1.dp, MaterialTheme.zhiBoxColors.border),
+    elevation: CardElevation = CardDefaults.cardElevation(
+        defaultElevation = com.zhibox.memory.ui.theme.ZhiBoxElevation.card,
+    ),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        modifier = modifier,
+        shape = shape,
+        colors = colors,
+        border = border,
+        elevation = elevation,
+        content = content,
+    )
+}
+
+/**
  * 错误态：错误卡片（标题/原因/提示）+ 可选动作（重试、去设置等）。
  * 原因默认使用 error 色；hint 用 primary 色给出下一步操作。
  */
@@ -200,7 +238,7 @@ fun ErrorState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
-    Card(modifier.fillMaxWidth()) {
+    ZhiBoxCard(modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),

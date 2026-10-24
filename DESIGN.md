@@ -166,6 +166,17 @@ Depth is conveyed through **Tonal Layers and Low-Contrast Outlines** rather than
 - **Surface Hierarchy:** Pure white cards (`#FFFFFF`) sit upon the warm cream paper background (`#F7F5F0`), delineated by ultra-subtle borders (`#E5E1DA`) rather than dark lines.
 - **Ambient Elevation:** When interactive elements (such as floating action bars or modal sheets) require elevation, use hyper-diffused, low-opacity obsidian shadows tinted with warm undertones to simulate physical distance from the paper plane.
 
+### Flat Surfaces（实现细则，2026-10-25 补充）
+
+> 将上面的 Elevation 原则落成可执行约束，避免"有的卡片有阴影、有的卡片有描边"的漂移。
+
+- **卡片/列表容器**：elevation = **0**，禁止使用 `shadow`；只用 `1dp` `border-subtle`（浅色 `#E5E1DA` / 深色 `#37332E`）发丝描边 + `16dp` 圆角 + `card-pure` 白底分层。
+- **可点击卡片**：交互靠 ripple + 描边表达，不加阴影。
+- **浮层**（输入岛 / Bottom Sheet / Dialog）：允许轻阴影，但必须 ≤ `8dp` 且颜色统一用暖黑低透明度令牌 `shadow`（浅色 `#142D2319`）；**不得与描边同时使用**（浮层二选一：描边或阴影）。
+- **禁止任意值**：页面里不允许写裸 `shadowElevation = 12.dp` 一类的数字；统一走 `theme/Elevation.kt` 的 `ZhiBoxElevation`（`card = 0` / `floating = 8` / `modal = 8`）与 `ZhiBoxCard` composable（`ui/UiCommon.kt`）。
+- **圆角澄清**：上方 Shapes 提到的 `rounded-3xl`（24–32dp）仅用于浮层/模态；卡片以渲染稿 `rounded-2xl`（16dp）为准（`Shapes.kt` 已注明冲突取舍）。
+- **验收**：同一页面内深度线索只用一种（描边或阴影）；截图检查卡片边缘外 12px 无阴影渐变。
+
 ## Shapes
 
 The shape language is defined by **pronounced, friendly curves** (`rounded-3xl` equivalent to `1.5rem` to `2rem` border radii for major containers and cards).

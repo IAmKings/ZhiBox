@@ -291,7 +291,7 @@ internal fun ChatContent(
                     )
                 }
                 if (state.agentAttempted || state.agentToolCalls.isNotEmpty()) {
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(
                             Modifier.padding(8.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -369,7 +369,7 @@ internal fun ChatContent(
                 }
                 if (state.streaming) {
                     item(key = "streaming") {
-                        Card(Modifier.fillMaxWidth()) {
+                        ZhiBoxCard(Modifier.fillMaxWidth()) {
                             Column(
                                 Modifier.padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -389,7 +389,7 @@ internal fun ChatContent(
                 }
                 state.stoppedPartial?.let { partial ->
                     item(key = "stopped") {
-                        Card(Modifier.fillMaxWidth()) {
+                        ZhiBoxCard(Modifier.fillMaxWidth()) {
                             Column(
                                 Modifier.padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -477,7 +477,7 @@ private fun ChatMessageBubble(
     onCitationClick: (ChatCitation) -> Unit,
 ) {
     val isUser = message.role == ChatRole.USER
-    Card(
+    ZhiBoxCard(
         Modifier.fillMaxWidth(),
         colors = androidx.compose.material3.CardDefaults.cardColors(
             containerColor = if (isUser) {

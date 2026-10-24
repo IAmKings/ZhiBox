@@ -91,6 +91,7 @@ import com.zhibox.memory.R
 import com.zhibox.memory.ui.theme.BrandSerif
 import com.zhibox.memory.ui.theme.ZhiBoxExtendedColors
 import com.zhibox.memory.ui.theme.ZhiBoxRadius
+import com.zhibox.memory.ui.theme.ZhiBoxElevation
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
 import com.zhibox.memory.ui.theme.zhiBoxColors
 
@@ -804,7 +805,8 @@ private fun NewContentPill(
             .clickable(onClickLabel = contentDescription, onClick = onClick),
         shape = RoundedCornerShape(percent = 50),
         color = MaterialTheme.colorScheme.primary,
-        shadowElevation = 6.dp,
+        // 扁平优先：深色实心胶囊与米底对比已足够，不再叠加阴影（规范：卡片/胶囊 0 elevation）。
+        shadowElevation = 0.dp,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -964,15 +966,10 @@ private fun HomeCard(
     val badge = colors.badgeFor(item.category)
 
     Surface(
+        // DESIGN.md「Flat Surfaces」：卡片 0 阴影，仅用 1dp 发丝描边分层；
+        // 阴影只留给浮层（输入岛），避免"描边 + 阴影"双重深度线索。
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 2.dp,
-                shape = shape,
-                clip = false,
-                ambientColor = colors.shadow,
-                spotColor = colors.shadow,
-            )
             .clip(shape)
             .clickable(onClick = onClick),
         shape = shape,
@@ -1139,10 +1136,19 @@ private fun HomeOmniBar(
             .padding(horizontal = 16.dp)
             .padding(bottom = 12.dp),
     ) {
+        val omniShape = RoundedCornerShape(ZhiBoxRadius.omniBar)
         Surface(
-            shape = RoundedCornerShape(ZhiBoxRadius.omniBar),
+            // 浮层阴影收口到 token：8dp + 暖色低透明度（theme.shadow）；
+            // Surface 自身 elevation 置 0，避免默认黑影与令牌色叠加。
+            modifier = Modifier.shadow(
+                elevation = ZhiBoxElevation.floating,
+                shape = omniShape,
+                clip = false,
+                ambientColor = colors.shadow,
+                spotColor = colors.shadow,
+            ),
+            shape = omniShape,
             color = colors.omniBar,
-            shadowElevation = 12.dp,
             border = BorderStroke(1.dp, colors.border),
         ) {
             Row(
@@ -1293,10 +1299,6 @@ private fun ZhiBoxExtendedColors.badgeFor(category: HomeCategory): BadgeColors =
         tagContent = tagArchiveContent,
     )
 }
-
-/** 卡片阴影近似参考稿 `0 4px 20px -2px rgba(45,35,25,0.03)` 的暖色低透明度。 */
-private val ZhiBoxExtendedColors.shadow: androidx.compose.ui.graphics.Color
-    get() = androidx.compose.ui.graphics.Color(0x142D2319)
 
 @Composable
 private fun statusLabel(status: HomeStatus): String = stringResource(status.labelRes)

@@ -191,7 +191,7 @@ internal fun SourcesContent(
                     }
                 }
                 items(sources, key = { it.id }) { src ->
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(

@@ -252,7 +252,7 @@ internal fun SearchContent(
 
                     // ---- B10：精简 trace（默认折叠，避免挤占结果区）+ 脱敏导出 ----
                     var traceExpanded by remember { mutableStateOf(false) }
-                    Card(Modifier.fillMaxWidth()) {
+                    ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(
                             Modifier.padding(12.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -331,7 +331,7 @@ internal fun SearchContent(
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             r.hits.forEach { h ->
-                                Card(
+                                ZhiBoxCard(
                                     Modifier
                                         .fillMaxWidth()
                                         .clickable { onHitClick(h) },
