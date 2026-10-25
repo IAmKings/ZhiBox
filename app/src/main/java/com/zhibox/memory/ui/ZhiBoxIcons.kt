@@ -38,9 +38,7 @@ object ZhiBoxIcons {
         strokeIcon(
             name = "More",
             strokeWidth = 2.2f,
-            pathData = "M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5z" +
-                "M12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5z" +
-                "M12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z",
+            pathData = morePath,
         )
     }
 
@@ -82,7 +80,7 @@ object ZhiBoxIcons {
         strokeIcon(
             name = "Image",
             pathData = roundedRect(3f, 3f, 18f, 18f, 2f) +
-                "M8.5 10a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" +
+                "M8.5 10a1.5 1.5 0 1 1 0 -3a1.5 1.5 0 0 1 0 3z" +
                 "M21 15l-5-5L5 21",
         )
     }
@@ -102,10 +100,7 @@ object ZhiBoxIcons {
     val Graph: ImageVector by lazy {
         strokeIcon(
             name = "Graph",
-            pathData = "M6 8.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" +
-                "M18 10.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" +
-                "M12 20.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" +
-                "M8 7.5l7.5 1.5M7.5 8l3 8M16.5 10l-3.5 6",
+            pathData = graphPath,
         )
     }
 
@@ -135,9 +130,7 @@ object ZhiBoxIcons {
     val Snapshot: ImageVector by lazy {
         strokeIcon(
             name = "Snapshot",
-            pathData = "M12 21a9 9 0 110-18 9 9 0 010 18z" +
-                "M3.6 9h16.8M3.6 15h16.8" +
-                "M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18",
+            pathData = snapshotPath,
         )
     }
 
@@ -155,9 +148,7 @@ object ZhiBoxIcons {
         strokeIcon(
             name = "Attachment",
             strokeWidth = 1.8f,
-            pathData = roundedRect(3.5f, 3.5f, 17f, 17f, 3.5f) +
-                "M8.5 10a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" +
-                "M20.5 15.5l-4.5-4.5-7.5 7.5",
+            pathData = attachmentPath,
         )
     }
 
@@ -191,6 +182,35 @@ object ZhiBoxIcons {
                 "L9.60,7.33 L12.00,9.74 Z",
         )
     }
+
+    // ── 供回归测试解析的 path 常量 ────────────────────────────────
+    // 注意：两段半圆弧拼圆时，第二个弧必须显式写 `a`——Compose PathParser 不支持
+    // SVG 的隐式重复 arc 参数（会静默丢弃第二段，圆只剩左半弧，见 Shift/ZhiBoxIconsPathTest）。
+
+    /** 更多（3 个点，每点 = 两段半圆弧）。 */
+    internal val morePath: String =
+        "M12 6.75a.75.75 0 1 1 0 -1.5a.75.75 0 0 1 0 1.5z" +
+            "M12 12.75a.75.75 0 1 1 0 -1.5a.75.75 0 0 1 0 1.5z" +
+            "M12 18.75a.75.75 0 1 1 0 -1.5a.75.75 0 0 1 0 1.5z"
+
+    /** 图谱（3 个节点圆 + 3 条连线）。 */
+    internal val graphPath: String =
+        "M6 8.5a2.5 2.5 0 1 1 0 -5a2.5 2.5 0 0 1 0 5z" +
+            "M18 10.5a2.5 2.5 0 1 1 0 -5a2.5 2.5 0 0 1 0 5z" +
+            "M12 20.5a2.5 2.5 0 1 1 0 -5a2.5 2.5 0 0 1 0 5z" +
+            "M8 7.5l7.5 1.5M7.5 8l3 8M16.5 10l-3.5 6"
+
+    /** 附件（圆角方框 + 小圆 + 斜线）。 */
+    internal val attachmentPath: String =
+        roundedRect(3.5f, 3.5f, 17f, 17f, 3.5f) +
+            "M8.5 10a1.5 1.5 0 1 1 0 -3a1.5 1.5 0 0 1 0 3z" +
+            "M20.5 15.5l-4.5-4.5-7.5 7.5"
+
+    /** 网页存档（完整地球：外圆 2 段弧 + 2 条经线弧 + 2 条纬线）。 */
+    internal val snapshotPath: String =
+        "M12 21a9 9 0 1 1 0 -18a9 9 0 0 1 0 18z" +
+            "M3.6 9h16.8M3.6 15h16.8" +
+            "M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"
 }
 
 // ── 构建辅助 ────────────────────────────────────────────────────────
