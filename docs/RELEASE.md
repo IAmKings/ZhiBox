@@ -329,11 +329,11 @@ tag 与 versionName 由 release workflow 强校验。
 | 项 | 值 |
 |---|---|
 | versionCode / versionName | **6 / 0.1.5** |
-| 基线提交 | 版本号提交（tag `v0.1.5`） |
+| 基线提交 | `f78d0c2`（tag `v0.1.5`） |
 | 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.4） |
 | 签名 | 沿用既有 release keystore（与 v0.1.4 同证书，可覆盖升级） |
-| 发布产物 | `zhibox-0.1.5-<sha7>-release-signed.apk`（由 tag 推送后的 Release workflow 构建并上传；size/SHA-256 见 GitHub Release 资产，发布后回填） |
-| 发布通道 | tag 推送 → `.github/workflows/release.yml` 自动签名构建 + apksigner/aapt2 校验 + 创建 GitHub Release |
+| 发布产物 | `zhibox-0.1.5-f78d0c2-release-signed.apk`（70,345,697 bytes）；SHA-256 `08009f7902efd41b212f882883cac87ad6ad9916d566ac0e75daad65aac5ea06`；同名 `.sha256` 与 `zhibox-0.1.5-f78d0c2-mapping.txt` 一并上传 |
+| 发布通道 | tag 推送 → `.github/workflows/release.yml` 自动签名构建 + apksigner/aapt2 校验 + 创建 GitHub Release（https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.5） |
 
 本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
 - 设置页简化：默认「简单首页 4 卡 + 高级入口」，原 17 项能力全部迁入「高级与诊断」二级页
