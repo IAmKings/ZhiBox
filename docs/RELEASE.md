@@ -323,3 +323,31 @@ Manifest / 安全（P0-3、P1-10 回归）
 
 验收：CI（docs 一致性 + assembleDebug + 单测 + lint + androidTest 编译 + assembleRelease）通过后再打 tag；
 tag 与 versionName 由 release workflow 强校验。
+
+## 12. 2026-10-27 v0.1.5 发布记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **6 / 0.1.5** |
+| 基线提交 | 版本号提交（tag `v0.1.5`） |
+| 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.4） |
+| 签名 | 沿用既有 release keystore（与 v0.1.4 同证书，可覆盖升级） |
+| 发布产物 | `zhibox-0.1.5-<sha7>-release-signed.apk`（由 tag 推送后的 Release workflow 构建并上传；size/SHA-256 见 GitHub Release 资产，发布后回填） |
+| 发布通道 | tag 推送 → `.github/workflows/release.yml` 自动签名构建 + apksigner/aapt2 校验 + 创建 GitHub Release |
+
+本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
+- 设置页简化：默认「简单首页 4 卡 + 高级入口」，原 17 项能力全部迁入「高级与诊断」二级页
+  （现有分组与顺序不变，`SettingsItemOrder` 深链下标零改动）；
+- 新增二级页：模型管理（自动/轻量 270M/标准 440M/更强 740M，切档二次确认重建索引）、
+  资料库、联网问答（复合开关+服务配置）、隐私与关于；
+- 高级页：顶部「显示技术细节」开关（默认关，关闭时隐藏文件名/空间 ID/错误码/诊断计数）、
+  长说明折叠、诊断卡标题去内部工单号；
+- 无障碍：首页/二级页开关补 contentDescription，卡片行 48dp；
+- 真机验收（Redmi 23078PND5G / Android 14）：浅/深色、200% 字号、深链落位高亮、
+  深链返回退出、技术细节开关、开关语义标签；
+- 基准：`SettingsBenchmark` 改为在「高级与诊断」页采集并重录基线
+  （2026-10-27，P95 median 17ms / jank 6.85%）；
+- 新增测试 33 例（页面模型/文案黑名单/首页与高级页 Robolectric），全量单测 947 例 0 失败。
+
+验收：CI（docs 一致性 + assembleDebug + 单测 + lint + androidTest 编译 + assembleRelease）通过后再打 tag；
+tag 与 versionName 由 release workflow 强校验。

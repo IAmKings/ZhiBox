@@ -1,9 +1,9 @@
-# 发布说明（v0.1.4 已发布；含历史）
+# 发布说明（v0.1.5 已发布；含历史）
 
-> 适用：**v0.1.4**（2026-10-24 发布；v0.1.3/v0.1.1/v0.1.0-mvp 为历史版本）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/`、`docs/product/INTELLIGENCE_HUB_SPEC.md` 与 `docs/product/INTELLIGENCE_HUB_ACCEPTANCE.md`。
-> **发布状态**：v0.1.4 已 tag/发布（GitHub Release 自动构建签名 APK）；v0.1.3 已发布；v0.1.1、v0.1.0-mvp 已发布。
+> 适用：**v0.1.5**（2026-10-27 发布；v0.1.4/v0.1.3/v0.1.1/v0.1.0-mvp 为历史版本）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/`、`docs/product/INTELLIGENCE_HUB_SPEC.md` 与 `docs/product/INTELLIGENCE_HUB_ACCEPTANCE.md`。
+> **发布状态**：v0.1.5 已 tag/发布（GitHub Release 自动构建签名 APK）；v0.1.4、v0.1.3、v0.1.1、v0.1.0-mvp 已发布。
 
-## 未发布（master）：设置页简化（简单模式 + 高级与诊断）
+## 0. v0.1.5（2026-10-27 发布）：设置页简化（简单模式 + 高级与诊断）
 
 - **默认设置页改为「简单首页」**：本地 AI / 资料库 / 联网问答 / 隐私与关于 4 张主卡 + 高级与诊断入口；
   首屏不出现实现术语，4 个典型任务（换模型/导入/开关联网问答/查看资料库）≤2 击。
@@ -14,9 +14,11 @@
 - **新增门禁**：`SettingsCopyAuditTest`（术语黑名单）、`SettingsPageModelTest`（17 项集合/返回决策/首页摘要）、
   `SettingsHomeRobolectricTest` / `SettingsAdvancedRobolectricTest`（渲染级验收）。
 - **基准**：`SettingsBenchmark` 改为在「高级与诊断」页采集滑动帧耗时，并已在 Redmi 23078PND5G/Android 14 重录基线（2026-10-27，P95 median 17ms / jank 6.85%）。
+- **真机验收**：Redmi 23078PND5G / Android 14 走查浅/深色、200% 字号、深链高亮、开关语义标签；
+  截图见 `design/main_screen/impl/impl-settings-*.png`。
 - **文档**：设置相关点击路径（用户指南/验收/回滚 runbook）统一改为「设置 → 高级与诊断 → …」。
 
-## 0. v0.1.4（2026-10-24 发布）
+## 0.1 v0.1.4（2026-10-24 发布，历史）
 
 - **智能状态中枢（M1/M2/M3）**：首页左上角状态点改为真实四态（就绪/部分就绪/未就绪/异常）+ 首次引导条；
   点击打开「智能状态」Bottom Sheet（结论 + 4 个只读 pill + 快捷动作 + 待处理区 + 设置入口）；
@@ -37,7 +39,7 @@
 - **已知限制**：READY 呼吸动画与下载/同步脉冲未在"无模型"设备上可视化验证（单测覆盖判定与映射）；
   Agent/问答真实质量仍 `QUALITY_CLAIM_ALLOWED=false`；启动基准存在设备噪声（建议 CI 固定环境重录基线）。
 
-## 0.1 v0.1.3（2026-10-22 发布，历史）
+## 0.2 v0.1.3（2026-10-22 发布，历史）
 
 - **质量审查修复**：R8 版本入 catalog、备份快照持久化/失败保护、来源范围检索分批/流式过滤、导出一致性 reader transaction、SharedModelStore 原子切换、备份排除规则。
 - **R1/R2/R5 回归**：快照失败不动库、生成 50 文档/200 chunk 导出导入回环、导入/重嵌入/抽取活动期间导出拒绝、来源范围端到端检索。
@@ -45,7 +47,7 @@
 - **限制**：Agent/问答真实质量仍 `QUALITY_CLAIM_ALLOWED=false`；R5 真机大库 ANR/进程中断仍建议发布前补测。
 - **签名 RC**：`dist/zhibox-0.1.3-bdc8be2-release-signed.apk`（70,164,017 bytes，SHA-256 `0f47cdffcea8eb2d4b626401904686393bc2275357f2a2d651070ee6fdf4a03b`，apksigner PASS）；PJZ110 同签名覆盖升级 smoke 通过。
 
-## 0.2 v0.1.2（历史，未发布）
+## 0.3 v0.1.2（历史，未发布）
 
 - **P1 导入扩展**：文本型 PDF（PDFBox-Android；owner-password-only 可抽取）、DOCX/PPTX/XLSX、HTML、网页 URL、SAF 多选文件；staging 白名单与 50MB 流式上限；旧 `.doc/.ppt/.xls` 返回明确的“另存为 OOXML”错误；URL 导入把原始地址写入 `source.originUrl`（staging 旁车，schema v8）；**扫描件 OCR（ML Kit 离线，默认开启）与 user-password PDF 输入密码重试**。
 - **P1 多轮问答首版（B13）**：最近 6 条历史作为上下文（不是证据），历史 `[S#]` 剥离，引用仍只来自本轮证据；见 `docs/review/B13_MULTITURN_CHAT_REPORT.md`。
