@@ -78,7 +78,8 @@ data class SettingsItemVisibility(
 /**
  * 设置页 LazyColumn 的 item 顺序（含分组标题 / 条件项）。
  *
- * 与 `SettingsContent` 的 emit 顺序必须保持一致；[settingsItemIndex] 用它算深链索引。
+ * 与 `SettingsPageContent(page = ADVANCED, …)` 的 emit 顺序必须保持一致；[settingsItemIndex]
+ * 用它算深链索引（设置页简化后高级页仍按原顺序全量 emit，聚焦页按 `SettingsPage.sectionKeys` emit 子集）。
  */
 object SettingsItemOrder {
 

@@ -111,6 +111,8 @@ class MainActivity : ComponentActivity() {
                             goHome()
                         },
                         initialSection = settingsSection,
+                        // 设置首页「导入资料」→ 导入屏（返回仍回首页，与来源页入口一致）。
+                        onOpenImport = { screen = "import" },
                     )
                     else -> HomeScreen(
                         // 首页输入岛/搜索图标 → 检索屏；query 为空时沿用检索屏上次输入

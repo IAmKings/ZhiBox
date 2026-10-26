@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -55,6 +56,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -78,16 +81,20 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * 设置屏（P1-8 + B3-3/B3-5/B3-7/B3-14）：状态与长任务在 [SettingsViewModel]；
- * 下载中离开页面会提示（任务不随组合取消）。B3-14 展示索引三表计数/孤儿明细，并提供修复入口。
+ * 设置屏（P1-8 + B3-3/B3-5/B3-7/B3-14；设置页简化 2026-10）：
+ * 默认进入「简单首页」（4 张主卡 + 高级入口），模型管理/资料库/联网问答/隐私与关于/高级与诊断
+ * 为屏内二级页（与 SearchScreen 的证据详情页同构：同一路由 + 页面状态切换），MainActivity
+ * 仍只有一条 `"settings"` 路由。原 17 项能力全部在「高级与诊断」页可达，深链先到高级页再落位。
  *
- * UI 拆为无状态 [SettingsContent] + [SettingsActions]（可 @Preview 渲染）；SAF launcher 与
- * 二次确认对话框留在有状态的 [SettingsScreen]。
+ * UI 拆为无状态 [SettingsPageContent] + [SettingsHomeContent] + [SettingsActions]（可 @Preview 渲染）；
+ * SAF launcher、二次确认对话框与页面状态机留在有状态的 [SettingsScreen]。
  */
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit = {},
     initialSection: IntelligenceSection? = null,
+    /** 简单首页「导入资料」→ 导入屏（MainActivity 负责路由）。 */
+    onOpenImport: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -96,6 +103,29 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         viewModel.onScreenStarted()
     }
+    // 简单首页需要展示「联网问答服务是否已配置」；每进程仅一次 Keystore 解密（VM 内部缓存），
+    // 替代原「滚到 LLM 段才解密」——高级页的 LLM 卡仍保留同一个幂等调用。
+    LaunchedEffect(Unit) {
+        viewModel.ensureLlmLoaded()
+    }
+
+    // ---- 设置页简化：屏内页面状态机（纯决策见 SettingsPageModel.kt） ----
+    // 注意：rememberSaveable 的初值只读一次 initialSection；不能用它当 input key——
+    // MainActivity 的 settingsSection 是 remember（非 saveable），旋转后会变 null，
+    // 作为 key 会导致已保存的页面状态被丢弃、用户被踢回首页。
+    var page by rememberSaveable {
+        mutableStateOf(
+            if (initialSection != null) SettingsPage.ADVANCED else SettingsPage.HOME,
+        )
+    }
+    // 深链只消费一次：高级页落位后回调清零，返回/再次进入不重复滚动高亮。
+    var deepLinkTarget by remember { mutableStateOf(initialSection) }
+    // 深链进入的高级页返回时直接退出设置（旋转后仍保留该语义）。
+    var enteredViaDeepLink by rememberSaveable { mutableStateOf(initialSection != null) }
+    // 高级页「显示技术细节」开关：默认关，仅本次页面状态（不持久化）。
+    var showTechnical by rememberSaveable { mutableStateOf(false) }
+    // 切换模型二次确认（切换 = 重建索引，见 SettingsViewModel.setPreference）。
+    var pendingPreference by remember { mutableStateOf<String?>(null) }
 
     var pendingDeleteModel by remember { mutableStateOf<File?>(null) }
     var pendingClearAll by remember { mutableStateOf(false) }
@@ -122,14 +152,24 @@ fun SettingsScreen(
     val downloadingNow by rememberUpdatedState(state.downloading)
     val storeStateNow by rememberUpdatedState(state.storeState)
     val answerConsentNow by rememberUpdatedState(state.answerNetworkConsent)
+    val preferenceNow by rememberUpdatedState(state.preference)
+    val chunkCountNow by rememberUpdatedState(state.chunkCount)
     val onBackNow by rememberUpdatedState(onBack)
 
-    fun attemptBack() {
+    fun attemptExit() {
         if (downloadingNow) showLeaveDialog = true else onBackNow()
     }
 
-    // 下载中按系统返回：给出确认提示（下载任务在 ViewModel 中继续进行）。
-    BackHandler { attemptBack() }
+    // 单一返回入口：子页回首页；首页（或深链直接进入的高级页）退出设置。
+    // 下载中离开仍走 attemptExit 的确认对话框（任务在 ViewModel 中继续）。
+    fun navigateUp() {
+        when (settingsBackAction(page, enteredViaDeepLink)) {
+            SettingsBackAction.EXIT_SETTINGS -> attemptExit()
+            SettingsBackAction.TO_HOME -> page = SettingsPage.HOME
+        }
+    }
+
+    BackHandler { navigateUp() }
 
     if (showLeaveDialog) {
         AlertDialog(
@@ -340,12 +380,42 @@ fun SettingsScreen(
         )
     }
 
+    // 切换模型 = 切换向量空间并重建索引（SettingsViewModel.setPreference 会入队重嵌）；
+    // 有已索引数据时先确认，避免用户误触后触发长时间后台任务。
+    pendingPreference?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingPreference = null },
+            title = { Text(stringResource(R.string.settings_model_switch_title)) },
+            text = { Text(stringResource(R.string.settings_model_switch_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingPreference = null
+                    viewModel.setPreference(target)
+                }) { Text(stringResource(R.string.settings_model_switch_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingPreference = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
     // 设置页 section 很多：actions 若每次重组都新建（普通 class + 新 lambda），
     // 会让所有 section 无法跳过重组。这里只构造一次，内部读取上面的 *Now 引用。
     val actions = remember(viewModel) {
         SettingsActions(
-        onBack = ::attemptBack,
+        onBack = ::attemptExit,
         setPreference = viewModel::setPreference,
+        requestPreference = { target ->
+            // 已选中的档位不弹窗；有已索引数据时切换模型会触发重建索引，先确认；
+            // 空库/无索引直接生效。
+            when {
+                target == preferenceNow -> Unit
+                chunkCountNow > 0 -> pendingPreference = target
+                else -> viewModel.setPreference(target)
+            }
+        },
         setGpuMode = viewModel::setGpuMode,
         setPerfMode = viewModel::setPerfMode,
         chooseDirectory = { dirPicker.launch(null) },
@@ -392,13 +462,35 @@ fun SettingsScreen(
         ensureLlmLoaded = viewModel::ensureLlmLoaded,
         )
     }
-    SettingsContent(state = state, actions = actions, initialSection = initialSection)
+    when (page) {
+        SettingsPage.HOME -> SettingsHomeContent(
+            state = state,
+            actions = actions,
+            onOpenPage = { page = it },
+            onOpenImport = onOpenImport,
+            onBack = ::attemptExit,
+        )
+        else -> SettingsPageContent(
+            page = page,
+            state = state,
+            actions = actions,
+            onBack = ::navigateUp,
+            deepLinkTarget = deepLinkTarget,
+            onDeepLinkConsumed = { deepLinkTarget = null },
+            showTechnical = showTechnical,
+            onShowTechnicalChange = { showTechnical = it },
+            onOpenPage = { page = it },
+            onOpenImport = onOpenImport,
+        )
+    }
 }
 
 /** 设置屏动作集合：无状态内容组件通过它回调有状态包装层（便于 @Preview 传默认空实现）。 */
 class SettingsActions(
     val onBack: () -> Unit = {},
     val setPreference: (String) -> Unit = {},
+    /** 切模型前请求二次确认（shell 弹窗，确认后才写偏好）。 */
+    val requestPreference: (String) -> Unit = {},
     val setGpuMode: (String) -> Unit = {},
     val setPerfMode: (String) -> Unit = {},
     val chooseDirectory: () -> Unit = {},
@@ -439,6 +531,22 @@ class SettingsActions(
     val setPdfOcrEnabled: (Boolean) -> Unit = {},
 )
 
+/**
+ * 按页面门控的 LazyColumn item（设置页简化）。
+ *
+ * 只替换 `item(key = ...) {` 的声明行、卡片内容一行不动：高级页 `visible = true` 时 emit
+ * 顺序与历史完全一致（深链下标不变），聚焦页按 [SettingsPage.sectionKeys] emit 子集。
+ */
+private inline fun LazyListScope.settingsItem(
+    visible: Boolean,
+    key: String,
+    crossinline content: @Composable () -> Unit,
+) {
+    if (visible) {
+        item(key = key) { content() }
+    }
+}
+
 /** 设置页分组标题（智能 / 数据 / 诊断 / 隐私与关于）。 */
 @Composable
 private fun SettingsGroupHeader(text: String) {
@@ -463,17 +571,33 @@ private fun SettingsGroupSubHeader(text: String) {
     )
 }
 
-/** 无状态设置内容：供 [SettingsScreen] 与 @Preview / UI 测试直接渲染（B3-7）。 */
+/**
+ * 无状态设置二级页内容：模型管理 / 资料库 / 联网问答 / 隐私与关于 / 高级与诊断。
+ *
+ * - 按 [page] 从现有 17 个 section 里 emit 子集（见 [SettingsPage.sectionKeys]），
+ *   **同一张卡只有一份 UI 代码**，不存在两份实现漂移；
+ * - 高级页（[SettingsPage.ADVANCED]）的 emit 顺序与历史完全一致 → `SettingsItemOrder`
+ *   深链下标与 `SettingsItemOrderTest` 不变；
+ * - 深链 [deepLinkTarget] 只在高级页消费一次，落位后回调 [onDeepLinkConsumed]；
+ * - 「显示技术细节」开关在 LazyColumn 之外，不改变任何 item 下标。
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun SettingsContent(
+internal fun SettingsPageContent(
+    page: SettingsPage,
     state: SettingsUiState,
     actions: SettingsActions,
-    initialSection: IntelligenceSection? = null,
+    onBack: () -> Unit = {},
+    deepLinkTarget: IntelligenceSection? = null,
+    onDeepLinkConsumed: () -> Unit = {},
+    showTechnical: Boolean = false,
+    onShowTechnicalChange: (Boolean) -> Unit = {},
+    onOpenPage: (SettingsPage) -> Unit = {},
+    onOpenImport: () -> Unit = {},
 ) {
     ZhiBoxScreen(
-        title = stringResource(R.string.settings_title),
-        onBack = actions.onBack,
+        title = stringResource(page.titleRes),
+        onBack = onBack,
     ) { padding ->
         // P0：17 个 section 一次性组合 + 全内容测量是设置页卡顿主因（实测单帧 compose+layout 375–465ms）。
         // 改 LazyColumn：只组合可见段，其余滚动到再组合。
@@ -485,13 +609,13 @@ internal fun SettingsContent(
             hasLegacySpacesError = state.legacySpacesError != null,
             hasLegacySpaces = state.legacySpaces.isNotEmpty(),
         )
-        var deepLinkApplied by remember(initialSection) { mutableStateOf(false) }
+        var deepLinkApplied by remember { mutableStateOf(false) }
         // 规格 §6.5：深链落位后对目标 section 高亮 1.2s；仅深链进入触发一次（普通进入不高亮）。
-        var deepLinkHighlightKey by remember(initialSection) { mutableStateOf<String?>(null) }
-        var deepLinkHighlightVisible by remember(initialSection) { mutableStateOf(false) }
+        var deepLinkHighlightKey by remember { mutableStateOf<String?>(null) }
+        var deepLinkHighlightVisible by remember { mutableStateOf(false) }
         val animationsEnabled = rememberAnimationsEnabled()
-        LaunchedEffect(initialSection, state.loading) {
-            val section = initialSection
+        LaunchedEffect(deepLinkTarget, state.loading) {
+            val section = deepLinkTarget
             if (section != null && !deepLinkApplied && !state.loading) {
                 withFrameNanos { }
                 listState.scrollToItem(
@@ -510,6 +634,8 @@ internal fun SettingsContent(
                     deepLinkHighlightVisible = true
                     deepLinkHighlightKey = section.itemKey
                 }
+                // 消费一次：host 清空 target 后本页不再重复滚动；返回/再进高级页也不重复。
+                onDeepLinkConsumed()
             }
         }
         // 高亮生命周期：亮 1.2s → 淡出 300ms（系统关闭动画时直接移除）→ 撤销覆盖层。
@@ -522,19 +648,27 @@ internal fun SettingsContent(
             }
             deepLinkHighlightKey = null
         }
-        // 覆盖块必须与 LazyColumn 同坐标系：把 padding 从 LazyColumn 移到外层 Box，
-        // 覆盖块作为 Box 的第二个子节点叠在列表之上（无 pointerInput，不拦截触摸）。
-        Box(
+        // 覆盖块必须与 LazyColumn 同坐标系：padding 放在外层 Column/Box，覆盖块作为 Box 的
+        // 第二个子节点叠在列表之上（无 pointerInput，不拦截触摸）。技术细节行在列表外，
+        // 因此不参与下标计算。
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = SettingsListContentPadding,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
+            if (page == SettingsPage.ADVANCED) {
+                SettingsTechnicalDetailsRow(
+                    checked = showTechnical,
+                    onCheckedChange = onShowTechnicalChange,
+                )
+            }
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = SettingsListContentPadding,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                 // B3-5：统一加载/错误组件
                 if (state.loading) {
                     item(key = "loading") {
@@ -552,17 +686,28 @@ internal fun SettingsContent(
 
                     }
                 }
-                item(key = "header-intelligence") {
+                settingsItem(page == SettingsPage.ADVANCED, "header-intelligence") {
                     SettingsGroupHeader(stringResource(R.string.settings_group_intelligence))
                 }
 
-                item(key = "sub-models") {
+                settingsItem(page == SettingsPage.ADVANCED, "sub-models") {
                     SettingsGroupSubHeader(stringResource(R.string.settings_sub_models))
                 }
 
 
                 // ---- 嵌入路径 ----
-                item(key = "section-0") {
+                if (page == SettingsPage.MODELS) {
+                    item(key = "models-hero") {
+                        SettingsModelsHero(
+                            state = state,
+                            actions = actions,
+                        )
+                    }
+                }
+                settingsItem(
+                    page.shows(IntelligenceSection.Embedding.itemKey),
+                    IntelligenceSection.Embedding.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -571,8 +716,19 @@ internal fun SettingsContent(
                                 fontWeight = FontWeight.Bold,
                             )
                             Text(
-                                state.model?.let { stringResource(R.string.settings_current_model, it) }
-                                    ?: stringResource(R.string.settings_no_model),
+                                state.model?.let { fileName ->
+                                    if (showTechnical) {
+                                        stringResource(R.string.settings_current_model, fileName)
+                                    } else {
+                                        stringResource(settingsModelTier(fileName).labelRes())
+                                    }
+                                } ?: stringResource(
+                                    if (showTechnical) {
+                                        R.string.settings_no_model
+                                    } else {
+                                        R.string.settings_no_model_simple
+                                    },
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             // B7 审查修复：新增 D·740M 后 4 个 chip 在窄屏会溢出，改 FlowRow 自动换行
@@ -588,21 +744,23 @@ internal fun SettingsContent(
                                 ).forEach { (value, label) ->
                                     FilterChip(
                                         selected = state.preference == value,
-                                        onClick = { actions.setPreference(value) },
+                                        onClick = { actions.requestPreference(value) },
                                         label = { Text(label) },
                                     )
                                 }
                             }
-                            Text(
-                                stringResource(R.string.settings_path_hint),
-                                style = MaterialTheme.typography.bodySmall,
+                            SettingsExpandableHint(
+                                text = stringResource(R.string.settings_path_hint),
                             )
                         }
                     }
                 }
 
                 // ---- 模型商店（SOC 感知推荐 + SAF 共享目录）----
-                item(key = "section-1-0") {
+                settingsItem(
+                    page.shows(IntelligenceSection.ModelStore.itemKey),
+                    IntelligenceSection.ModelStore.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -673,7 +831,10 @@ internal fun SettingsContent(
                         }
                     }
                 }
-                item(key = "section-1-1") {
+                settingsItem(
+                    page.shows(IntelligenceSection.ModelStoreShared.itemKey),
+                    IntelligenceSection.ModelStoreShared.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -717,15 +878,25 @@ internal fun SettingsContent(
                                 }
                             }
                             if (state.sharedNames.isNotEmpty()) {
-                                Text(
-                                    stringResource(
-                                        R.string.settings_shared_list,
-                                        state.sharedNames.joinToString("、") {
-                                            it.removeSuffix(".litertlm")
-                                        },
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
+                                if (showTechnical) {
+                                    Text(
+                                        stringResource(
+                                            R.string.settings_shared_list,
+                                            state.sharedNames.joinToString("、") {
+                                                it.removeSuffix(".litertlm")
+                                            },
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                } else {
+                                    Text(
+                                        stringResource(
+                                            R.string.settings_shared_count_simple,
+                                            state.sharedNames.size,
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
                             }
                             val linkable = state.sharedNames.filter { name ->
                                 state.models.none { it.file.name == name }
@@ -736,11 +907,16 @@ internal fun SettingsContent(
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                                 linkable.forEach { name ->
+                                    val shownName = if (showTechnical) {
+                                        name.removeSuffix(".litertlm")
+                                    } else {
+                                        stringResource(settingsModelTier(name).labelRes())
+                                    }
                                     OutlinedButton(onClick = { actions.enableShared(name) }) {
                                         Text(
                                             stringResource(
                                                 R.string.settings_enable,
-                                                name.removeSuffix(".litertlm"),
+                                                shownName,
                                             ),
                                         )
                                     }
@@ -758,7 +934,10 @@ internal fun SettingsContent(
                 }
 
                 // ---- GPU 加速 ----
-                item(key = "section-2") {
+                settingsItem(
+                    page.shows(IntelligenceSection.Gpu.itemKey),
+                    IntelligenceSection.Gpu.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -779,16 +958,18 @@ internal fun SettingsContent(
                                     )
                                 }
                             }
-                            Text(
-                                stringResource(R.string.settings_gpu_hint),
-                                style = MaterialTheme.typography.bodySmall,
+                            SettingsExpandableHint(
+                                text = stringResource(R.string.settings_gpu_hint),
                             )
                         }
                     }
                 }
 
                 // ---- 模型文件 ----
-                item(key = "section-3") {
+                settingsItem(
+                    page.shows(IntelligenceSection.ModelFiles.itemKey),
+                    IntelligenceSection.ModelFiles.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -798,7 +979,13 @@ internal fun SettingsContent(
                             )
                             if (state.models.isEmpty()) {
                                 EmptyState(
-                                    title = stringResource(R.string.settings_models_empty),
+                                    title = stringResource(
+                                        if (showTechnical) {
+                                            R.string.settings_models_empty
+                                        } else {
+                                            R.string.settings_models_empty_simple
+                                        },
+                                    ),
                                 )
                             }
                             state.models.forEach { item ->
@@ -808,13 +995,29 @@ internal fun SettingsContent(
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Column(Modifier.weight(1f)) {
-                                        Text(item.file.name, style = MaterialTheme.typography.bodyMedium)
                                         Text(
-                                            stringResource(
-                                                R.string.settings_model_size_line,
-                                                item.label,
-                                                item.sizeBytes / 1024 / 1024,
-                                            ),
+                                            if (showTechnical) {
+                                                item.file.name
+                                            } else {
+                                                stringResource(
+                                                    settingsModelTier(item.file.name).labelRes(),
+                                                )
+                                            },
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                        Text(
+                                            if (showTechnical) {
+                                                stringResource(
+                                                    R.string.settings_model_size_line,
+                                                    item.label,
+                                                    item.sizeBytes / 1024 / 1024,
+                                                )
+                                            } else {
+                                                stringResource(
+                                                    R.string.settings_model_size_only,
+                                                    item.sizeBytes / 1024 / 1024,
+                                                )
+                                            },
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }
@@ -828,7 +1031,10 @@ internal fun SettingsContent(
                 }
 
                 // ---- 向量空间注册表（维度来自 embedding_meta.dimensions，P1-6）----
-                item(key = "section-4") {
+                settingsItem(
+                    page.shows(IntelligenceSection.VectorSpace.itemKey),
+                    IntelligenceSection.VectorSpace.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
@@ -841,7 +1047,7 @@ internal fun SettingsContent(
                                     stringResource(R.string.settings_spaces_empty),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
-                            } else {
+                            } else if (showTechnical) {
                                 state.spaces.forEach { space ->
                                     Text(
                                         stringResource(
@@ -853,17 +1059,37 @@ internal fun SettingsContent(
                                         style = MaterialTheme.typography.bodySmall,
                                     )
                                 }
+                            } else {
+                                Text(
+                                    stringResource(
+                                        R.string.settings_spaces_count_simple,
+                                        state.spaces.size,
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
                             }
                         }
                     }
                 }
-                item(key = "sub-ask") {
+                settingsItem(page == SettingsPage.ADVANCED, "sub-ask") {
                     SettingsGroupSubHeader(stringResource(R.string.settings_sub_ask))
                 }
 
 
                 // ---- B8：SAG 增强 / LLM（骨架：配置/测试/开关；未配置时离线检索零回归） ----
-                item(key = "section-8-0") {
+                if (page == SettingsPage.NETWORK) {
+                    item(key = "network-hero") {
+                        SettingsNetworkPageHero(
+                            state = state,
+                            actions = actions,
+                            onOpenAdvanced = { onOpenPage(SettingsPage.ADVANCED) },
+                        )
+                    }
+                }
+                settingsItem(
+                    page.shows(IntelligenceSection.Llm.itemKey),
+                    IntelligenceSection.Llm.itemKey,
+                ) {
                     // P1：滚到该段才解密 Keystore 读 LLM 配置（进场不做）
                     LaunchedEffect(Unit) { actions.ensureLlmLoaded() }
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
@@ -929,10 +1155,8 @@ internal fun SettingsContent(
                                 placeholder = { Text(stringResource(R.string.settings_llm_base_url_hint)) },
                                 singleLine = true,
                             )
-                            Text(
+                            SettingsExpandableHint(
                                 text = stringResource(R.string.settings_llm_opencode_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             OutlinedTextField(
                                 value = llmModel,
@@ -1014,7 +1238,10 @@ internal fun SettingsContent(
                         }
                     }
                 }
-                item(key = "section-8-1") {
+                settingsItem(
+                    page.shows(IntelligenceSection.LlmBehavior.itemKey),
+                    IntelligenceSection.LlmBehavior.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -1080,11 +1307,14 @@ internal fun SettingsContent(
                         }
                     }
                 }
-                item(key = "sub-retrieval") {
+                settingsItem(page == SettingsPage.ADVANCED, "sub-retrieval") {
                     SettingsGroupSubHeader(stringResource(R.string.settings_sub_retrieval))
                 }
 
-                item(key = "section-8-2") {
+                settingsItem(
+                    page.shows(IntelligenceSection.Budget.itemKey),
+                    IntelligenceSection.Budget.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -1103,18 +1333,20 @@ internal fun SettingsContent(
                                 }
                             }
                             val tierBudget = state.budgetTier.budget
-                            Text(
-                                stringResource(
-                                    R.string.settings_budget_current,
-                                    tierBudget.kPool,
-                                    tierBudget.kSeed,
-                                    tierBudget.frontier,
-                                    tierBudget.kCand,
-                                    tierBudget.kEvent,
-                                    tierBudget.kOut,
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+                            if (showTechnical) {
+                                Text(
+                                    stringResource(
+                                        R.string.settings_budget_current,
+                                        tierBudget.kPool,
+                                        tierBudget.kSeed,
+                                        tierBudget.frontier,
+                                        tierBudget.kCand,
+                                        tierBudget.kEvent,
+                                        tierBudget.kOut,
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
                             Text(
                                 stringResource(R.string.settings_budget_hint),
                                 style = MaterialTheme.typography.bodySmall,
@@ -1138,7 +1370,10 @@ internal fun SettingsContent(
                 }
 
                 // ---- B9：SAG 两阶段抽取状态（与导入状态独立；失败不影响离线检索） ----
-                item(key = "section-9") {
+                settingsItem(
+                    page.shows(IntelligenceSection.Sag.itemKey),
+                    IntelligenceSection.Sag.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -1232,13 +1467,25 @@ internal fun SettingsContent(
                         }
                     }
                 }
-                item(key = "header-data") {
+                settingsItem(page == SettingsPage.ADVANCED, "header-data") {
                     SettingsGroupHeader(stringResource(R.string.settings_group_data))
                 }
 
 
                 // ---- 知识库迁移 + 自动重嵌入 ----
-                item(key = "section-5-0") {
+                if (page == SettingsPage.LIBRARY) {
+                    item(key = "library-hero") {
+                        SettingsLibraryPageHero(
+                            state = state,
+                            actions = actions,
+                            onImport = onOpenImport,
+                        )
+                    }
+                }
+                settingsItem(
+                    page.shows(IntelligenceSection.Migration.itemKey),
+                    IntelligenceSection.Migration.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -1261,14 +1508,11 @@ internal fun SettingsContent(
                             ) {
                                 Text(stringResource(R.string.settings_restore_latest))
                             }
-                            Text(
-                                stringResource(R.string.settings_migration_hint),
-                                style = MaterialTheme.typography.bodySmall,
+                            SettingsExpandableHint(
+                                text = stringResource(R.string.settings_migration_hint),
                             )
-                            Text(
-                                stringResource(R.string.settings_backup_privacy_note),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            SettingsExpandableHint(
+                                text = stringResource(R.string.settings_backup_privacy_note),
                             )
                             state.migrationMessage?.let {
                                 Text(
@@ -1281,7 +1525,16 @@ internal fun SettingsContent(
                     }
                 }
 
-                item(key = "section-5-1") {
+                settingsItem(
+                    page.shows(IntelligenceSection.Reembed.itemKey) &&
+                        (
+                            page != SettingsPage.LIBRARY ||
+                                state.reembedTotal > 0 ||
+                                state.lastReembed != null ||
+                                state.legacySpaces.isNotEmpty()
+                            ),
+                    IntelligenceSection.Reembed.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -1329,7 +1582,9 @@ internal fun SettingsContent(
 
                 // ---- B7：旧模型空间警告（检测到非 EGemma2 空间时提示重新导入；不自动删数据）----
                 // 审查修复：报表失败不再静默（错误可见、可重试），警告卡逐空间展示 modelId + vectorCount。
-                state.legacySpacesError?.let { error ->
+                state.legacySpacesError
+                    ?.takeIf { page == SettingsPage.ADVANCED || page == SettingsPage.LIBRARY }
+                    ?.let { error ->
                     item(key = "legacy-spaces-error") {
                         ErrorState(
                             message = error,
@@ -1339,7 +1594,9 @@ internal fun SettingsContent(
 
                     }
                 }
-                if (state.legacySpaces.isNotEmpty()) {
+                if ((page == SettingsPage.ADVANCED || page == SettingsPage.LIBRARY) &&
+                    state.legacySpaces.isNotEmpty()
+                ) {
                     item(key = "legacy-spaces") {
                         ZhiBoxCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1352,15 +1609,25 @@ internal fun SettingsContent(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.error,
                                 )
-                                state.legacySpaces.forEach { space ->
-                                    val modelLabel = space.modelId.ifBlank {
-                                        stringResource(R.string.settings_legacy_unknown_model)
+                                if (showTechnical) {
+                                    state.legacySpaces.forEach { space ->
+                                        val modelLabel = space.modelId.ifBlank {
+                                            stringResource(R.string.settings_legacy_unknown_model)
+                                        }
+                                        Text(
+                                            stringResource(
+                                                R.string.settings_legacy_spaces_row,
+                                                modelLabel,
+                                                space.vectorCount,
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
                                     }
+                                } else {
                                     Text(
                                         stringResource(
-                                            R.string.settings_legacy_spaces_row,
-                                            modelLabel,
-                                            space.vectorCount,
+                                            R.string.settings_legacy_spaces_simple,
+                                            state.legacySpaces.size,
                                         ),
                                         style = MaterialTheme.typography.bodySmall,
                                     )
@@ -1381,7 +1648,10 @@ internal fun SettingsContent(
                 }
 
                 // ---- 知识库 ----
-                item(key = "section-7") {
+                settingsItem(
+                    page.shows(IntelligenceSection.Knowledge.itemKey),
+                    IntelligenceSection.Knowledge.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
@@ -1400,13 +1670,16 @@ internal fun SettingsContent(
                         }
                     }
                 }
-                item(key = "header-diagnostics") {
+                settingsItem(page == SettingsPage.ADVANCED, "header-diagnostics") {
                     SettingsGroupHeader(stringResource(R.string.settings_group_diagnostics))
                 }
 
 
                 // ---- 索引诊断（B3-14：三表计数 / 孤儿明细 / 修复 before-after）----
-                item(key = "section-6-0") {
+                settingsItem(
+                    page.shows(IntelligenceSection.Diagnostics.itemKey),
+                    IntelligenceSection.Diagnostics.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -1423,20 +1696,35 @@ internal fun SettingsContent(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             } else {
-                                Text(
-                                    stringResource(
-                                        R.string.settings_index_counts,
-                                        health.chunkCount,
-                                        health.ftsCount,
-                                        health.embeddingCount,
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
+                                if (showTechnical) {
+                                    Text(
+                                        stringResource(
+                                            R.string.settings_index_counts,
+                                            health.chunkCount,
+                                            health.ftsCount,
+                                            health.embeddingCount,
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
                                 Text(
                                     if (health.healthy) {
-                                        stringResource(R.string.settings_index_healthy)
+                                        stringResource(
+                                            if (showTechnical) {
+                                                R.string.settings_index_healthy
+                                            } else {
+                                                R.string.settings_index_healthy_simple
+                                            },
+                                        )
                                     } else {
-                                        stringResource(R.string.settings_index_unhealthy, health.reasons.size)
+                                        stringResource(
+                                            if (showTechnical) {
+                                                R.string.settings_index_unhealthy
+                                            } else {
+                                                R.string.settings_index_unhealthy_simple
+                                            },
+                                            health.reasons.size,
+                                        )
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = if (health.healthy) {
@@ -1445,7 +1733,7 @@ internal fun SettingsContent(
                                         MaterialTheme.colorScheme.error
                                     },
                                 )
-                                if (!health.healthy) {
+                                if (!health.healthy && showTechnical) {
                                     Text(
                                         stringResource(
                                             R.string.settings_index_orphans,
@@ -1491,7 +1779,10 @@ internal fun SettingsContent(
                         }
                     }
                 }
-                item(key = "section-6-1") {
+                settingsItem(
+                    page.shows(IntelligenceSection.Trace.itemKey),
+                    IntelligenceSection.Trace.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -1507,7 +1798,7 @@ internal fun SettingsContent(
                                     stringResource(R.string.settings_trace_summary, traceTotal),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
-                                if (state.traceRecentModes.isNotEmpty()) {
+                                if (showTechnical && state.traceRecentModes.isNotEmpty()) {
                                     Text(
                                         stringResource(
                                             R.string.settings_trace_modes,
@@ -1546,7 +1837,10 @@ internal fun SettingsContent(
                         }
                     }
                 }
-                item(key = "section-6-2") {
+                settingsItem(
+                    page.shows(IntelligenceSection.Quality.itemKey),
+                    IntelligenceSection.Quality.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
@@ -1634,11 +1928,17 @@ internal fun SettingsContent(
                                     ),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
-                                val errorCodeText = formatDistribution(quality.jobsByErrorCode, limit = 6)
-                                Text(
-                                    stringResource(R.string.settings_quality_error_codes, errorCodeText),
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
+                                if (showTechnical) {
+                                    val errorCodeText =
+                                        formatDistribution(quality.jobsByErrorCode, limit = 6)
+                                    Text(
+                                        stringResource(
+                                            R.string.settings_quality_error_codes,
+                                            errorCodeText,
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
                                 val typeText = formatDistribution(quality.entityTypeCounts, limit = 8)
                                 Text(
                                     stringResource(R.string.settings_quality_types, typeText),
@@ -1686,13 +1986,21 @@ internal fun SettingsContent(
                         }
                     }
                 }
-                item(key = "header-privacy") {
+                settingsItem(page == SettingsPage.ADVANCED, "header-privacy") {
                     SettingsGroupHeader(stringResource(R.string.settings_group_privacy))
                 }
 
 
                 // ---- 隐私与离线声明 ----
-                item(key = "section-10") {
+                if (page == SettingsPage.PRIVACY) {
+                    item(key = "privacy-hero") {
+                        SettingsPrivacyPageHero()
+                    }
+                }
+                settingsItem(
+                    page.shows(IntelligenceSection.Privacy.itemKey),
+                    IntelligenceSection.Privacy.itemKey,
+                ) {
                     ZhiBoxCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
@@ -1700,9 +2008,9 @@ internal fun SettingsContent(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                             )
-                            Text(
-                                stringResource(R.string.settings_privacy_text),
-                                style = MaterialTheme.typography.bodySmall,
+                            SettingsExpandableHint(
+                                text = stringResource(R.string.settings_privacy_text),
+                                defaultExpanded = page == SettingsPage.PRIVACY,
                             )
                         }
                     }
@@ -1725,6 +2033,7 @@ internal fun SettingsContent(
                 }
             }
         }
+        } // 关闭 Column（技术细节固定行 + 列表 Box）
     }
 }
 
@@ -1743,10 +2052,10 @@ private const val DEEP_LINK_HIGHLIGHT_LAYOUT_WAIT_MS = 500L
 private const val DEEP_LINK_HIGHLIGHT_ALPHA = 0.12f
 
 /** 设置页 LazyColumn 内容内边距（高亮覆盖块按它对齐卡片左右边界）。 */
-private val SettingsListPadding = 16.dp
+internal val SettingsListPadding = 16.dp
 
-/** 设置页 LazyColumn contentPadding（与 [SettingsListPadding] 同源）。 */
-private val SettingsListContentPadding = PaddingValues(SettingsListPadding)
+/** 设置页 LazyColumn contentPadding（与 [SettingsListPadding] 同源；简单首页复用）。 */
+internal val SettingsListContentPadding = PaddingValues(SettingsListPadding)
 
 /**
  * 系统「减少动画」是否关闭：读 `ANIMATOR_DURATION_SCALE`（开发者选项/无障碍关闭动画时为 0）。
@@ -1858,7 +2167,11 @@ private fun SwitchRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier.semantics { contentDescription = label },
+        )
     }
 }
 
@@ -1897,7 +2210,8 @@ private fun previewSettingsState(
 @Composable
 private fun SettingsLightPreview() {
     ZhiBoxTheme(darkTheme = false) {
-        SettingsContent(
+        SettingsPageContent(
+            page = SettingsPage.ADVANCED,
             state = previewSettingsState(
                 IngestRepository.IndexHealth(1234, 1234, 1234, emptyList(), emptyList()),
             ),
@@ -1910,7 +2224,8 @@ private fun SettingsLightPreview() {
 @Composable
 private fun SettingsDarkPreview() {
     ZhiBoxTheme(darkTheme = true) {
-        SettingsContent(
+        SettingsPageContent(
+            page = SettingsPage.ADVANCED,
             state = previewSettingsState(
                 IngestRepository.IndexHealth(1234, 1200, 1210, listOf(7L, 9L), listOf(11L)),
             ).copy(
@@ -1925,6 +2240,7 @@ private fun SettingsDarkPreview() {
                     timeoutSeconds = 30,
                     maskedKey = "sk-***abcd",
                 ),
+                llmLoaded = true,
                 sagEnabled = true,
                 answerEnabled = false,
                 networkDisabled = true,
@@ -1980,7 +2296,8 @@ private fun SettingsDarkPreview() {
 @Composable
 private fun SettingsErrorPreview() {
     ZhiBoxTheme(darkTheme = false) {
-        SettingsContent(
+        SettingsPageContent(
+            page = SettingsPage.ADVANCED,
             state = previewSettingsState(
                 indexHealth = null,
                 error = "刷新设置失败：数据库被占用",

@@ -192,3 +192,16 @@ The shape language is defined by **pronounced, friendly curves** (`rounded-3xl` 
 - **Cards:** The core structural unit. Pure white, `rounded-3xl` cards floating on the warm cream background, housing document summaries, import progress bars, and graph node details.
 - **Checkboxes & Radios:** Custom geometric toggles with crisp borders, employing the breathing green accent to confirm active states.
 - **Lists & Status Indicators:** Document lists featuring inline status pills, accompanied by the signature "breathing green dot" (`#2E7D32`) to denote live model readiness and active offline sync states.
+
+## Settings IA（简单模式 + 高级与诊断，2026-10）
+
+设置页采用**两层信息架构**，原 17 项能力一项不删：
+
+1. **简单首页（默认）**：4 张主卡 + 1 个高级入口，只回答用户要做的 5 件事。
+   - 本地 AI（当前档位 + 管理模型）、资料库（资料/片段计数 + 导入/导出）、联网问答（复合开关 + 配置服务）、隐私与关于（一句话结论 + 查看说明）、高级与诊断入口。
+   - 每张卡 = 一句话结论（结果语言）+ 当前值 + 1 个主按钮；卡片高度以 2 行说明为上限。
+   - 首屏**禁止**出现实现术语：嵌入 / 向量 / 分块 / 重嵌入 / FTS / SAG / GPU / LLM / 并发 / 孤儿 / queryHash / litertlm / B3-14 / 错误码，也不渲染原始文件名、spaceId、维度、trace mode。
+2. **二级页**：模型管理 / 资料库 / 联网问答 / 隐私与关于 / 高级与诊断；均为同一路由内的页面状态切换（与检索屏证据详情同构），返回键先回简单首页。
+3. **高级与诊断**：原 17 项全量 + 现有分组顺序；顶部固定「显示技术细节」开关（默认关），关闭时隐藏文件名/空间 ID/错误码/诊断计数，打开后恢复现状；长说明默认折叠为「说明 ▾」。
+
+文案规则：新文案 key 统一走 `strings.xml`（`settings_home_*` / `settings_page_*` / `settings_tier_*`），简单模式文案由 `SettingsCopyAuditTest` 做术语黑名单门禁；`SettingsItemOrder` 深链下标在高级页保持不变。

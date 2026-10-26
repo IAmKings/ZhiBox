@@ -172,7 +172,7 @@
     <string name="settings_reembed_manual">同步旧数据到当前模型</string>
     <string name="settings_reembed_enqueue_failed">启动同步失败：%1$s</string>
 
-    <string name="settings_section_diagnostics">索引诊断（B3-14：三表计数 / 孤儿明细）</string>
+    <string name="settings_section_diagnostics">资料索引检查</string>
     <string name="settings_index_checking">检查中…</string>
     <string name="settings_index_healthy">索引一致（chunk / FTS / 向量无孤儿行）</string>
     <string name="settings_index_unhealthy">索引不一致（%1$d 项原因）</string>
@@ -690,4 +690,71 @@
     <string name="intelligence_status_syncing">正在同步数据，%1$d%%</string>
     <string name="intelligence_status_extracting">正在抽取内容</string>
     <string name="intelligence_pending_action_configure">去配置</string>
+
+    <!-- ==== 设置页简化：简单首页 + 二级页 + 高级与诊断 ==== -->
+    <!-- 页面标题 -->
+    <string name="settings_page_models">模型管理</string>
+    <string name="settings_page_library">资料库</string>
+    <string name="settings_page_network">联网问答</string>
+    <string name="settings_page_privacy">隐私与关于</string>
+    <string name="settings_page_advanced">高级与诊断</string>
+
+    <!-- 模型档位（用户语言，不出现 A/B/D 与文件名；270M/740M 为实验模型） -->
+    <string name="settings_tier_auto">自动（推荐）</string>
+    <string name="settings_hero_current_model">当前模型</string>
+    <string name="settings_hero_library_overview">资料库概览</string>
+    <string name="settings_tier_none">还没有模型</string>
+    <string name="settings_tier_custom">自定义模型</string>
+    <string name="settings_tier_270">轻量 270M（实验）</string>
+    <string name="settings_tier_440">标准 440M（推荐）</string>
+    <string name="settings_tier_740">更强 740M（实验）</string>
+
+    <!-- 简单首页 4 卡 + 高级入口 -->
+    <string name="settings_home_ai_title">本地 AI</string>
+    <string name="settings_home_ai_status_missing">还没有模型</string>
+    <string name="settings_home_ai_status_custom">自定义模型</string>
+    <string name="settings_home_ai_status_ready">%1$s · 已索引</string>
+    <string name="settings_home_ai_status_not_indexed">%1$s · 未索引</string>
+    <string name="settings_home_ai_downloading">正在下载 %1$d%%</string>
+    <string name="settings_home_manage">管理模型</string>
+    <string name="settings_home_library_title">资料库</string>
+    <string name="settings_home_library_empty">还没有资料</string>
+    <string name="settings_home_library_pending">%1$d 篇资料 · 待索引</string>
+    <string name="settings_home_library_status">%1$d 篇资料 · %2$d 个片段</string>
+    <string name="settings_home_library_legacy">有 %1$d 份旧数据需要重新导入</string>
+    <string name="settings_home_import">导入资料</string>
+    <string name="settings_home_export">导出备份</string>
+    <string name="settings_home_network_title">联网问答</string>
+    <string name="settings_home_network_switch">允许联网问答</string>
+    <string name="settings_home_network_loading">读取中…</string>
+    <string name="settings_home_network_no_service">未配置服务</string>
+    <string name="settings_home_network_blocked">网络已禁止</string>
+    <string name="settings_home_network_on">已允许</string>
+    <string name="settings_home_network_off">已关闭</string>
+    <string name="settings_home_network_config">配置服务</string>
+    <string name="settings_network_more_advanced">更多联网选项（SAG 增强等）在高级与诊断</string>
+    <string name="settings_home_privacy_title">隐私与关于</string>
+    <string name="settings_home_privacy_status">默认离线处理，资料保存在本机</string>
+    <string name="settings_home_privacy_more">查看说明</string>
+    <string name="settings_home_advanced_title">高级与诊断</string>
+    <string name="settings_home_advanced_status">模型参数、检索预算与问题排查</string>
+    <string name="settings_home_error">设置读取失败，去高级与诊断查看详情</string>
+    <string name="settings_model_size_only">%1$d MB</string>
+    <string name="settings_spaces_count_simple">%1$d 个索引</string>
+    <string name="settings_shared_count_simple">%1$d 个已共享模型</string>
+    <string name="settings_legacy_spaces_simple">%1$d 份旧数据需要重新导入</string>
+    <string name="settings_no_model_simple">还没有可用模型</string>
+    <string name="settings_models_empty_simple">还没有模型文件</string>
+    <string name="settings_index_healthy_simple">索引检查正常</string>
+    <string name="settings_index_unhealthy_simple">索引有 %1$d 处异常（详见技术细节）</string>
+
+    <!-- 高级与诊断：技术细节开关 / 说明折叠 / 切换模型确认 -->
+    <string name="settings_advanced_technical">显示技术细节</string>
+    <string name="settings_advanced_technical_hint">显示文件名、空间 ID、错误码等排查信息</string>
+    <string name="settings_hint_show">说明 ▾</string>
+    <string name="settings_hint_hide">收起 ▴</string>
+    <string name="settings_model_switch_title">切换模型？</string>
+    <string name="settings_model_switch_message">切换后会重建索引，已有资料需要重新索引（后台进行，可稍后查看进度）。</string>
+    <string name="settings_model_switch_confirm">切换</string>
+    <string name="settings_privacy_version">版本 %1$s</string>
 </resources>

@@ -22,10 +22,10 @@
 | F2 | ping 动画为无限循环（1800ms，scale 1→2.4，alpha 0.45→0），无减少动画处理 | 同上 `rememberInfiniteTransition` | 对前庭/光敏感用户不友好；"一直闪"也暗示"一直在算" |
 | F3 | 命中区只有 16dp 容器 / 10dp 圆点，且不可点击 | `Modifier.size(16.dp)`，无 clickable | 作为入口不达标（需 ≥48dp） |
 | F4 | 首页不知道"有没有模型" | `HomeViewModel` 只聚合文档/来源/首块摘要，无模型状态 | 新装无模型时，空态仍引导「去导入」→ 必然失败（`ImportScreen` 才提示缺模型） |
-| F5 | 设置页是**单个 `Column(verticalScroll)`**，17 个 section 顺序排列 | `SettingsScreen.kt:420`、各 section 标题行号见附录 B | 深链需要"锚点"方案（见 §7.2） |
+| F5 | ~~设置页是**单个 `Column(verticalScroll)`**~~（已过期） | 现为 `LazyColumn`；2026-10 简化为「简单首页 4 卡 + 高级与诊断页」，见 §7 | 深链先到高级页再落位 |
 | F6 | GPU 的**真实可用性事前不可知** | `EmbeddingRuntime` 在 auto 模式首次推理时 `probeGpuWithTimeout` | 面板只能显示"档位偏好"，不能显示"GPU 可用" |
 | F7 | LLM 的**可达性事前不可知** | `LlmConfigUi` 只有 baseUrl/model/timeout/maskedKey；连接性靠"测试连接" | 只能区分"已配置/未配置" |
-| F8 | UI 层没有设置页相关测试 | `app/src/test/java/com/zhibox/memory/ui/` 无 settings 测试 | 重构无测试网，需先补聚合层单测 |
+| F8 | ~~UI 层没有设置页相关测试~~（已过期） | 现有 `SettingsItemOrderTest`、`SettingsPageModelTest`、`SettingsCopyAuditTest`、`SettingsHomeRobolectricTest`、`SettingsAdvancedRobolectricTest` | 重构有测试网 |
 
 ### 1.2 方案 B 定义
 
@@ -264,14 +264,14 @@ A) 裸点（推荐，改动最小）        B) 点 + 文案 chip                
 
 | 面板行 | 目标设置锚点 | 跳转后行为 |
 |---|---|---|
-| 嵌入模型 | `Section.Embedding` | 滚动到「嵌入路径」，高亮 1.2s |
+| 嵌入模型 | `Section.Embedding` | 先进入「高级与诊断」页，再滚动到「嵌入路径」，高亮 1.2s |
 | 嵌入路径 | `Section.Embedding` | 同上 |
-| GPU 加速 | `Section.Gpu` | 滚动到「GPU 加速」 |
-| LLM 配置 | `Section.Llm` | 滚动到「SAG 增强 / LLM」 |
+| GPU 加速 | `Section.Gpu` | 先进入「高级与诊断」，滚动到「GPU 加速」 |
+| LLM 配置 | `Section.Llm` | 先进入「高级与诊断」，滚动到「SAG 增强 / LLM」 |
 | 旧模型空间 | `Section.Legacy`(来源页入口) → 推荐跳来源页 | 直接打开来源屏（可删除/重导） |
-| 抽取失败 | 面板内重试；「详情」→ `Section.Sag` | — |
-| 索引不一致 | 面板内修复；「详情」→ `Section.Diagnostics` | — |
-| 打开设置 · 智能 | 设置页顶部（智能分组） | — |
+| 抽取失败 | 面板内重试；「详情」→ `Section.Sag` | 先进入「高级与诊断」，滚动到「SAG 抽取状态」 |
+| 索引不一致 | 面板内修复；「详情」→ `Section.Diagnostics` | 先进入「高级与诊断」，滚动到「资料索引检查」 |
+| 打开设置 · 智能 | 设置简单首页（顶部 4 卡） | 不再直接落到原 17 项平铺页 |
 
 ### 6.6 状态更新
 
@@ -280,29 +280,31 @@ A) 裸点（推荐，改动最小）        B) 点 + 文案 chip                
 
 ---
 
-## 7. 设置页重组与深链
+## 7. 设置页信息架构与深链（2026-10 简化后）
 
-### 7.1 分组重组（只分组，不删功能）
+### 7.1 两层 IA（原 17 项零缺失）
 
-现有 17 个 section 按语义归入 4 组（**顺序调整，功能不变**）：
-
-| 分组 | 包含 section（现状行号） |
+| 页面 | 内容 |
 |---|---|
-| **智能** | 嵌入路径(439)、模型商店(477)、GPU 加速(621)、模型文件(649)、向量空间注册表(687)、SAG 增强/LLM(1129)、问答首次联网隐私说明(1284)、检索预算档位(1332)、SAG 抽取状态(1384)、抽取并发度(1416) |
-| **数据** | 知识库迁移(716)、旧数据同步(754)、知识库(1110) |
-| **诊断** | 索引诊断(845)、检索/问答 trace(922)、抽取质量(974) |
-| **隐私与关于** | 隐私与离线声明(1478) |
+| **简单首页（默认）** | 本地 AI / 资料库 / 联网问答 / 隐私与关于 4 张主卡 + 高级与诊断入口 |
+| **模型管理** | hero（自动/轻量 270M/标准 440M/更强 740M + 下载/切换确认）+ 模型商店、共享目录、GPU、模型文件 |
+| **资料库** | hero（资料/片段计数、备份）+ 知识库迁移、旧数据同步（有旧数据才显示）、知识库 |
+| **联网问答** | hero（问答生成 + 允许联网 + 首次同意复合开关）+ LLM 服务配置 |
+| **隐私与关于** | 完整隐私声明 + 版本 |
+| **高级与诊断** | 原 17 项全量（现有 4 组 + 3 二级标题、顺序不变）+「显示技术细节」开关 |
 
-> 「智能」分组内再加二级小标题：**模型与算力** / **问答与增强** / **检索质量**，避免 10 项平铺。
+- `IntelligenceSection` / `SettingsItemOrder` 仍是锚点唯一来源，**顺序与 item key 不变**；
+  高级页按原顺序 emit，聚焦页按 `SettingsPage.sectionKeys` emit 子集。
+- 「17 项零缺失」由 `SettingsPageModelTest`（集合）与 `SettingsAdvancedRobolectricTest`
+  （逐标题可达）门禁；术语黑名单由 `SettingsCopyAuditTest` 门禁。
 
-### 7.2 锚点实现（两选一，推荐 A）
+### 7.2 深链实现（沿用 LazyColumn 方案）
 
-| 方案 | 做法 | 优点 | 风险 |
-|---|---|---|---|
-| **A（推荐）** | 保持单 `Column + verticalScroll`，各 section 用 `onGloballyPositioned` 记录 offset 到 `Map<Section, Int>`，深链时 `animateScrollTo(offset)` | 改动小（约 +30 行）、不动物理结构 | offset 依赖布局完成；需在数据加载后重算；字体缩放变化需刷新 |
-| B | 改为 `LazyColumn` + `LazyListState.scrollToItem(index)` | 精准、性能更好 | 改动大（1600 行文件的滚动骨架），需要重新验证所有内联展开态 |
-
-**契约**：`SettingsScreen(..., initialSection: Section? = null)`；进入后首帧不滚动，等首帧布局完成再滚动，避免闪跳。
+- 契约扩展：`SettingsScreen(..., initialSection: IntelligenceSection? = null)`；当 section 非空时
+  **直接进入「高级与诊断」页**，等数据加载 + 首帧布局完成再 `scrollToItem(页内下标)`，并高亮 1.2s。
+- 落位后消费一次（host 清空 target）：返回简单首页再进高级页、或旋转重建，不重复滚动/高亮。
+- 技术细节开关放在 `LazyColumn` 之外，不改变任何 item 下标，因此深链索引算法不变。
+- `initialSection = null`（面板底部「打开设置 · 智能」）→ 落到简单首页。
 
 ---
 
@@ -479,7 +481,7 @@ data class IntelligenceStatus(
 - [ ] 面板首屏无需滚动即可看到：结论句、4 个 pill、首个可用动作
 - [ ] 面板每个写操作 ≤1 击到达目标（设置锚点或就地动作）
 - [ ] 无模型时首页引导条出现一次，完成后不再出现
-- [ ] 设置页 17 个 section 一个不丢，分组与 §7.1 一致
+- [ ] 设置页 17 个 section 一个不丢：高级与诊断页全量、聚焦页为子集（`SettingsPageModelTest`）
 
 ### 12.2 无障碍
 - [ ] 状态点 TalkBack 播报：`智能状态，未就绪，未配置模型，双击打开`（含 `role=Button`）
@@ -494,7 +496,7 @@ data class IntelligenceStatus(
 - [ ] 状态 Flow 使用 `WhileSubscribed`，离开首页后不持有订阅
 
 ### 12.4 回归
-- [ ] 设置页现有 30+ 项功能零行为变化（下载/删除/清空/备份/诊断/隐私）
+- [ ] 设置页现有 30+ 项功能零行为变化（下载/删除/清空/备份/诊断/隐私）；简单首页术语黑名单 0 命中
 - [ ] 首页其余区域（时间线/筛选/输入岛）无视觉与交互变化
 - [ ] 深色模式、浅色模式、横屏（如有）均正常
 
@@ -681,3 +683,24 @@ M1 遗留的"Busy 恒 NONE"已解决：下载与重嵌入进度抽成进程级�
 | 抽取并发度 | `core/extraction/SagExtractionPreferences.kt`（默认 1） |
 | 设计令牌 | `ui/theme/Color.kt`、`Type.kt`、`Shapes.kt`；`DESIGN.md` |
 | 文档一致性门禁 | `scripts/check_docs_consistency.sh`（本文档不重复其校验事实） |
+
+---
+
+## 18. 追加：设置页简化（2026-10，覆盖 §7 的两层 IA）
+
+设置页从「17 项平铺单列表」改为**简单首页 + 高级与诊断**两层：
+
+| 层 | 内容 |
+|---|---|
+| 简单首页（默认） | 本地 AI / 资料库 / 联网问答 / 隐私与关于 4 张主卡 + 高级与诊断入口；术语黑名单门禁 |
+| 二级页 | 模型管理 / 资料库 / 联网问答 / 隐私与关于；屏内页面状态切换（同一 `"settings"` 路由） |
+| 高级与诊断 | 原 17 项全量、现有分组与顺序不变；顶部「显示技术细节」开关（默认关）；长说明折叠 |
+
+深链契约不变宽：`initialSection != null` → 直接进入高级与诊断页 → 数据加载 + 首帧后 `scrollToItem`
+→ 1.2s 高亮 → 消费一次；`initialSection == null`（面板底部「打开设置 · 智能」）→ 简单首页。
+
+- 实现文件：`ui/SettingsPageModel.kt`（页面/门控/摘要纯逻辑）、`ui/SettingsHome.kt`、`ui/SettingsPageHeroes.kt`、
+  `ui/SettingsCommon.kt`、`ui/SettingsScreen.kt`（host + 按页 emit）。
+- 门禁：`SettingsPageModelTest`、`SettingsCopyAuditTest`、`SettingsHomeRobolectricTest`、
+  `SettingsAdvancedRobolectricTest`；`SettingsItemOrderTest` 保持不变（高级页顺序未变）。
+- 本文 §7.1 的「分组重组」描述与 §13 P1-2 的"方案 A"均已过时，以本节为准。

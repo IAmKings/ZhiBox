@@ -242,8 +242,8 @@ Manifest / 安全（P0-3、P1-10 回归）
 - [ ] 备份导出 → 导入恢复（v2 格式）→ 再导出 vectors 数不降
 - [ ] 模型路线（B7 后仅 EGemma2）：Path A 440M/740M（UniversalEmbedder）与 Path B 270M（litertlm EmbeddingEngine）
       分别加载并输出有限向量；三档强度推荐（270M/440M/740M）可切换
-- [ ] 旧数据兼容：含旧模型空间的库升级后设置页出现"旧模型空间"警告；旧备份导入被可读拒绝；删除旧文档后重新导入可恢复检索
-- [ ] 空间切换/重建向量流程可用；设置页模型下载 SHA 校验通过
+- [ ] 旧数据兼容：含旧模型空间的库升级后「设置 → 资料库」（或 高级与诊断）出现"旧模型空间"警告；旧备份导入被可读拒绝；删除旧文档后重新导入可恢复检索
+- [ ] 空间切换/重建向量流程可用；「设置 → 高级与诊断 → 模型商店」下载 SHA 校验通过
 
 可追溯与回滚
 
@@ -255,7 +255,7 @@ Manifest / 安全（P0-3、P1-10 回归）
 
 ## 7. 回滚说明
 
-1. **先保数据**：回滚/卸载前让用户执行“导出知识库备份”（设置页），避免个人知识库丢失。
+1. **先保数据**：回滚/卸载前让用户执行“导出知识库备份”（设置 → 资料库 → 导出备份），避免个人知识库丢失。
 2. **同 versionCode 不能降级安装**：Android 不允许 versionCode 回退。
    - 若只是回退代码但保持/提高 versionCode：用旧代码 + 更高 versionCode 重新构建发布（推荐）；
    - 若必须装回旧包：先 `adb uninstall com.zhibox.memory`（会清数据！）再安装旧 APK。
@@ -285,7 +285,7 @@ Manifest / 安全（P0-3、P1-10 回归）
 - gitHead：`a28a3f8`；size：70,164,019 bytes
 - SHA-256：`46cb20eaab2cf9700f8952cea47c1c2158d7c88ffae6b781032d91a0683e1619`
 - apksigner：PASS；signer cert SHA-256 `b1d136ba…1db1d1`（与 v0.1.1 同 release key）
-- 设备 smoke：官方 signed RC 已在 PJZ110 上 `adb install -r` 覆盖升级（同 release key，保留数据/LLM），主页/检索/设置/问答入口 smoke 通过。
+- 设备 smoke：官方 signed RC 已在 PJZ110 上 `adb install -r` 覆盖升级（同 release key，保留数据/LLM），主页/检索/设置/问答入口 smoke 通过（设置页走查路径：简单首页 → 高级与诊断）。
 - **clean-install smoke：K40（M2012K10C）`adb install` 全新安装 PASS**；cold start 主页空态/检索/设置均正常，模型缺失状态正确提示；未做 destructive import/delete。
 - 未做：模型下载/LLM/聊天功能 smoke（需 key/model）；R5 并发压力仍按豁免记录。
 - 结论：signed RC 已完成 clean-install + upgrade smoke；仍未 tag/未发布，Agent 质量声明仍为 false。

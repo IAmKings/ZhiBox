@@ -3,6 +3,19 @@
 > 适用：**v0.1.4**（2026-10-24 发布；v0.1.3/v0.1.1/v0.1.0-mvp 为历史版本）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/`、`docs/product/INTELLIGENCE_HUB_SPEC.md` 与 `docs/product/INTELLIGENCE_HUB_ACCEPTANCE.md`。
 > **发布状态**：v0.1.4 已 tag/发布（GitHub Release 自动构建签名 APK）；v0.1.3 已发布；v0.1.1、v0.1.0-mvp 已发布。
 
+## 未发布（master）：设置页简化（简单模式 + 高级与诊断）
+
+- **默认设置页改为「简单首页」**：本地 AI / 资料库 / 联网问答 / 隐私与关于 4 张主卡 + 高级与诊断入口；
+  首屏不出现实现术语，4 个典型任务（换模型/导入/开关联网问答/查看资料库）≤2 击。
+- **原 17 项能力零缺失**：全部迁入「高级与诊断」二级页（分组与顺序不变），顶部新增「显示技术细节」开关（默认关）；
+  长说明默认折叠为「说明 ▾」；诊断卡标题去掉内部工单号（「资料索引检查」）。
+- **二级页**：模型管理（自动/轻量 270M/标准 440M/更强 740M，切档二次确认重建索引）、资料库、联网问答、隐私与关于。
+- **深链不变**：`IntelligenceSection` 锚点先进入高级页再滚动 + 1.2s 高亮；`SettingsItemOrder` 顺序与单测保持不变。
+- **新增门禁**：`SettingsCopyAuditTest`（术语黑名单）、`SettingsPageModelTest`（17 项集合/返回决策/首页摘要）、
+  `SettingsHomeRobolectricTest` / `SettingsAdvancedRobolectricTest`（渲染级验收）。
+- **基准**：`SettingsBenchmark` 改为在「高级与诊断」页采集滑动帧耗时，并已在 Redmi 23078PND5G/Android 14 重录基线（2026-10-27，P95 median 17ms / jank 6.85%）。
+- **文档**：设置相关点击路径（用户指南/验收/回滚 runbook）统一改为「设置 → 高级与诊断 → …」。
+
 ## 0. v0.1.4（2026-10-24 发布）
 
 - **智能状态中枢（M1/M2/M3）**：首页左上角状态点改为真实四态（就绪/部分就绪/未就绪/异常）+ 首次引导条；

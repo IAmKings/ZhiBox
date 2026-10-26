@@ -123,6 +123,13 @@ data class SettingsUiState(
     val llmTestMessage: String? = null,
     /** LLM 配置读取/存储错误（如 Keystore 解密失败；可读且不含 key） */
     val llmError: String? = null,
+    /**
+     * LLM 配置是否已按需读取完成。
+     *
+     * 简单首页需要展示「未配置服务」状态，但 [llm] 为 null 同时表示「未读取」与「未配置」；
+     * 该布尔用于区分两者，避免首页把「正在读取」误报成「未配置」。
+     */
+    val llmLoaded: Boolean = false,
     /** SAG 增强（事件/实体抽取）开关 */
     val sagEnabled: Boolean = false,
     /** 问答生成开关 */
@@ -216,11 +223,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         llmLoaded = true
         safeLaunch(
             onError = { t ->
-                update { it.copy(llmError = str(R.string.settings_llm_load_failed, t.readableMessage())) }
+                update {
+                    it.copy(
+                        llmError = str(R.string.settings_llm_load_failed, t.readableMessage()),
+                        llmLoaded = true,
+                    )
+                }
             },
         ) {
             val snap = withContext(Dispatchers.IO) { readLlmSnapshot() }
-            update { it.copy(llm = snap.config, llmError = snap.error) }
+            update { it.copy(llm = snap.config, llmError = snap.error, llmLoaded = true) }
         }
     }
 
@@ -320,6 +332,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         // LLM 配置是按需加载的：已加载则保留，避免 refresh 又把表单清空
                         llm = if (llmLoaded) it.llm else s.llm,
                         llmError = if (llmLoaded) it.llmError else s.llmError,
+                        llmLoaded = it.llmLoaded,
                         sagEnabled = s.sagEnabled,
                         answerEnabled = s.answerEnabled,
                         networkDisabled = s.networkDisabled,

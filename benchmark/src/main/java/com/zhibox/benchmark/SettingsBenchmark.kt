@@ -54,6 +54,9 @@ class SettingsBenchmark {
                 pressHome()
                 startActivityAndWait()
                 openSettingsFromHome(device)
+                // 简单首页 4 卡一屏放得下；滚动的帧耗时必须在原 17 项所在的
+                // 「高级与诊断」页采集，否则 swipe 落在无滚动内容的页面上、指标失真。
+                openAdvancedSettingsFromSettings(device)
             },
         ) {
             // measureBlock：只测滑动帧耗时（3 次快速上/下/上 swipe）

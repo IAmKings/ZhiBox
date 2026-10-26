@@ -1,0 +1,144 @@
+{
+    "context": {
+        "build": {
+            "brand": "Xiaomi",
+            "device": "corot",
+            "fingerprint": "Redmi/corot/corot:13/TP1A.220624.014/V816.0.22.0.UMLCNXM:user/release-keys",
+            "id": "UP1A.230905.011",
+            "model": "23078PND5G",
+            "type": "user",
+            "version": {
+                "codename": "REL",
+                "sdk": 34
+            }
+        },
+        "cpuCoreCount": 8,
+        "cpuLocked": true,
+        "cpuMaxFreqHz": 3350000000,
+        "memTotalBytes": 16101818368,
+        "sustainedPerformanceModeEnabled": false,
+        "artMainlineVersion": 340090000,
+        "osCodenameAbbreviated": "U",
+        "compilationMode": "run-from-apk",
+        "payload": {}
+    },
+    "benchmarks": [
+        {
+            "name": "settingsScrollFrames",
+            "params": {},
+            "className": "com.zhibox.benchmark.SettingsBenchmark",
+            "totalRunTimeNs": 49403713233,
+            "metrics": {
+                "gfxFrameJankPercent": {
+                    "minimum": 5.8,
+                    "maximum": 15.71,
+                    "median": 6.85,
+                    "coefficientOfVariation": 0.4883749169439849,
+                    "runs": [
+                        15.71,
+                        8.45,
+                        5.8,
+                        5.8,
+                        6.85
+                    ]
+                },
+                "gfxFrameTime50thPercentileMs": {
+                    "minimum": 6.0,
+                    "maximum": 7.0,
+                    "median": 7.0,
+                    "coefficientOfVariation": 0.06576670522058205,
+                    "runs": [
+                        7.0,
+                        7.0,
+                        7.0,
+                        7.0,
+                        6.0
+                    ]
+                },
+                "gfxFrameTime90thPercentileMs": {
+                    "minimum": 8.0,
+                    "maximum": 13.0,
+                    "median": 9.0,
+                    "coefficientOfVariation": 0.2030582155168534,
+                    "runs": [
+                        13.0,
+                        9.0,
+                        9.0,
+                        9.0,
+                        8.0
+                    ]
+                },
+                "gfxFrameTime95thPercentileMs": {
+                    "minimum": 13.0,
+                    "maximum": 22.0,
+                    "median": 17.0,
+                    "coefficientOfVariation": 0.1994802936213314,
+                    "runs": [
+                        22.0,
+                        18.0,
+                        17.0,
+                        15.0,
+                        13.0
+                    ]
+                },
+                "gfxFrameTime99thPercentileMs": {
+                    "minimum": 21.0,
+                    "maximum": 44.0,
+                    "median": 25.0,
+                    "coefficientOfVariation": 0.3340765523905305,
+                    "runs": [
+                        44.0,
+                        28.0,
+                        25.0,
+                        21.0,
+                        22.0
+                    ]
+                },
+                "gfxFrameTotalCount": {
+                    "minimum": 69.0,
+                    "maximum": 73.0,
+                    "median": 70.0,
+                    "coefficientOfVariation": 0.02376875075380896,
+                    "runs": [
+                        70.0,
+                        71.0,
+                        69.0,
+                        69.0,
+                        73.0
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 0,
+            "repeatIterations": 5,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "SettingsBenchmark_settingsScrollFrames_iter000_2026-10-26-17-15-18.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "SettingsBenchmark_settingsScrollFrames_iter001_2026-10-26-17-15-25.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "SettingsBenchmark_settingsScrollFrames_iter002_2026-10-26-17-15-32.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "SettingsBenchmark_settingsScrollFrames_iter003_2026-10-26-17-15-40.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "SettingsBenchmark_settingsScrollFrames_iter004_2026-10-26-17-15-47.perfetto-trace"
+                }
+            ]
+        }
+    ]
+}

@@ -44,3 +44,25 @@ internal fun openSettingsFromHome(device: UiDevice) {
     // 首次进入会触发 SettingsViewModel.onScreenStarted() 刷新，等列表稳定再开始测量。
     device.waitForIdle(2_000)
 }
+
+/** 设置简单首页 →「高级与诊断」入口文案（与 strings.xml settings_page_advanced 同步）。 */
+internal const val ADVANCED_SETTINGS_TEXT: String = "高级与诊断"
+
+/** 高级页顶部固定行文案（用于确认页面已切换，不与首页 4 卡混淆）。 */
+internal const val TECHNICAL_DETAILS_TEXT: String = "显示技术细节"
+
+/**
+ * 从设置简单首页进入「高级与诊断」页（设置页简化为二级页后新增，供滚动基准使用）。
+ *
+ * 简单首页只有 5 个 item、基本一屏放得下，继续在首页上做 swipe 测不到列表性能；
+ * 基准必须在原 17 项所在的「高级与诊断」页上采集。
+ */
+internal fun openAdvancedSettingsFromSettings(device: UiDevice) {
+    val advanced = device.wait(Until.findObject(By.text(ADVANCED_SETTINGS_TEXT)), 5_000)
+        ?: error("设置首页未找到「$ADVANCED_SETTINGS_TEXT」入口（文案变更？）")
+    advanced.click()
+    if (!device.wait(Until.hasObject(By.text(TECHNICAL_DETAILS_TEXT)), 5_000)) {
+        error("「$ADVANCED_SETTINGS_TEXT」页 5s 内未出现「$TECHNICAL_DETAILS_TEXT」")
+    }
+    device.waitForIdle(1_000)
+}

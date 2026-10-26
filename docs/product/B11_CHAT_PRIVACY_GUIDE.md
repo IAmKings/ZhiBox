@@ -5,7 +5,7 @@
 
 ## 1. 使用前提
 
-1. 在「设置 → SAG 增强 / LLM」保存 OpenAI-compatible 配置：
+1. 在「设置 → 联网问答」保存 OpenAI-compatible 配置（完整表单在「高级与诊断 → SAG 增强 / LLM」）：
    - Base URL 必须 `https://`；
    - model 为服务端支持的模型 ID；
    - API Key 保存到 Android Keystore（SharedPreferences 只存密文/iv）。

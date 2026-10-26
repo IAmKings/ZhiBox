@@ -156,3 +156,47 @@
 2. **E8 默认态即出现两条 info pill**（SAG 默认关、网络默认禁）：符合 §4，但默认面板 pill 偏多；如觉噪音可改为「用户主动更改过才提示」。
 3. **E11 为计数级轻量探测**（chunk 数 vs FTS 行数），不是完整孤儿明细；导入并发瞬间可能短暂误报，下次 refresh 自愈；设置页仍是完整检查+修复。
 4. 深链高亮在旋转/进程重建后会重放一次（`remember` 非 saveable，刻意未扩大改动）。
+
+---
+
+## 7. 追加：设置页简化（2026-10，简单模式 + 高级与诊断）
+
+> 本节覆盖 §2.1/§6 中"设置页 17 项平铺"的历史口径；历史验收记录保留不动。
+
+### 7.1 实现与验收
+
+| 项 | 结果 | 证据 |
+|---|---|---|
+| 简单首页 4 卡 + 高级入口 | ✅ | `SettingsHomeContent`；`SettingsHomeRobolectricTest` 断言可见卡片恰 5 个（4 卡 + 入口） |
+| 首屏术语黑名单 0 命中 | ✅ | `SettingsCopyAuditTest`（文案 key 扫描）+ `SettingsHomeRobolectricTest`（真实渲染树扫描，含 state 里的原始文件名） |
+| 4 个任务 ≤2 击 | ✅ | 换模型：设置 → 管理模型 → 档位；导入：设置 → 导入资料；联网：开关 1 击（首次 consent 2 击）；资料库：1 击 |
+| 高级与诊断 17 项零缺失 | ✅ | `SettingsPageModelTest`（17 集合）+ `SettingsAdvancedRobolectricTest`（逐标题 scrollToNode 断言） |
+| 深链先到高级页再落位 | ✅ | `initialSection != null` → `SettingsPage.ADVANCED` + 原滚动/1.2s 高亮；`settingsPageFor` 单测 |
+| 技术细节开关默认关 | ✅ | 关闭时无原始文件名/spaceId/错误码；打开恢复现状；`SettingsAdvancedRobolectricTest` 两态断言 |
+| 下载中离开确认 | ✅ | 决策函数 `attemptExit` 保留在 host，首页/深链高级页退出均走确认；子页返回不弹 |
+| 长说明折叠 | ✅ | `SettingsExpandableHint`：路径/GPU/迁移/备份/OpenCode/隐私等长文案默认「说明 ▾」 |
+| 真机走查（Redmi 23078PND5G / Android 14，2026-10-27） | ✅ | 简单首页浅/深色、200% 字号、深链落位 + 1.2s 高亮、深链返回直接退出设置、技术细节开/关（关闭后 dump 无 `filesDir`/`litertlm`/`B3-14`）；截图见 `design/main_screen/impl/impl-settings-*.png` |
+| 开关语义标签（TalkBack 可读） | ✅ | 首页联网开关 content-desc=`允许联网问答`、高级页技术细节开关=`显示技术细节`（`uiautomator dump` 验证）；高级页 7 处 `SwitchRow` 同步补标签 |
+
+> 真机补充：本轮同时把高级页「嵌入路径/模型文件/索引检查」在技术细节关闭时的内部标识文案改为
+> 「还没有可用模型 / 还没有模型文件 / 索引检查正常」，并由
+> `SettingsAdvancedRobolectricTest#technicalDetailsOffHidesInternalPaths` 门禁。
+
+### 7.2 测试门禁（CI `testDebugUnitTest` 执行）
+
+- `SettingsPageModelTest`（15 例）：页面归属、深链页、返回决策、档位映射、首页摘要。
+- `SettingsCopyAuditTest`（2 例）：简单模式文案术语黑名单 + 关键 key 存在性。
+- `SettingsHomeRobolectricTest`（4 例）：卡片数、渲染树黑名单、空态/已索引态文案。
+- `SettingsAdvancedRobolectricTest`（6 例）：17 项可达、技术细节两态（含内部路径不泄漏）、页面标题。
+- `SettingsItemOrderTest`（6 例）：保持原样通过——高级页 emit 顺序未变。
+
+### 7.3 遗留
+
+- **TalkBack 未在本轮真机走查执行**（需开启 TalkBack 服务），建议 release 前补一次；
+  其余无障碍项（200% 字号、减少动画）已走查。
+- 截图已重拍：`impl-settings-simple-home-light/dark.png`、`impl-settings-advanced-light.png`、
+  `impl-settings-font200.png`、`impl-settings-deeplink-highlight.png`
+  （旧 `impl-settings-groups/dark/...` 仍是历史平铺页截图）。
+- `SettingsBenchmark` 基线已重录：`benchmark/baseline/2026-10-27-23078PND5G-settings-scroll*.json`
+  （高级页 P95 median 17ms / jank 6.85%；暖机趋势与门槛调整见 `benchmark/README.md`）。
+- 设置项搜索未实现（估 1.5–2 人日）。
