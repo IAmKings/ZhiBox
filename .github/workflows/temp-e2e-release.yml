@@ -1,0 +1,44 @@
+name: TEMP E2E Release
+
+# 临时工作流：构建 debug 签名 0.1.8 APK 并上传到 v0.1.8-test，用于真机验证
+# WorkManager 后台下载/通知/安装链路。测试完成后删除本文件与对应 Release。
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  temp-e2e-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build debug 0.1.8 APK
+        run: |
+          set -euo pipefail
+          sed -i 's/versionCode = 8/versionCode = 9/; s/versionName = "0.1.7"/versionName = "0.1.8"/' app/build.gradle.kts
+          grep -nE 'versionCode|versionName' app/build.gradle.kts | head -2
+          ./gradlew :app:assembleDebug
+          mkdir -p dist
+          SHA7="$(git rev-parse --short=7 HEAD)"
+          OUT="dist/zhibox-0.1.8-test-${SHA7}-release-signed.apk"
+          cp -f app/build/outputs/apk/debug/app-debug.apk "$OUT"
+          sha256sum "$OUT" | sed 's|dist/||' > "$OUT.sha256"
+          ls -l dist
+      - name: Upload to temp release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view v0.1.8-test >/dev/null 2>&1 || gh release create v0.1.8-test \
+            --target master \
+            --title "TEMPORARY v0.1.8-test (WorkManager E2E)" \
+            --notes "临时测试版本：用于验证后台下载/通知/跨进程续传，测试后删除。"
+          gh release upload v0.1.8-test dist/* --clobber
+          gh release view v0.1.8-test --json assets
