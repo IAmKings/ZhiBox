@@ -72,9 +72,11 @@ import com.zhibox.memory.core.model.ModelCatalog
 import com.zhibox.memory.core.model.PathPreferences
 import com.zhibox.memory.core.model.SharedModelStore
 import com.zhibox.memory.core.sag.SagBudgetTier
+import com.zhibox.memory.core.update.UpdateUiState
 import com.zhibox.memory.ui.theme.ZhiBoxRadius
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
 import com.zhibox.memory.ui.theme.zhiBoxColors
+import com.zhibox.memory.ui.update.UpdateSettingsRow
 import java.io.File
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -95,6 +97,10 @@ fun SettingsScreen(
     initialSection: IntelligenceSection? = null,
     /** 简单首页「导入资料」→ 导入屏（MainActivity 负责路由）。 */
     onOpenImport: () -> Unit = {},
+    /** 全局更新服务状态（隐私与关于页「检查更新」行）。 */
+    updateState: UpdateUiState = UpdateUiState(),
+    /** 手动检查更新：manager 会取消在途的冷启动检查并重新生成任务。 */
+    onCheckUpdate: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -481,6 +487,8 @@ fun SettingsScreen(
             onShowTechnicalChange = { showTechnical = it },
             onOpenPage = { page = it },
             onOpenImport = onOpenImport,
+            updateState = updateState,
+            onCheckUpdate = onCheckUpdate,
         )
     }
 }
@@ -594,6 +602,8 @@ internal fun SettingsPageContent(
     onShowTechnicalChange: (Boolean) -> Unit = {},
     onOpenPage: (SettingsPage) -> Unit = {},
     onOpenImport: () -> Unit = {},
+    updateState: UpdateUiState = UpdateUiState(),
+    onCheckUpdate: () -> Unit = {},
 ) {
     ZhiBoxScreen(
         title = stringResource(page.titleRes),
@@ -1995,6 +2005,12 @@ internal fun SettingsPageContent(
                 if (page == SettingsPage.PRIVACY) {
                     item(key = "privacy-hero") {
                         SettingsPrivacyPageHero()
+                    }
+                    item(key = "update-row") {
+                        UpdateSettingsRow(
+                            state = updateState,
+                            onCheck = onCheckUpdate,
+                        )
                     }
                 }
                 settingsItem(

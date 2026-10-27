@@ -3,13 +3,15 @@
   P1-10 网络安全配置（全局 TLS + 模型下载域名显式策略）
 
   背景：本应用「本地优先 / 离线可用」。联网路径包括用户显式触发的模型下载与
-  网页导入，以及用户配置并同意启用后的 OpenAI-compatible LLM 请求；三者均只允许 HTTPS。
+  网页导入、用户配置并同意启用后的 OpenAI-compatible LLM 请求，以及应用内更新
+  （冷启动匿名查询 GitHub Release + 用户确认后下载 APK）；全部只允许 HTTPS。
 
   策略：
   1. 默认（base-config）禁止一切明文 HTTP：`cleartextTrafficPermitted="false"`，
      即任意域名的 http:// 都会被系统直接拒绝，防降级/劫持。
   2. 模型下载域名 hf-mirror.com（含子域）有额外显式策略，同样只允许 HTTPS；
-     网页导入与 LLM 端点使用 base-config，并由各自代码做 HTTPS/重定向校验。
+     网页导入、LLM 端点与 GitHub 更新源使用 base-config，并由各自代码做
+     HTTPS/域名白名单/重定向校验。
      Android 的 TrustManager 默认信任系统 CA，
      这里显式只信任 system 证书（不含 user 安装证书，降低中间人风险）。
   3. 与代码侧 ModelDownloader、WebPageFetcher、OpenAiCompatibleLlmProvider 校验形成双保险。

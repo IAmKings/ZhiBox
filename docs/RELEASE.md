@@ -351,3 +351,24 @@ tag 与 versionName 由 release workflow 强校验。
 
 验收：CI（docs 一致性 + assembleDebug + 单测 + lint + androidTest 编译 + assembleRelease）通过后再打 tag；
 tag 与 versionName 由 release workflow 强校验。
+
+## 13. 应用内更新（v0.1.6 起）
+
+- **仓库必须 public**：应用通过匿名 GitHub API
+  `https://api.github.com/repos/IAmKings/ZhiBox/releases/latest` 查询最新版本；
+  private 仓库会 404，Release 资产也无法直接下载。公开前需确认无密钥/凭据入库
+  （见 `docs/product/APP_UPDATE_SPEC.md` §1）。
+- **Release 资产契约**（release.yml 已满足）：`zhibox-<version>-<sha7>-release-signed.apk`
+  + 同名 `.sha256` + `-mapping.txt`；API `digest` 字段可用时客户端优先使用。
+- **Release body**：release.yml 现在只提取 `docs/RELEASE_NOTES.md` 的 `## 0. vX.Y.Z` 段落作为
+  Release 说明（应用内更新弹窗直接展示）；旧版本（≤v0.1.5）body 仍是整份历史，客户端会截断
+  并在弹窗里提供「查看完整说明」。
+- **发版后验证**：
+  ```bash
+  curl -s -o /dev/null -w '%{http_code}\n' \
+    https://api.github.com/repos/IAmKings/ZhiBox/releases/latest   # 200
+  curl -sIL -o /dev/null -w '%{http_code}\n' \
+    https://github.com/IAmKings/ZhiBox/releases/download/vX.Y.Z/zhibox-X.Y.Z-<sha7>-release-signed.apk  # 200
+  ```
+- **端到端安装验证**需要连续两个带更新服务的版本：v0.1.6 首次带服务，无法从 v0.1.5 触发；
+  在 v0.1.7 发布时用 v0.1.6 安装包走查「检查 → 下载 → 校验 → 系统安装器」。

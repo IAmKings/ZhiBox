@@ -2,11 +2,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-      联网路径均由用户显式触发或配置：模型下载、网页导入，以及启用并同意后的
-      OpenAI-compatible LLM 请求。检索/本地文件导入/嵌入全链路离线可用。
-      依据：docs/SAG_Android_MVP_Implementation_Plan_v1.0.md P1-W1-5 / P1-W2-5
+      联网路径：
+      1) 用户显式触发的模型下载与网页导入；
+      2) 用户配置并同意启用后的 OpenAI-compatible LLM 请求；
+      3) 应用内更新：冷启动（24h 节流）匿名查询 GitHub Release，发现新版本且用户确认后
+         下载 APK。检索/本地文件导入/嵌入全链路离线可用。
+      依据：docs/SAG_Android_MVP_Implementation_Plan_v1.0.md P1-W1-5 / P1-W2-5；
+      docs/product/APP_UPDATE_SPEC.md
     -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 应用内更新：下载完成后拉起系统安装器（仅用于升级自身，不安装第三方 APK）。 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!--
       P1-10 隐私边界：
@@ -53,6 +59,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 应用内更新：把 cacheDir/updates 下的 APK 以 content:// 暴露给系统安装器 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_file_paths" />
+        </provider>
     </application>
 
 </manifest>

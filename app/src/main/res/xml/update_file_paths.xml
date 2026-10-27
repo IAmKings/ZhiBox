@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  应用内更新 FileProvider 路径（见 AndroidManifest.xml 的 .updates provider）：
+
+  只暴露 cacheDir/updates 一个目录，用于把已下载并校验过的升级 APK
+  以 content://<applicationId>.updates/updates/<file>.apk 交给系统安装器。
+  不暴露 filesDir / 数据库 / 其它缓存目录。
+-->
+<paths>
+    <cache-path
+        name="updates"
+        path="updates/" />
+</paths>

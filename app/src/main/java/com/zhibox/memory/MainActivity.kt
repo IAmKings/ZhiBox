@@ -5,11 +5,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zhibox.memory.core.update.AppUpdateManager
 import com.zhibox.memory.ui.BenchmarkScreen
 import com.zhibox.memory.ui.ChatScreen
 import com.zhibox.memory.ui.HomeScreen
@@ -19,6 +29,7 @@ import com.zhibox.memory.ui.SearchScreen
 import com.zhibox.memory.ui.SettingsScreen
 import com.zhibox.memory.ui.SourcesScreen
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
+import com.zhibox.memory.ui.update.AppUpdateDialog
 
 /**
  * 应用入口（P0-3 实验隔离 UI 侧 + P1-8 导航/生命周期）：
@@ -53,6 +64,12 @@ class MainActivity : ComponentActivity() {
         }
         // P0-3 + P1-8：release 不解析任何实验 extra；首次创建才读取，读取后清空 extras。
         val autoStart = if (isDebug && savedInstanceState == null) readAutoStartExtras() else AutoStart()
+        // Debug/验收专用：注入更新弹窗状态（release 不读取，见 AppUpdateManager.debugInjectMockState）。
+        val updateMock = if (isDebug && savedInstanceState == null) {
+            intent?.getStringExtra(EXTRA_AUTO_UPDATE_MOCK).orEmpty()
+        } else {
+            ""
+        }
         if (isDebug && savedInstanceState == null) {
             // 一次性消费：清空 extras，保证同一 intent 不会被再次解析（重建/复用兜底）。
             intent?.replaceExtras(Bundle())
@@ -60,6 +77,28 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ZhiBoxTheme {
+                // 全局应用更新服务：Application 作用域单例；弹窗覆盖所有屏。
+                val updateManager = remember { AppUpdateManager.get(applicationContext) }
+                val updateState by updateManager.state.collectAsStateWithLifecycle()
+                val lifecycleOwner = LocalLifecycleOwner.current
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        // 从「安装未知应用」系统页返回后，若已授权则自动继续安装。
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            updateManager.onResumeForInstallPermission()
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+                LaunchedEffect(updateMock) {
+                    if (updateMock.isNotBlank()) {
+                        updateManager.debugInjectMockState(updateMock)
+                    } else {
+                        updateManager.onAppEntered()
+                    }
+                }
+
                 var screen by rememberSaveable { mutableStateOf(autoStart.initialScreen()) }
                 // UI 改版：首页输入岛提交的检索词 → 检索屏预填（空串表示不预填）
                 var pendingSearchQuery by rememberSaveable { mutableStateOf("") }
@@ -80,6 +119,7 @@ class MainActivity : ComponentActivity() {
                     screen = "home"
                 }
                 BackHandler(enabled = screen != "home") { goHome() }
+                Box(Modifier.fillMaxSize()) {
                 when (screen) {
                     // B3-11：18 个 autoStart Boolean 收敛为单一 AutoStart，路由表在 debug
                     // BenchmarkScreen 内（release stub 接收同一类型但不读字段）。
@@ -113,6 +153,9 @@ class MainActivity : ComponentActivity() {
                         initialSection = settingsSection,
                         // 设置首页「导入资料」→ 导入屏（返回仍回首页，与来源页入口一致）。
                         onOpenImport = { screen = "import" },
+                        // 全局更新服务：隐私与关于页「检查更新」行（手动检查会取消在途自动检查）。
+                        updateState = updateState,
+                        onCheckUpdate = updateManager::checkNow,
                     )
                     else -> HomeScreen(
                         // 首页输入岛/搜索图标 → 检索屏；query 为空时沿用检索屏上次输入
@@ -141,6 +184,15 @@ class MainActivity : ComponentActivity() {
                             screen = "settings"
                         },
                     )
+                }
+                // 全局更新弹窗：独立 Window，叠在所有屏之上；下载/校验中不可取消。
+                AppUpdateDialog(
+                    state = updateState,
+                    onDownload = updateManager::startDownload,
+                    onDismiss = updateManager::dismiss,
+                    onRetry = updateManager::retry,
+                    onOpenPermissionSettings = updateManager::openInstallPermissionSettings,
+                )
                 }
             }
         }
@@ -197,6 +249,8 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_AUTO_W4PLUS = "autostart_w4plus"
         const val EXTRA_AUTO_IMPORT = "autostart_import"
         const val EXTRA_AUTO_IMPORT_CANCEL = "autostart_import_cancel"
+        /** Debug/验收专用：注入更新弹窗 mock 状态（available/downloading/failed/permission）。 */
+        const val EXTRA_AUTO_UPDATE_MOCK = "autostart_update_mock"
     }
 }
 

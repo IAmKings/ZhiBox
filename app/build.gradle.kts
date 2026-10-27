@@ -89,6 +89,9 @@ android {
         // B4-4 构建可追溯字段（BuildConfig；见文件顶部 buildGitSha/buildTimeIso 的取值策略）
         buildConfigField("String", "BUILD_GIT_SHA", "\"$buildGitSha\"")
         buildConfigField("String", "BUILD_TIME", "\"$buildTimeIso\"")
+        // 应用内更新：GitHub Release 查询地址由 owner/repo 派生（公开仓库匿名 API）。
+        buildConfigField("String", "UPDATE_REPO_OWNER", "\"IAmKings\"")
+        buildConfigField("String", "UPDATE_REPO_NAME", "\"ZhiBox\"")
     }
 
     signingConfigs {
