@@ -72,11 +72,14 @@ import com.zhibox.memory.core.model.ModelCatalog
 import com.zhibox.memory.core.model.PathPreferences
 import com.zhibox.memory.core.model.SharedModelStore
 import com.zhibox.memory.core.sag.SagBudgetTier
+import com.zhibox.memory.core.update.UpdateChannel
 import com.zhibox.memory.core.update.UpdateUiState
 import com.zhibox.memory.ui.theme.ZhiBoxRadius
 import com.zhibox.memory.ui.theme.ZhiBoxTheme
 import com.zhibox.memory.ui.theme.zhiBoxColors
 import com.zhibox.memory.ui.update.UpdateSettingsRow
+import com.zhibox.memory.ui.update.UpdateRouteDiagnosticsRow
+import com.zhibox.memory.ui.update.UpdateSettingsSwitches
 import java.io.File
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -101,6 +104,12 @@ fun SettingsScreen(
     updateState: UpdateUiState = UpdateUiState(),
     /** 手动检查更新：manager 会取消在途的冷启动检查并重新生成任务。 */
     onCheckUpdate: () -> Unit = {},
+    /** 自动检查开关（持久化在 UpdateStore）。 */
+    onAutoCheckChange: (Boolean) -> Unit = {},
+    /** stable/beta 通道切换。 */
+    onChannelChange: (UpdateChannel) -> Unit = {},
+    /** 重置下载线路健康（高级页技术细节诊断）。 */
+    onResetRouteHealth: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -132,6 +141,24 @@ fun SettingsScreen(
     var showTechnical by rememberSaveable { mutableStateOf(false) }
     // 切换模型二次确认（切换 = 重建索引，见 SettingsViewModel.setPreference）。
     var pendingPreference by remember { mutableStateOf<String?>(null) }
+    // 设置搜索（屏内页面；结果只导航）。
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var focusKey by remember { mutableStateOf<String?>(null) }
+
+    if (searchOpen) {
+        SettingsSearchContent(
+            onBack = { searchOpen = false },
+            onSelect = { entry ->
+                searchOpen = false
+                focusKey = entry.itemKey
+                deepLinkTarget = entry.sectionKey?.let { key ->
+                    IntelligenceSection.entries.firstOrNull { it.itemKey == key }
+                }
+                page = entry.page
+            },
+        )
+        return
+    }
 
     var pendingDeleteModel by remember { mutableStateOf<File?>(null) }
     var pendingClearAll by remember { mutableStateOf(false) }
@@ -475,6 +502,7 @@ fun SettingsScreen(
             onOpenPage = { page = it },
             onOpenImport = onOpenImport,
             onBack = ::attemptExit,
+            onOpenSearch = { searchOpen = true },
         )
         else -> SettingsPageContent(
             page = page,
@@ -489,6 +517,11 @@ fun SettingsScreen(
             onOpenImport = onOpenImport,
             updateState = updateState,
             onCheckUpdate = onCheckUpdate,
+            onAutoCheckChange = onAutoCheckChange,
+            onChannelChange = onChannelChange,
+            onResetRouteHealth = onResetRouteHealth,
+            focusKey = focusKey,
+            onFocusConsumed = { focusKey = null },
         )
     }
 }
@@ -604,6 +637,11 @@ internal fun SettingsPageContent(
     onOpenImport: () -> Unit = {},
     updateState: UpdateUiState = UpdateUiState(),
     onCheckUpdate: () -> Unit = {},
+    onAutoCheckChange: (Boolean) -> Unit = {},
+    onChannelChange: (UpdateChannel) -> Unit = {},
+    onResetRouteHealth: () -> Unit = {},
+    focusKey: String? = null,
+    onFocusConsumed: () -> Unit = {},
 ) {
     ZhiBoxScreen(
         title = stringResource(page.titleRes),
@@ -619,6 +657,17 @@ internal fun SettingsPageContent(
             hasLegacySpacesError = state.legacySpacesError != null,
             hasLegacySpaces = state.legacySpaces.isNotEmpty(),
         )
+        // 搜索命中聚焦页：滚动到对应卡片后消费（仅一次）。
+        LaunchedEffect(focusKey, state.loading) {
+            val key = focusKey ?: return@LaunchedEffect
+            if (state.loading) return@LaunchedEffect
+            val index = settingsPageItemIndex(page, key, state)
+            if (index >= 0) {
+                withFrameNanos { }
+                listState.scrollToItem(index)
+            }
+            onFocusConsumed()
+        }
         var deepLinkApplied by remember { mutableStateOf(false) }
         // 规格 §6.5：深链落位后对目标 section 高亮 1.2s；仅深链进入触发一次（普通进入不高亮）。
         var deepLinkHighlightKey by remember { mutableStateOf<String?>(null) }
@@ -671,6 +720,12 @@ internal fun SettingsPageContent(
                     checked = showTechnical,
                     onCheckedChange = onShowTechnicalChange,
                 )
+                if (showTechnical) {
+                    UpdateRouteDiagnosticsRow(
+                        routeHealth = updateState.routeHealth,
+                        onReset = onResetRouteHealth,
+                    )
+                }
             }
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
@@ -2010,6 +2065,13 @@ internal fun SettingsPageContent(
                         UpdateSettingsRow(
                             state = updateState,
                             onCheck = onCheckUpdate,
+                        )
+                    }
+                    item(key = "update-settings") {
+                        UpdateSettingsSwitches(
+                            state = updateState,
+                            onAutoCheckChange = onAutoCheckChange,
+                            onChannelChange = onChannelChange,
                         )
                     }
                 }

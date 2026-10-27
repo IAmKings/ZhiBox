@@ -64,7 +64,7 @@ class UpdateApiAndDownloaderTest {
     fun api_parsesLatestReleaseResponse() = runBlocking {
         MockHttpsServer { MockResponse(200, releaseJson) }.use { server ->
             val api = HttpUpdateApi(
-                latestReleaseUrl = server.baseUrl("/repos/IAmKings/ZhiBox/releases/latest"),
+                releasesApiBase = server.baseUrl("/repos/IAmKings/ZhiBox/releases"),
             )
             val result = api.fetchLatest()
             assertTrue("应成功：$result", result.isSuccess)
@@ -81,7 +81,7 @@ class UpdateApiAndDownloaderTest {
     fun api_404MapsToNoRelease() = runBlocking {
         MockHttpsServer { MockResponse(404, "{}") }.use { server ->
             val api = HttpUpdateApi(
-                latestReleaseUrl = server.baseUrl("/repos/IAmKings/ZhiBox/releases/latest"),
+                releasesApiBase = server.baseUrl("/repos/IAmKings/ZhiBox/releases"),
             )
             val error = api.fetchLatest().exceptionOrNull() as UpdateException
             assertEquals(UpdateFailure.NoRelease, error.failure)
@@ -98,7 +98,7 @@ class UpdateApiAndDownloaderTest {
             )
         }.use { server ->
             val api = HttpUpdateApi(
-                latestReleaseUrl = server.baseUrl("/repos/IAmKings/ZhiBox/releases/latest"),
+                releasesApiBase = server.baseUrl("/repos/IAmKings/ZhiBox/releases"),
             )
             val error = api.fetchLatest().exceptionOrNull() as UpdateException
             val http = error.failure as UpdateFailure.Http

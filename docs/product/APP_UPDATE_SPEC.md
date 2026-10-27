@@ -12,7 +12,10 @@
 - 设置 → 隐私与关于 → 「检查更新」：**取消在途的启动检查并重新生成任务**；
 - 只支持 stable release（GitHub `releases/latest`，天然排除 draft/prerelease）。
 
-非目标：后台/WorkManager 下载、通知栏进度、增量更新、灰度/强制更新、自动检查开关、预发布通道。
+已实现（v0.1.7）：WorkManager 后台下载 + 通知栏进度 + 跨进程续传、自动检查开关、
+预发布（Beta）通道、灰度分桶、强制更新（`minSupportedVersion`）、下载线路健康监控。
+不实现：增量更新（bsdiff，APK 签名约束，见 §10）。
+跨进程续传范围：`cacheDir/updates/*.part` + WorkManager 重调度。
 
 ## 1. 托管与网络
 
@@ -154,3 +157,74 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 > `ApkValidator` 以「签名不一致」拒绝安装（测试机安装的是 debug 签名包，下载的是 release 签名包）——
 > 这正是预期的安全拦截。release 签名设备上的完整安装链路待 v0.1.7 发布时从 v0.1.6 走查。
 > 镜像顺序可通过 `BuildConfig.UPDATE_DOWNLOAD_MIRRORS` 调整（默认 `gh-proxy.com`、`ghfast.top`）。
+
+
+## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
+
+- 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：
+  - 约束：`NetworkType.CONNECTED` + `setRequiresStorageNotLow`；`REPLACE` 策略便于重试；
+  - 前台服务：`setForeground(ForegroundInfo(..., FOREGROUND_SERVICE_TYPE_DATA_SYNC))`，
+    通知渠道 `app_update`（IMPORTANCE_DEFAULT，进度 `setOnlyAlertOnce`）；
+  - 进度：Worker `setProgress(downloaded/total)` + 通知栏每秒更新；
+  - 跨进程：进程被杀后 WorkManager 重新调度，`.part` Range 续传；安装包路径固定
+    `cacheDir/updates/zhibox-<version>.apk`。
+- 权限/清单：`POST_NOTIFICATIONS`（Android 13+ 首次下载时请求）、`FOREGROUND_SERVICE`、
+  `FOREGROUND_SERVICE_DATA_SYNC`；WorkManager 的 `SystemForegroundService` 通过
+  `tools:node="merge"` 声明 `foregroundServiceType="dataSync"`（Android 14+ 必需）。
+- 完成行为：前台 → 直接拉起安装器；后台 → 发「更新已下载，点击安装」通知，
+  点击进入 MainActivity（`EXTRA_INSTALL_UPDATE`）或在下次进入应用时自动安装。
+- 后台不能直接启动 Activity（Android 限制），因此通知是后台完成的唯一自动路径；
+  通知被拒时降级为「下次进入应用时提示安装」。
+- 取消/失败：下载中弹窗仍不可取消；失败在弹窗内可重试。
+
+## 11. 二期：自动检查开关 / Beta 通道 / 灰度 / 强制
+
+### 11.1 自动检查开关
+`UpdateStore.autoCheckEnabled`（默认 true）：关闭后 `UpdatePolicy.decideOnLaunch` 直接 Skip，
+不联网也不展示缓存；设置 -> 隐私与关于 -> 「更新设置」切换；手动检查始终可用。
+
+### 11.2 Beta 通道
+`UpdateStore.channel = STABLE | BETA`（默认 STABLE）。
+- STABLE：`releases/latest`；BETA：`releases?per_page=10` 取最高 semver（含 prerelease）。
+- semver 支持预发布排序：`0.1.7-beta.2 < 0.1.7-rc.1 < 0.1.7`。
+- release workflow：tag 含 `-` 时 `gh release create --prerelease`，避免 Beta 成为 stable latest。
+- 切换通道会清空缓存/节流/取消记录，下次检查按新通道执行。
+
+### 11.3 灰度（staged rollout）
+- Release 资产 `*-update.json`（由 `release/update-policy.json` 生成）：
+  `{schema, versionName, tagName, channel, rolloutPercent, minSupportedVersion, publishedAt, htmlUrl, apk{name,size,sha256}}`；
+- 客户端读取该资产（≤64KB，失败回退 100%/非强制）；旧版本无该资产 → 默认全量；
+- 分桶：`cohort = sha256(installId + "|" + versionName)` 前 8 hex → `% 100`；
+  `installId` 为本地随机 UUID，不上报；`eligible = rolloutPercent>=100 || cohort<rolloutPercent`；
+- 未命中：不弹窗；手动检查时设置行提示「新版本正在分批推送（N%）」；
+- 调整灰度：发布后 `gh release upload <tag> update.json --clobber`（文案/步骤见 RELEASE.md）。
+
+### 11.4 强制更新
+- `minSupportedVersion`：当前版本低于它 → 弹窗 `forced=true`：
+  不可取消（无「稍后」、点外部/返回无效）；绕过 dismissed 与灰度；
+- 下载连续失败 3 次后允许「暂时退出」，避免永久锁死；重试新下载会重新计数；
+- 只应用于关键版本（由 `release/update-policy.json` 在发版前设置）。
+
+## 12. 二期：下载线路健康监控
+
+- `RouteHealth`（direct / mirror host）：最近成功/失败时间、连续失败、延迟、冷却期；
+- 选择顺序（`UpdateRouteSelector.plan` 纯函数）：直连未冷却优先；否则镜像优先；
+  镜像按「未冷却 → 连续失败少 → 延迟低 → 配置顺序」；
+- 连续 2 次传输失败（Network/Timeout）→ 冷却 6h；成功清零；全部冷却仍按顺序尝试；
+- 超时分档：直连 8s/20s，镜像 10s/30s，避免每次启动空等 30s；
+- 诊断：高级与诊断页（技术细节开启）显示「更新线路」与「重置线路状态」；
+- 无额外探测/遥测，数据全部来自真实下载结果。
+
+## 13. 设置搜索（详见 SETTINGS_SEARCH.md）
+
+- 设置首页顶栏搜索按钮 → 屏内搜索页；跨 4 个聚焦页 + 高级 17 项 + 关于/更新设置索引；
+- 结果只导航：ADVANCED 使用现有深链锚点滚动 + 高亮；聚焦页按 item key 滚动到目标卡片；
+- 索引完整性由 `SettingsSearchTest` 断言（17 个 section 全覆盖）。
+
+## 14. 增量更新（bsdiff）— Won't do
+
+APK v2/v3 签名覆盖整个文件；应用内对已安装 APK 应用二进制补丁后，必须以 **release 私钥**
+重新签名才能通过系统签名校验，而私钥只存在于 CI Secrets，应用内没有该能力。
+Play In-App Updates / App Bundle 增量通道不适用于 GitHub 侧载。
+因此保留全量 APK 下载，通过镜像、Range 续传、后台下载与通知优化传输体验；
+后续如改为应用商店分发再评估增量能力。

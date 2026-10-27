@@ -397,3 +397,34 @@ tag 与 versionName 由 release workflow 强校验。
 
 验收：CI（docs 一致性 + assembleDebug + 单测 + lint + androidTest 编译 + assembleRelease）通过后再打 tag；
 tag 与 versionName 由 release workflow 强校验。端到端下载/安装需在 v0.1.7 发布时从 v0.1.6 走查。
+
+
+## 15. 2026-10-27 v0.1.7 发布记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **8 / 0.1.7** |
+| 基线提交 | 版本号提交（tag `v0.1.7`）；发布后回填 |
+| 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.6） |
+| 签名 | 沿用既有 release keystore（与 v0.1.6 同证书，可覆盖升级） |
+| 发布政策 | `release/update-policy.json`（本版本 `rolloutPercent=100`、`minSupportedVersion=0.1.0`） |
+| 发布产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；size/SHA-256 发布后回填 |
+
+### 灰度/强制更新发布操作
+
+1. 发版前修改 `release/update-policy.json`：
+   - `rolloutPercent`：0–100（默认 100 全量）；灰度期间可先设 10/50；
+   - `minSupportedVersion`：低于该版本的客户端强制更新（默认 `0.1.0` 不强制）；
+2. 提交 policy 后打 tag 推送；workflow 生成 `zhibox-<ver>-<sha7>-update.json` 并随 Release 上传；
+3. 发布后调整灰度（不重发版）：
+   `gh release upload vX.Y.Z dist/...-update.json --clobber`（重新上传同 schema 文件即可）；
+4. **Beta 发布**：tag 用 `vX.Y.Z-beta.N`（`versionName` 必须一致），workflow 会创建
+   GitHub prerelease，不会进入 stable 的 `releases/latest`；
+5. 校验：`gh release view vX.Y.Z --json assets` 应包含 APK、`.sha256`、mapping、`update.json`；
+   应用内 Beta 开关打开后应能看到 prerelease。
+
+本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
+- WorkManager 后台下载 + 通知栏进度 + 跨进程续传；
+- 自动检查开关、Beta 通道、灰度/强制更新元数据；
+- 下载线路健康监控、设置搜索；
+- 不包含增量更新（APK 签名约束）。

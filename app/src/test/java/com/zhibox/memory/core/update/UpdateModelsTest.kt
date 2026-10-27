@@ -18,11 +18,21 @@ class UpdateModelsTest {
     fun parseVersion_toleratesPrefixSuffixAndMissingSegments() {
         assertEquals(listOf(0, 1, 6), parseAppVersion("v0.1.6")!!.parts)
         assertEquals(listOf(0, 1, 6), parseAppVersion("0.1.6-rc1")!!.parts)
+        assertEquals(listOf("rc1"), parseAppVersion("0.1.6-rc1")!!.prerelease)
         assertEquals(listOf(0, 1), parseAppVersion("v0.1")!!.parts)
         assertEquals(listOf(1, 0, 0), parseAppVersion("1.0.0+build7")!!.parts)
         assertNull(parseAppVersion(""))
         assertNull(parseAppVersion("v"))
         assertNull(parseAppVersion("release"))
+    }
+
+    @Test
+    fun semverPrereleaseOrdering() {
+        assertTrue(isNewerVersion("0.1.7", "0.1.7-rc.1"))
+        assertTrue(isNewerVersion("0.1.7-rc.1", "0.1.7-beta.2"))
+        assertTrue(isNewerVersion("0.1.7-beta.2", "0.1.7-beta.1"))
+        assertTrue(isNewerVersion("0.1.8-beta.1", "0.1.7"))
+        assertFalse(isNewerVersion("0.1.7-beta.2", "0.1.7"))
     }
 
     @Test
@@ -80,6 +90,24 @@ class UpdateModelsTest {
     }
 
     @Test
+    fun parseReleaseList_picksHighestSemverIncludingPrerelease() {
+        val beta = releaseJson
+            .replace("\"tag_name\": \"v0.1.6\"", "\"tag_name\": \"v0.1.7-beta.1\"")
+            .replace("\"prerelease\": false", "\"prerelease\": true")
+        val body = "[$releaseJson, $beta]"
+        val info = UpdateReleaseParser.parseReleaseList(body)
+        assertEquals("0.1.7-beta.1", info.versionName)
+        assertEquals(UpdateChannel.BETA, info.channel)
+    }
+
+    @Test
+    fun parseReleaseList_stableListReturnsStableChannel() {
+        val info = UpdateReleaseParser.parseReleaseList("[$releaseJson]")
+        assertEquals("0.1.6", info.versionName)
+        assertEquals(UpdateChannel.STABLE, info.channel)
+    }
+
+    @Test
     fun parseLatestRelease_fallsBackToShaAssetWhenDigestMissing() {
         val json = releaseJson
             .replace(
@@ -120,6 +148,9 @@ class UpdateModelsTest {
         override var lastSuccessAtMillis: Long = 0L
         override var lastAttemptAtMillis: Long = 0L
         override var dismissedVersion: String? = null
+        override var autoCheckEnabled: Boolean = true
+        override var channel: UpdateChannel = UpdateChannel.STABLE
+        override var installId: String = "test-install-id"
         var cached: UpdateInfo? = null
         override fun cachedInfo(): UpdateInfo? = cached
         override fun saveCached(info: UpdateInfo) {
@@ -129,6 +160,15 @@ class UpdateModelsTest {
         override fun clearCache() {
             cached = null
         }
+
+        private var routes: Map<String, RouteHealth> = emptyMap()
+        override fun routeHealth(): Map<String, RouteHealth> = routes
+        override fun updateRouteHealth(health: Map<String, RouteHealth>) {
+            routes = health
+        }
+
+        override var downloadedVersion: String? = null
+        override var downloadedApkPath: String? = null
     }
 
     private fun info(version: String) = UpdateInfo(
@@ -143,6 +183,18 @@ class UpdateModelsTest {
         sha256 = "d".repeat(64),
         sha256Url = null,
     )
+
+    @Test
+    fun launchPolicy_skipsWhenAutoCheckDisabled() {
+        val store = FakeStore().apply {
+            autoCheckEnabled = false
+            lastSuccessAtMillis = 0L
+        }
+        assertEquals(
+            UpdatePolicy.LaunchAction.Skip,
+            UpdatePolicy.decideOnLaunch(1_700_000_000_000L, store, "0.1.6"),
+        )
+    }
 
     @Test
     fun launchPolicy_skipsWithinSuccessInterval() {

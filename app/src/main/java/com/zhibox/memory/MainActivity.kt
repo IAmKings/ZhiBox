@@ -1,10 +1,15 @@
 package com.zhibox.memory
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
@@ -15,10 +20,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zhibox.memory.core.update.AppForegroundTracker
 import com.zhibox.memory.core.update.AppUpdateManager
 import com.zhibox.memory.ui.BenchmarkScreen
 import com.zhibox.memory.ui.ChatScreen
@@ -70,6 +77,9 @@ class MainActivity : ComponentActivity() {
         } else {
             ""
         }
+        // 通知栏「更新已下载，点击安装」进入：读取一次后清除，避免旋转重放。
+        val installUpdateRequested = intent?.getBooleanExtra(EXTRA_INSTALL_UPDATE, false) == true
+        if (installUpdateRequested) intent?.removeExtra(EXTRA_INSTALL_UPDATE)
         if (isDebug && savedInstanceState == null) {
             // 一次性消费：清空 extras，保证同一 intent 不会被再次解析（重建/复用兜底）。
             intent?.replaceExtras(Bundle())
@@ -80,6 +90,27 @@ class MainActivity : ComponentActivity() {
                 // 全局应用更新服务：Application 作用域单例；弹窗覆盖所有屏。
                 val updateManager = remember { AppUpdateManager.get(applicationContext) }
                 val updateState by updateManager.state.collectAsStateWithLifecycle()
+                val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestPermission(),
+                ) {
+                    // 授权与否都继续后台下载（通知不可见时，完成后在下次进入应用时提示安装）。
+                    updateManager.startDownload()
+                }
+                val requestDownload: () -> Unit = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        updateManager.startDownload()
+                    }
+                }
+                LaunchedEffect(installUpdateRequested) {
+                    if (installUpdateRequested) updateManager.installDownloadedIfReady()
+                }
                 val lifecycleOwner = LocalLifecycleOwner.current
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
@@ -156,6 +187,9 @@ class MainActivity : ComponentActivity() {
                         // 全局更新服务：隐私与关于页「检查更新」行（手动检查会取消在途自动检查）。
                         updateState = updateState,
                         onCheckUpdate = updateManager::checkNow,
+                        onAutoCheckChange = updateManager::setAutoCheckEnabled,
+                        onChannelChange = updateManager::setChannel,
+                        onResetRouteHealth = updateManager::resetRouteHealth,
                     )
                     else -> HomeScreen(
                         // 首页输入岛/搜索图标 → 检索屏；query 为空时沿用检索屏上次输入
@@ -188,7 +222,7 @@ class MainActivity : ComponentActivity() {
                 // 全局更新弹窗：独立 Window，叠在所有屏之上；下载/校验中不可取消。
                 AppUpdateDialog(
                     state = updateState,
-                    onDownload = updateManager::startDownload,
+                    onDownload = requestDownload,
                     onDismiss = updateManager::dismiss,
                     onRetry = updateManager::retry,
                     onOpenPermissionSettings = updateManager::openInstallPermissionSettings,
@@ -196,6 +230,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        AppForegroundTracker.onForeground()
+    }
+
+    override fun onStop() {
+        AppForegroundTracker.onBackground()
+        super.onStop()
     }
 
     /**
@@ -251,6 +295,9 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_AUTO_IMPORT_CANCEL = "autostart_import_cancel"
         /** Debug/验收专用：注入更新弹窗 mock 状态（available/downloading/failed/permission）。 */
         const val EXTRA_AUTO_UPDATE_MOCK = "autostart_update_mock"
+
+        /** 通知栏「更新已下载」点击进入时的安装标记。 */
+        const val EXTRA_INSTALL_UPDATE = "install_update"
     }
 }
 

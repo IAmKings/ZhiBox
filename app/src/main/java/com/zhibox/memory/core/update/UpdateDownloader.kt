@@ -23,6 +23,8 @@ interface UpdateDownloader {
     suspend fun download(
         info: UpdateInfo,
         targetDir: File,
+        routeHealth: Map<String, RouteHealth> = emptyMap(),
+        onRouteResult: (RouteHealth) -> Unit = {},
         onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit = { _, _ -> },
     ): File
 }
@@ -51,6 +53,7 @@ class HttpUpdateDownloader(
     private val mirrorPrefixes: List<String> = UpdateConfig.downloadMirrors,
     /** 仅测试用：非空时把 host 白名单限制为该集合（MockHttpsServer 为 127.0.0.1）。 */
     private val testAllowedHosts: Set<String> = emptySet(),
+    private val nowMillis: () -> Long = System::currentTimeMillis,
 ) : UpdateDownloader {
 
     private val mirrorHosts: Set<String> = mirrorPrefixes.mapNotNull { prefix ->
@@ -60,6 +63,8 @@ class HttpUpdateDownloader(
     override suspend fun download(
         info: UpdateInfo,
         targetDir: File,
+        routeHealth: Map<String, RouteHealth>,
+        onRouteResult: (RouteHealth) -> Unit,
         onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit,
     ): File = withContext(Dispatchers.IO) {
         targetDir.mkdirs()
@@ -82,17 +87,29 @@ class HttpUpdateDownloader(
             throw UpdateException(UpdateFailure.InsufficientSpace)
         }
 
-        // 直连优先；仅对传输层失败（Network/Timeout）回退镜像，HTTP/校验类错误不回退。
-        val attempts = buildList {
-            add(Attempt(url = info.apkUrl, mirror = false))
-            mirrorPrefixes.forEach { prefix ->
-                add(Attempt(url = prefix + info.apkUrl, mirror = true))
-            }
+        // 线路健康驱动的尝试顺序：直连未冷却时优先直连，否则优先健康镜像。
+        val mirrorAttempts = mirrorPrefixes.mapNotNull { prefix ->
+            val host = runCatching { URL(prefix).host?.lowercase(Locale.ROOT) }.getOrNull()
+            if (host == null) null else Attempt(id = host, url = prefix + info.apkUrl, mirror = true)
+        }.distinctBy { it.id }
+        val routeById = buildMap {
+            put(
+                UpdateRouteSelector.DIRECT_ID,
+                Attempt(id = UpdateRouteSelector.DIRECT_ID, url = info.apkUrl, mirror = false),
+            )
+            mirrorAttempts.forEach { put(it.id, it) }
         }
+        val orderedRoutes = UpdateRouteSelector.plan(
+            nowMillis = nowMillis(),
+            mirrorIds = mirrorAttempts.map { it.id },
+            health = routeHealth,
+        )
         var lastFailure: UpdateException? = null
-        attempts.forEachIndexed { index, attempt ->
+        orderedRoutes.forEachIndexed { index, routeId ->
+            val attempt = routeById[routeId] ?: return@forEachIndexed
+            val startedAt = nowMillis()
             try {
-                return@withContext attemptDownload(
+                val file = attemptDownload(
                     attempt = attempt,
                     info = info,
                     part = part,
@@ -101,11 +118,33 @@ class HttpUpdateDownloader(
                     allowResume = index == 0,
                     onProgress = onProgress,
                 )
+                onRouteResult(
+                    UpdateRouteSelector.record(
+                        nowMillis = nowMillis(),
+                        previous = routeHealth[routeId],
+                        success = true,
+                        latencyMs = (nowMillis() - startedAt).coerceAtLeast(0L),
+                        id = routeId,
+                    ),
+                )
+                return@withContext file
             } catch (e: UpdateException) {
                 lastFailure = e
-                val retryableMirror = e.failure is UpdateFailure.Network ||
+                val retryable = e.failure is UpdateFailure.Network ||
                     e.failure is UpdateFailure.Timeout
-                if (!retryableMirror) throw e
+                if (retryable) {
+                    onRouteResult(
+                        UpdateRouteSelector.record(
+                            nowMillis = nowMillis(),
+                            previous = routeHealth[routeId],
+                            success = false,
+                            latencyMs = 0L,
+                            id = routeId,
+                        ),
+                    )
+                } else {
+                    throw e
+                }
                 // 下一次尝试从零开始（镜像不一定支持 Range；半包不可信）
                 part.delete()
             }
@@ -113,7 +152,7 @@ class HttpUpdateDownloader(
         throw lastFailure ?: UpdateException(UpdateFailure.Network)
     }
 
-    private data class Attempt(val url: String, val mirror: Boolean)
+    private data class Attempt(val id: String, val url: String, val mirror: Boolean)
 
     private suspend fun attemptDownload(
         attempt: Attempt,
@@ -127,7 +166,15 @@ class HttpUpdateDownloader(
         var resumeFrom = if (allowResume && part.isFile) part.length() else 0L
         var connection: HttpURLConnection? = null
         try {
-            connection = openFollowingRedirects(URL(attempt.url), attempt.mirror, resumeFrom)
+            val connectTimeout = if (attempt.mirror) MIRROR_CONNECT_TIMEOUT_MS else CONNECT_TIMEOUT_MS
+            val readTimeout = if (attempt.mirror) MIRROR_READ_TIMEOUT_MS else READ_TIMEOUT_MS
+            connection = openFollowingRedirects(
+                URL(attempt.url),
+                attempt.mirror,
+                resumeFrom,
+                connectTimeout,
+                readTimeout,
+            )
             var code = connection.responseCode
             if (resumeFrom > 0) {
                 val resumable = code == HttpURLConnection.HTTP_PARTIAL &&
@@ -136,7 +183,13 @@ class HttpUpdateDownloader(
                     connection.disconnect()
                     part.delete()
                     resumeFrom = 0L
-                    connection = openFollowingRedirects(URL(attempt.url), attempt.mirror, 0L)
+                    connection = openFollowingRedirects(
+                        URL(attempt.url),
+                        attempt.mirror,
+                        0L,
+                        connectTimeout,
+                        readTimeout,
+                    )
                     code = connection.responseCode
                 }
             }
@@ -220,14 +273,16 @@ class HttpUpdateDownloader(
         url: URL,
         mirror: Boolean,
         rangeFrom: Long,
+        connectTimeoutMs: Int = CONNECT_TIMEOUT_MS,
+        readTimeoutMs: Int = READ_TIMEOUT_MS,
     ): HttpURLConnection {
         var current = url
         repeat(MAX_REDIRECTS + 1) { hop ->
             validateAllowedUrl(current, initial = hop == 0, mirror = mirror)
             val connection = openConnection(current).apply {
                 requestMethod = "GET"
-                connectTimeout = CONNECT_TIMEOUT_MS
-                readTimeout = READ_TIMEOUT_MS
+                connectTimeout = connectTimeoutMs
+                readTimeout = readTimeoutMs
                 instanceFollowRedirects = false
                 setRequestProperty("User-Agent", userAgent)
                 setRequestProperty("Accept", "application/octet-stream")
@@ -282,8 +337,10 @@ class HttpUpdateDownloader(
     }
 
     internal companion object {
-        const val CONNECT_TIMEOUT_MS = 10_000
-        const val READ_TIMEOUT_MS = 30_000
+        const val CONNECT_TIMEOUT_MS = 8_000
+        const val READ_TIMEOUT_MS = 20_000
+        const val MIRROR_CONNECT_TIMEOUT_MS = 10_000
+        const val MIRROR_READ_TIMEOUT_MS = 30_000
         const val MAX_REDIRECTS = 5
         const val MAX_SHA_FILE_BYTES = 4 * 1024
         const val MIN_SPARE_BYTES = 50L * 1024 * 1024

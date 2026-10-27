@@ -10,37 +10,37 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 
 /**
  * 应用内更新的全局服务（Application 作用域单例）。
  *
  * 职责：
- * - 冷启动自动检查（24h 节流）与设置里的手动强制检查；
- * - **任务代际**：手动点击「检查更新」会取消在途检查并生成新任务，旧任务的结果一律丢弃；
- * - 下载/校验/拉起安装器的状态机，供 [UpdateUiState] 驱动全局弹窗与设置行；
- * - 所有磁盘/网络在 `Dispatchers.IO`，安装器 Intent 在 `Dispatchers.Main`。
+ * - 冷启动自动检查（24h 节流、可开关）与设置里的手动强制检查；
+ * - **任务代际**：手动检查取消在途检查并生成新任务，旧结果丢弃；
+ * - 后台下载交给 WorkManager（[UpdateDownloadScheduler]）：任务持久化、通知栏进度、
+ *   进程被杀后由系统重新调度并续传 `.part`；
+ * - 下载完成后校验 APK：前台自动拉起安装器；后台发「点击安装」通知，
+ *   下次进入应用/点通知时再安装；未知来源权限引导。
  *
  * 设计/验收见 `docs/product/APP_UPDATE_SPEC.md`；测试可注入 fake 依赖（internal 构造）。
  */
 class AppUpdateManager internal constructor(
     private val appContext: Context,
     private val api: UpdateApi,
-    private val downloader: UpdateDownloader,
+    private val scheduler: UpdateDownloadScheduler,
     private val installer: UpdateInstaller,
     private val validator: ApkValidator,
     private val store: UpdateStore,
     private val scope: CoroutineScope,
     private val clock: () -> Long,
     private val currentVersionName: String,
-    private val downloadDir: File,
+    private val foreground: () -> Boolean = { AppForegroundTracker.isForeground },
 ) {
 
     private val _state = MutableStateFlow(UpdateUiState(currentVersionName = currentVersionName))
@@ -49,14 +49,33 @@ class AppUpdateManager internal constructor(
     private val entered = AtomicBoolean(false)
     private var taskId = 0L
     private var checkJob: Job? = null
-    private var downloadJob: Job? = null
-    @Volatile
-    private var downloadedApk: File? = null
+    /** 强制更新下载失败次数（3 次后允许暂时退出，避免锁死）。 */
+    private var downloadFailureCount = 0
+    private var activeForced = false
 
-    /** 冷启动/进入应用：每进程一次，按 24h 节流决定「弹缓存 / 检查 / 跳过」。 */
+    init {
+        scope.launch {
+            _state.update {
+                it.copy(
+                    autoCheckEnabled = store.autoCheckEnabled,
+                    channel = store.channel,
+                    routeHealth = store.routeHealth(),
+                )
+            }
+        }
+        // WorkManager 状态是下载阶段的单一事实来源（跨进程恢复）：订阅一次即可。
+        scope.launch {
+            scheduler.observe().collect { work -> onWorkState(work) }
+        }
+    }
+
+    // ── 检查 ─────────────────────────────────────────────────────
+
     fun onAppEntered() {
         if (!entered.compareAndSet(false, true)) return
         scope.launch {
+            // 后台下载已完成但尚未安装：先处理安装，再做常规检查。
+            installPendingIfAny()
             when (val action = UpdatePolicy.decideOnLaunch(clock(), store, currentVersionName)) {
                 is UpdatePolicy.LaunchAction.ShowCached -> {
                     _state.update {
@@ -66,18 +85,15 @@ class AppUpdateManager internal constructor(
                         )
                     }
                 }
+
                 UpdatePolicy.LaunchAction.Check -> startCheck(UpdateTrigger.AUTO)
                 UpdatePolicy.LaunchAction.Skip -> Unit
             }
         }
     }
 
-    /**
-     * 设置里的「检查更新」：取消在途检查任务 + 任务代际 +1，然后强制重新查询。
-     * 正在下载/校验时忽略（保持进度状态，避免把不可取消的下载打断）。
-     */
+    /** 设置里的「检查更新」：取消在途检查 + 代际 +1，强制重查。 */
     fun checkNow() {
-        if (downloadJob?.isActive == true) return
         startCheck(UpdateTrigger.MANUAL)
     }
 
@@ -86,28 +102,33 @@ class AppUpdateManager internal constructor(
         checkJob?.cancel()
         _state.update { it.copy(phase = UpdatePhase.Checking(trigger)) }
         checkJob = scope.launch {
-            val result = api.fetchLatest()
-            // 代际守卫：已被新的手动检查取代时，旧结果（成功或失败）一律丢弃。
+            val result = api.fetchLatest(store.channel)
             if (id != taskId) return@launch
             result.fold(
                 onSuccess = { info ->
                     store.lastSuccessAtMillis = clock()
                     store.lastAttemptAtMillis = clock()
                     store.saveCached(info)
+                    // 新检查结果代表新一轮更新：清空上一次强制更新的失败计数。
+                    downloadFailureCount = 0
                     val newer = isNewerVersion(info.versionName, currentVersionName)
+                    val forced = UpdateRollout.isForced(info, currentVersionName)
+                    val eligible = UpdateRollout.isEligible(store.installId, info)
                     val phase = when {
                         !newer -> {
                             store.clearCache()
                             UpdatePhase.UpToDate(trigger, currentVersionName)
                         }
+                        // 强制更新优先于「用户取消过该版本」与灰度分桶。
+                        forced -> UpdatePhase.Available(trigger, info, forced = true)
                         trigger == UpdateTrigger.AUTO &&
                             !UpdatePolicy.shouldAutoPrompt(
                                 info,
                                 currentVersionName,
                                 store.dismissedVersion,
                             ) -> UpdatePhase.UpToDate(trigger, currentVersionName)
-
-                        else -> UpdatePhase.Available(trigger, info)
+                        eligible -> UpdatePhase.Available(trigger, info)
+                        else -> UpdatePhase.RolloutPending(info, info.rolloutPercent)
                     }
                     _state.update { it.copy(phase = phase, lastCheckAtMillis = clock()) }
                 },
@@ -129,124 +150,257 @@ class AppUpdateManager internal constructor(
         }
     }
 
-    /** 弹窗点「立即更新」：下载 → 校验 SHA → APK 校验 → 拉起安装器。 */
+    // ── 设置项 ───────────────────────────────────────────────────
+
+    fun setAutoCheckEnabled(enabled: Boolean) {
+        scope.launch {
+            store.autoCheckEnabled = enabled
+            _state.update { it.copy(autoCheckEnabled = enabled) }
+        }
+    }
+
+    fun setChannel(channel: UpdateChannel) {
+        scope.launch {
+            if (store.channel == channel) return@launch
+            store.channel = channel
+            store.clearCache()
+            store.lastSuccessAtMillis = 0L
+            store.lastAttemptAtMillis = 0L
+            store.dismissedVersion = null
+            taskId++
+            checkJob?.cancel()
+            _state.update { it.copy(channel = channel, phase = UpdatePhase.Idle) }
+        }
+    }
+
+    fun resetRouteHealth() {
+        scope.launch {
+            store.updateRouteHealth(emptyMap())
+            _state.update { it.copy(routeHealth = emptyMap()) }
+        }
+    }
+
+    // ── 下载（WorkManager） ─────────────────────────────────────
+
+    /** 弹窗点「立即更新」：入队 WorkManager 后台下载（约束：联网 + 存储非低）。 */
     fun startDownload() {
         val available = _state.value.phase as? UpdatePhase.Available ?: return
-        if (downloadJob?.isActive == true) return
         val info = available.info
-        _state.update { it.copy(phase = UpdatePhase.Downloading(info, 0L, info.apkSizeBytes)) }
-        downloadJob = scope.launch {
-            try {
-                var lastEmitBytes = 0L
-                val file = withTimeout(UpdateConfig.DOWNLOAD_TIMEOUT_MS) {
-                    downloader.download(info, downloadDir) { downloaded, total ->
-                        // 进度节流：每 512KB 或完成时更新一次 StateFlow，避免高频重组。
-                        if (downloaded - lastEmitBytes >= PROGRESS_STEP_BYTES || downloaded == total) {
-                            lastEmitBytes = downloaded
-                            _state.update { current ->
-                                if (current.phase is UpdatePhase.Downloading) {
-                                    current.copy(phase = UpdatePhase.Downloading(info, downloaded, total))
-                                } else {
-                                    current
-                                }
-                            }
-                        }
+        UpdateNotifications.ensureChannel(appContext)
+        clearPendingInstall()
+        activeForced = available.forced
+        _state.update {
+            it.copy(
+                phase = UpdatePhase.Downloading(info, 0L, info.apkSizeBytes),
+                forcedEscapeAllowed = false,
+            )
+        }
+        scheduler.enqueue(info)
+    }
+
+    private suspend fun onWorkState(work: DownloadWorkState) {
+        when (work.status) {
+            DownloadWorkState.Status.IDLE -> Unit
+            DownloadWorkState.Status.RUNNING -> {
+                val info = currentActionInfo() ?: store.cachedInfo() ?: return
+                _state.update { current ->
+                    if (current.phase is UpdatePhase.Downloading) {
+                        current.copy(phase = UpdatePhase.Downloading(info, work.downloadedBytes, work.totalBytes))
+                    } else if (current.phase is UpdatePhase.Available || current.phase is UpdatePhase.Idle) {
+                        current.copy(phase = UpdatePhase.Downloading(info, work.downloadedBytes, work.totalBytes))
+                    } else {
+                        current
                     }
                 }
-                downloadedApk = file
-                _state.update { it.copy(phase = UpdatePhase.Verifying(info)) }
-                val invalid = validator.validate(file)
-                if (invalid != null) {
-                    file.delete()
-                    downloadedApk = null
-                    failDownload(info, invalid)
-                    return@launch
+            }
+
+            DownloadWorkState.Status.SUCCEEDED -> handleDownloadSucceeded(work.apkPath)
+            DownloadWorkState.Status.FAILED, DownloadWorkState.Status.CANCELLED -> {
+                val info = currentActionInfo() ?: store.cachedInfo()
+                clearPendingInstall()
+                if (info != null) {
+                    failDownload(info, work.failure ?: UpdateFailure.Network)
+                } else {
+                    _state.update { it.copy(phase = UpdatePhase.Idle) }
                 }
-                launchInstaller(info, file)
-            } catch (e: TimeoutCancellationException) {
-                Log.w(TAG, "update download timeout", e)
-                failDownload(info, UpdateFailure.Timeout)
-            } catch (e: UpdateException) {
-                Log.w(TAG, "update download failed: ${e.failure}", e)
-                failDownload(info, e.failure)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w(TAG, "update download failed (unexpected)", e)
-                failDownload(info, UpdateFailure.Network)
             }
         }
     }
 
-    /** 拉起系统安装器（Main 线程）；返回结果写回状态机。 */
+    private suspend fun handleDownloadSucceeded(apkPath: String?) {
+        val info = currentActionInfo() ?: store.cachedInfo() ?: return
+        val file = apkPath?.let { File(it) }
+        _state.update { it.copy(phase = UpdatePhase.Verifying(info)) }
+        if (file == null || !file.isFile) {
+            failDownload(info, UpdateFailure.FileUnavailable)
+            return
+        }
+        val invalid = validator.validate(file)
+        if (invalid != null) {
+            file.delete()
+            failDownload(info, invalid)
+            return
+        }
+        store.downloadedVersion = info.versionName
+        store.downloadedApkPath = file.absolutePath
+        if (foreground()) {
+            launchInstaller(info, file)
+        } else {
+            // Android 后台启动 Activity 受限：发通知，用户点通知/下次进入时安装。
+            UpdateNotifications.notifyDownloadComplete(appContext, info)
+            _state.update { it.copy(phase = UpdatePhase.Idle) }
+        }
+    }
+
+    /** 前台/点通知后安装已下载的 APK（从持久化 store 恢复，跨进程可用）。 */
+    fun installDownloadedIfReady() {
+        scope.launch { installPendingIfAny() }
+    }
+
+    private suspend fun installPendingIfAny() {
+        val version = store.downloadedVersion ?: return
+        val path = store.downloadedApkPath ?: return
+        if (!isNewerVersion(version, currentVersionName)) {
+            File(path).delete()
+            clearPendingInstall()
+            return
+        }
+        val file = File(path)
+        if (!file.isFile) {
+            clearPendingInstall()
+            return
+        }
+        val info = store.cachedInfo()?.takeIf { it.versionName == version }
+            ?: UpdateInfo(
+                versionName = version,
+                tagName = "v$version",
+                title = version,
+                notes = "",
+                publishedAt = null,
+                htmlUrl = "",
+                apkUrl = "",
+                apkSizeBytes = 0L,
+                sha256 = null,
+                sha256Url = null,
+            )
+        _state.update { it.copy(phase = UpdatePhase.Verifying(info)) }
+        val invalid = validator.validate(file)
+        if (invalid != null) {
+            file.delete()
+            clearPendingInstall()
+            failDownload(info, invalid)
+            return
+        }
+        if (!installer.canInstallPackages()) {
+            _state.update { it.copy(phase = UpdatePhase.NeedInstallPermission(info)) }
+            return
+        }
+        launchInstaller(info, file)
+    }
+
     private suspend fun launchInstaller(info: UpdateInfo, file: File) {
         val result = withContext(Dispatchers.Main) { installer.install(file) }
         when (result) {
             InstallResult.Launched -> {
-                downloadedApk = null
+                clearPendingInstall()
                 _state.update { it.copy(phase = UpdatePhase.Idle) }
             }
-            InstallResult.PermissionRequired -> {
+
+            InstallResult.PermissionRequired ->
                 _state.update { it.copy(phase = UpdatePhase.NeedInstallPermission(info)) }
-            }
+
             is InstallResult.Failed -> failDownload(info, result.failure)
         }
     }
 
-    private fun failDownload(info: UpdateInfo, failure: UpdateFailure) {
-        _state.update { it.copy(phase = UpdatePhase.DownloadFailed(info, failure)) }
+    private fun currentActionInfo(): UpdateInfo? = when (val phase = _state.value.phase) {
+        is UpdatePhase.Available -> phase.info
+        is UpdatePhase.Downloading -> phase.info
+        is UpdatePhase.Verifying -> phase.info
+        is UpdatePhase.NeedInstallPermission -> phase.info
+        is UpdatePhase.DownloadFailed -> phase.info
+        else -> null
     }
 
-    /**
-     * 弹窗关闭：
-     * - Available → 记录 dismissedVersion（对自动检查静默该版本），回 Idle；
-     * - DownloadFailed / NeedInstallPermission → 允许关闭回 Idle。
-     * 下载/校验中不可关闭（UI 层已禁止，这里做兜底）。
-     */
+    private fun failDownload(info: UpdateInfo, failure: UpdateFailure) {
+        val forced = activeForced || (_state.value.phase as? UpdatePhase.DownloadFailed)?.forced == true
+        downloadFailureCount++
+        val escapeAllowed = forced && downloadFailureCount >= FORCED_ESCAPE_FAILURES
+        _state.update {
+            it.copy(
+                phase = UpdatePhase.DownloadFailed(
+                    info = info,
+                    failure = failure,
+                    forced = forced,
+                    escapeAllowed = escapeAllowed,
+                ),
+                forcedEscapeAllowed = escapeAllowed,
+            )
+        }
+    }
+
+    private fun clearPendingInstall() {
+        store.downloadedVersion = null
+        store.downloadedApkPath = null
+        UpdateNotifications.cancelComplete(appContext)
+    }
+
+    // ── 弹窗交互 ────────────────────────────────────────────────
+
     fun dismiss() {
         when (val phase = _state.value.phase) {
             is UpdatePhase.Available -> {
+                if (phase.forced) return
                 val version = phase.info.versionName
                 scope.launch { store.dismissedVersion = version }
                 _state.update { it.copy(phase = UpdatePhase.Idle) }
             }
-            is UpdatePhase.DownloadFailed, is UpdatePhase.NeedInstallPermission ->
+
+            is UpdatePhase.DownloadFailed -> {
+                if (phase.forced && !phase.escapeAllowed) return
+                _state.update { it.copy(phase = UpdatePhase.Idle) }
+            }
+
+            is UpdatePhase.NeedInstallPermission ->
                 _state.update { it.copy(phase = UpdatePhase.Idle) }
 
             else -> Unit
         }
     }
 
-    /** 失败态的重试：检查失败 → 重新检查；下载失败 → 重新下载。 */
     fun retry() {
         when (_state.value.phase) {
             is UpdatePhase.CheckFailed -> checkNow()
             is UpdatePhase.DownloadFailed -> {
-                val info = (_state.value.phase as UpdatePhase.DownloadFailed).info
-                _state.update { it.copy(phase = UpdatePhase.Available(UpdateTrigger.MANUAL, info)) }
+                val failed = _state.value.phase as UpdatePhase.DownloadFailed
+                _state.update {
+                    it.copy(
+                        phase = UpdatePhase.Available(
+                            UpdateTrigger.MANUAL,
+                            failed.info,
+                            forced = failed.forced,
+                        ),
+                    )
+                }
                 startDownload()
             }
+
             else -> Unit
         }
     }
 
-    /** 从「去设置授予安装权限」返回时调用：已授权则自动继续安装。 */
     fun onResumeForInstallPermission() {
         if (_state.value.phase !is UpdatePhase.NeedInstallPermission) return
-        val apk = downloadedApk?.takeIf { it.isFile } ?: return
         if (!installer.canInstallPackages()) return
-        val info = (_state.value.phase as UpdatePhase.NeedInstallPermission).info
-        scope.launch { launchInstaller(info, apk) }
+        scope.launch { installPendingIfAny() }
     }
 
-    /** 打开「安装未知应用」系统设置页（无对应 Activity 时静默失败，用户可手动返回）。 */
     fun openInstallPermissionSettings() {
         runCatching { appContext.startActivity(installer.installPermissionIntent()) }
     }
 
     /**
      * Debug/验收专用：注入 mock 状态（仅 MainActivity 在 debuggable 构建读取 autostart extra 时调用）。
-     * Release 构建不会读取该 extra，因此状态不会被注入。
      */
     fun debugInjectMockState(kind: String) {
         val fake = UpdateInfo(
@@ -272,13 +426,11 @@ class AppUpdateManager internal constructor(
     }
 
     companion object {
-        private const val TAG = "AppUpdate"
-        private const val PROGRESS_STEP_BYTES = 512L * 1024
+        private const val FORCED_ESCAPE_FAILURES = 3
 
         @Volatile
         private var instance: AppUpdateManager? = null
 
-        /** 全局单例（Application 作用域；Download 任务不随页面切换取消）。 */
         fun get(context: Context): AppUpdateManager {
             instance?.let { return it }
             return synchronized(this) {
@@ -289,14 +441,13 @@ class AppUpdateManager internal constructor(
         private fun create(appContext: Context): AppUpdateManager = AppUpdateManager(
             appContext = appContext,
             api = HttpUpdateApi(),
-            downloader = HttpUpdateDownloader(),
+            scheduler = WorkManagerUpdateDownloadScheduler(appContext),
             installer = AndroidUpdateInstaller(appContext),
             validator = AndroidApkValidator(appContext),
             store = SharedPrefsUpdateStore(appContext),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
             clock = System::currentTimeMillis,
             currentVersionName = BuildConfig.VERSION_NAME,
-            downloadDir = File(appContext.cacheDir, "updates"),
         )
     }
 }

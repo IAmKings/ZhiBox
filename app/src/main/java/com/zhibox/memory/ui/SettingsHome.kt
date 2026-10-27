@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -45,9 +47,21 @@ internal fun SettingsHomeContent(
     onOpenPage: (SettingsPage) -> Unit,
     onOpenImport: () -> Unit,
     onBack: () -> Unit,
+    onOpenSearch: () -> Unit = {},
 ) {
     val summary = settingsHomeSummary(state)
-    ZhiBoxScreen(title = stringResource(R.string.settings_title), onBack = onBack) { padding ->
+    ZhiBoxScreen(
+        title = stringResource(R.string.settings_title),
+        onBack = onBack,
+        actions = {
+            IconButton(onClick = onOpenSearch) {
+                Icon(
+                    imageVector = ZhiBoxIcons.Search,
+                    contentDescription = stringResource(R.string.settings_search_title),
+                )
+            }
+        },
+    ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()

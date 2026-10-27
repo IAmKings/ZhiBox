@@ -24,6 +24,8 @@ object UpdatePolicy {
         store: UpdateStore,
         currentVersionName: String,
     ): LaunchAction {
+        // 用户关闭自动检查后：冷启动完全不联网，也不展示缓存（手动检查始终可用）。
+        if (!store.autoCheckEnabled) return LaunchAction.Skip
         val cached = store.cachedInfo()
         if (cached != null &&
             isNewerVersion(cached.versionName, currentVersionName) &&

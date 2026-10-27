@@ -191,7 +191,7 @@
     <string name="settings_kb_summary">%1$d 个文档就绪 · %2$d 个块</string>
 
     <string name="settings_section_privacy">隐私与离线声明</string>
-    <string name="settings_privacy_text">· 检索、嵌入、导入默认离线运行；未配置 LLM 或开启禁网时不发起任何 LLM 请求\n· SAG 增强/问答默认关闭；仅在你显式开启两者、关闭禁网并同意首次联网说明后，才会向指定 HTTPS 端点发送检索片段（发送前显示目标域名）\n· 模型下载是另一条显式联网路径（URL + SHA-256 校验）\n· 更新检查：冷启动时（24 小时内不重复）向 GitHub 匿名查询最新版本；仅在你确认后下载 APK，并用 SHA-256 与签名校验后安装；直连 GitHub 资产不可达时经公开 GitHub 代理镜像回退（镜像只看到公开 APK，完整性仍由本地校验保证）；不发送知识库或个人数据\n· 知识数据（文档/向量/索引/SAG 事件层）仅存于本机应用沙箱、不自动上传；仅在你手动导出知识库备份时写入备份包（不含聊天/trace/API Key）\n· 知识库备份不包含聊天/问答记录、query trace 与 API Key</string>
+    <string name="settings_privacy_text">· 检索、嵌入、导入默认离线运行；未配置 LLM 或开启禁网时不发起任何 LLM 请求\n· SAG 增强/问答默认关闭；仅在你显式开启两者、关闭禁网并同意首次联网说明后，才会向指定 HTTPS 端点发送检索片段（发送前显示目标域名）\n· 模型下载是另一条显式联网路径（URL + SHA-256 校验）\n· 更新检查：冷启动时（24 小时内不重复，可在设置关闭）向 GitHub 匿名查询最新版本；仅在你确认后下载 APK，并用 SHA-256 与签名校验后安装；下载在后台进行并在通知栏显示进度；直连 GitHub 资产不可达时经公开 GitHub 代理镜像回退（镜像只看到公开 APK，完整性仍由本地校验保证）；不发送知识库或个人数据\n· 知识数据（文档/向量/索引/SAG 事件层）仅存于本机应用沙箱、不自动上传；仅在你手动导出知识库备份时写入备份包（不含聊天/trace/API Key）\n· 知识库备份不包含聊天/问答记录、query trace 与 API Key</string>
 
     <string name="settings_refresh_failed">刷新设置失败：%1$s</string>
     <string name="settings_leave_title">下载仍在进行</string>
@@ -769,12 +769,41 @@
     <string name="update_row_permission">等待安装权限</string>
     <string name="update_row_check_failed">检查失败，点击重试</string>
     <string name="update_row_download_failed">下载失败，点击重试</string>
+    <string name="update_settings_title">更新设置</string>
+    <string name="update_settings_auto_title">自动检查更新</string>
+    <string name="update_settings_auto_desc">启动时检查（24 小时内不重复）；关闭后仍可手动检查</string>
+    <string name="update_settings_beta_title">接收预发布版本（Beta）</string>
+    <string name="update_settings_beta_desc">可提前体验新功能，但可能不稳定</string>
+    <string name="update_route_title">更新线路</string>
+    <string name="update_route_direct">直连</string>
+    <string name="update_route_mirror">镜像 %1$s</string>
+    <string name="update_route_ok">正常</string>
+    <string name="update_route_cooling">冷却中</string>
+    <string name="update_route_none">暂无记录</string>
+    <string name="update_route_reset">重置线路状态</string>
+    <string name="settings_search_title">搜索设置</string>
+    <string name="settings_search_placeholder">搜索设置项，例如：更新 / 模型 / 备份 / 诊断</string>
+    <string name="settings_search_empty">没有找到相关设置</string>
+    <string name="settings_search_empty_hint">试试「模型」「更新」「备份」「诊断」</string>
+    <string name="settings_search_page">位于：%1$s</string>
+    <string name="settings_search_action">搜索</string>
+    <string name="settings_search_clear">清除</string>
+    <string name="update_notification_channel_name">应用更新</string>
+    <string name="update_notification_channel_desc">更新下载与安装提醒</string>
+    <string name="update_notification_progress_title">正在下载更新</string>
+    <string name="update_notification_progress_text">版本 %1$s · %2$d%%</string>
+    <string name="update_notification_complete_title">更新已下载</string>
+    <string name="update_notification_complete_text">点击安装 %1$s</string>
 
     <string name="update_dialog_title_available">发现新版本</string>
     <string name="update_dialog_title_downloading">正在下载更新</string>
     <string name="update_dialog_title_verifying">正在校验安装包</string>
     <string name="update_dialog_title_failed">更新失败</string>
     <string name="update_dialog_title_permission">需要安装权限</string>
+    <string name="update_dialog_title_forced">需要更新</string>
+    <string name="update_dialog_forced_hint">此版本包含重要修复，请更新后继续使用。</string>
+    <string name="update_dialog_exit_temporarily">暂时退出</string>
+    <string name="update_row_rollout_pending">新版本 %1$s 正在分批推送（%2$d%%）</string>
     <string name="update_dialog_version_line">当前 %1$s → 新版本 %2$s</string>
     <string name="update_dialog_meta">%1$s · %2$s</string>
     <string name="update_dialog_meta_size">%1$s</string>
@@ -807,5 +836,6 @@
     <string name="update_error_install_permission">缺少安装权限</string>
     <string name="update_error_install">无法打开系统安装界面</string>
     <string name="update_error_file">安装包文件不可用</string>
+    <string name="update_error_cancelled">更新已取消</string>
     <string name="update_error_unknown">更新失败，请稍后重试</string>
 </resources>

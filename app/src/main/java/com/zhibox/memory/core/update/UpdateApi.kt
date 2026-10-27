@@ -12,31 +12,41 @@ import kotlinx.coroutines.withContext
 
 /** GitHub Release 查询抽象（便于 manager 单测注入 fake）。 */
 interface UpdateApi {
-    suspend fun fetchLatest(): Result<UpdateInfo>
+    /**
+     * 查询最新版本。
+     * - [UpdateChannel.STABLE]：`releases/latest`；
+     * - [UpdateChannel.BETA]：`releases?per_page=N` 中取最高 semver（含 prerelease）。
+     */
+    suspend fun fetchLatest(channel: UpdateChannel = UpdateChannel.STABLE): Result<UpdateInfo>
 }
 
 /**
- * 匿名 GitHub API 客户端：
- * `GET https://api.github.com/repos/<owner>/<repo>/releases/latest`。
+ * 匿名 GitHub API 客户端。
  *
  * 设计约束（见 docs/product/APP_UPDATE_SPEC.md）：
  * - 只允许 HTTPS + 固定 api.github.com 地址（测试可注入 base URL）；
- * - 响应体上限 512KB，防止异常大响应拖垮内存；
+ * - 响应体上限 1MB（beta 通道的 releases 列表包含多个 release body）；
  * - 403/429 区分「限流」与普通错误；404 = 无 Release；
  * - 阻塞 IO 全部在 Dispatchers.IO，取消时在关键点 ensureActive。
  */
 class HttpUpdateApi(
-    private val latestReleaseUrl: String = UpdateConfig.latestReleaseUrl,
+    private val releasesApiBase: String = UpdateConfig.releasesApiBase,
     private val userAgent: String = UpdateConfig.userAgent,
     private val openConnection: (URL) -> HttpURLConnection = { url ->
         url.openConnection() as HttpURLConnection
     },
 ) : UpdateApi {
 
-    override suspend fun fetchLatest(): Result<UpdateInfo> = withContext(Dispatchers.IO) {
+    override suspend fun fetchLatest(
+        channel: UpdateChannel,
+    ): Result<UpdateInfo> = withContext(Dispatchers.IO) {
+        val endpoint = when (channel) {
+            UpdateChannel.STABLE -> "$releasesApiBase/latest"
+            UpdateChannel.BETA -> "$releasesApiBase?per_page=$BETA_PER_PAGE"
+        }
         var connection: HttpURLConnection? = null
         try {
-            connection = openConnection(URL(latestReleaseUrl)).apply {
+            connection = openConnection(URL(endpoint)).apply {
                 requestMethod = "GET"
                 connectTimeout = CONNECT_TIMEOUT_MS
                 readTimeout = READ_TIMEOUT_MS
@@ -49,7 +59,7 @@ class HttpUpdateApi(
             currentCoroutineContext().ensureActive()
             when {
                 code == HttpURLConnection.HTTP_NOT_FOUND ->
-                    Result.failure(UpdateException(UpdateFailure.NoRelease, "releases/latest 404"))
+                    Result.failure(UpdateException(UpdateFailure.NoRelease, "release 404"))
 
                 code == 403 || code == 429 -> {
                     val remaining = connection.getHeaderField("X-RateLimit-Remaining")
@@ -63,7 +73,11 @@ class HttpUpdateApi(
                 else -> {
                     val body = connection.inputStream.use { readLimited(it, MAX_BODY_BYTES) }
                     currentCoroutineContext().ensureActive()
-                    Result.success(UpdateReleaseParser.parseLatestRelease(body))
+                    val info = when (channel) {
+                        UpdateChannel.STABLE -> UpdateReleaseParser.parseLatestRelease(body)
+                        UpdateChannel.BETA -> UpdateReleaseParser.parseReleaseList(body)
+                    }
+                    Result.success(applyReleaseMeta(info))
                 }
             }
         } catch (e: UpdateException) {
@@ -73,7 +87,6 @@ class HttpUpdateApi(
         } catch (e: IOException) {
             Result.failure(UpdateException(UpdateFailure.Network))
         } catch (e: Exception) {
-            // 解析异常等在 parser 内已转为 UpdateException；兜底按 Parse 处理。
             Result.failure(
                 (e as? UpdateException) ?: UpdateException(UpdateFailure.Parse, e.message),
             )
@@ -82,14 +95,43 @@ class HttpUpdateApi(
         }
     }
 
+    /**
+     * 读取 Release 资产中的 `*-update.json`（灰度/强制元数据）。
+     * 失败时不阻断更新：保持 100% / 非强制默认值。
+     */
+    private fun applyReleaseMeta(info: UpdateInfo): UpdateInfo {
+        val metaUrl = info.metaUrl ?: return info
+        if (!metaUrl.startsWith("https://github.com/")) return info
+        var connection: HttpURLConnection? = null
+        return try {
+            connection = openConnection(URL(metaUrl)).apply {
+                requestMethod = "GET"
+                connectTimeout = 8_000
+                readTimeout = 10_000
+                instanceFollowRedirects = false
+                setRequestProperty("User-Agent", userAgent)
+                setRequestProperty("Accept", "application/json")
+            }
+            if (connection.responseCode !in 200..299) return info
+            val body = connection.inputStream.use { readLimited(it, META_MAX_BODY_BYTES) }
+            UpdateMetaParser.apply(info, UpdateMetaParser.parse(body))
+        } catch (e: Exception) {
+            info
+        } finally {
+            runCatching { connection?.disconnect() }
+        }
+    }
+
     private companion object {
+        const val META_MAX_BODY_BYTES = 64 * 1024
         const val CONNECT_TIMEOUT_MS = 10_000
         const val READ_TIMEOUT_MS = 15_000
-        const val MAX_BODY_BYTES = 512 * 1024
+        const val MAX_BODY_BYTES = 1_024 * 1_024
+        const val BETA_PER_PAGE = 10
     }
 }
 
-/** 读取至多 [limit] 字节；超出即判失败（GitHub latest release JSON 远小于上限）。 */
+/** 读取至多 [limit] 字节；超出即判失败。 */
 internal fun readLimited(input: InputStream, limit: Int): String {
     val buffer = ByteArray(16 * 1024)
     val output = java.io.ByteArrayOutputStream()

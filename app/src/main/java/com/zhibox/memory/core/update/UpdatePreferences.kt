@@ -1,6 +1,13 @@
 package com.zhibox.memory.core.update
 
 import android.content.Context
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
 
 /**
  * 更新检查的持久化状态：节流时间戳、缓存的最新版本、已取消（dismissed）版本。
@@ -13,9 +20,26 @@ interface UpdateStore {
     var lastAttemptAtMillis: Long
     var dismissedVersion: String?
 
+    /** 自动检查开关（默认 true；关闭后仅手动检查）。 */
+    var autoCheckEnabled: Boolean
+
+    /** 更新通道（默认 STABLE；BETA 接收 GitHub prerelease）。 */
+    var channel: UpdateChannel
+
+    /** 本地安装标识（随机 UUID；仅用于灰度分桶，不上报）。 */
+    var installId: String
+
     fun cachedInfo(): UpdateInfo?
     fun saveCached(info: UpdateInfo)
     fun clearCache()
+
+    /** 下载线路健康统计（本地，不上报）。 */
+    fun routeHealth(): Map<String, RouteHealth>
+    fun updateRouteHealth(health: Map<String, RouteHealth>)
+
+    /** 后台下载完成、等待安装的 APK（跨进程恢复用）。 */
+    var downloadedVersion: String?
+    var downloadedApkPath: String?
 }
 
 class SharedPrefsUpdateStore(context: Context) : UpdateStore {
@@ -39,6 +63,33 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
         get() = prefs.getString(KEY_DISMISSED, null)
         set(value) {
             prefs.edit().putString(KEY_DISMISSED, value).apply()
+        }
+
+    override var autoCheckEnabled: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_CHECK, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_AUTO_CHECK, value).apply()
+        }
+
+    override var channel: UpdateChannel
+        get() = when (prefs.getString(KEY_CHANNEL, null)) {
+            UpdateChannel.BETA.name -> UpdateChannel.BETA
+            else -> UpdateChannel.STABLE
+        }
+        set(value) {
+            prefs.edit().putString(KEY_CHANNEL, value.name).apply()
+        }
+
+    override var installId: String
+        get() {
+            val existing = prefs.getString(KEY_INSTALL_ID, null)
+            if (!existing.isNullOrBlank()) return existing
+            val generated = java.util.UUID.randomUUID().toString()
+            prefs.edit().putString(KEY_INSTALL_ID, generated).apply()
+            return generated
+        }
+        set(value) {
+            prefs.edit().putString(KEY_INSTALL_ID, value).apply()
         }
 
     override fun cachedInfo(): UpdateInfo? {
@@ -72,6 +123,53 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
             .apply()
     }
 
+    override var downloadedVersion: String?
+        get() = prefs.getString(KEY_DOWNLOADED_VERSION, null)
+        set(value) {
+            prefs.edit().putString(KEY_DOWNLOADED_VERSION, value).apply()
+        }
+
+    override var downloadedApkPath: String?
+        get() = prefs.getString(KEY_DOWNLOADED_APK_PATH, null)
+        set(value) {
+            prefs.edit().putString(KEY_DOWNLOADED_APK_PATH, value).apply()
+        }
+
+    override fun routeHealth(): Map<String, RouteHealth> {
+        val raw = prefs.getString(KEY_ROUTE_HEALTH, null) ?: return emptyMap()
+        return runCatching {
+            json.parseToJsonElement(raw).jsonObject.mapValues { (id, element) ->
+                val obj = element.jsonObject
+                RouteHealth(
+                    id = id,
+                    lastSuccessAt = obj["lastSuccessAt"]?.jsonPrimitive?.longOrNull ?: 0L,
+                    lastFailureAt = obj["lastFailureAt"]?.jsonPrimitive?.longOrNull ?: 0L,
+                    consecutiveFailures = obj["consecutiveFailures"]?.jsonPrimitive?.intOrNull ?: 0,
+                    lastLatencyMs = obj["lastLatencyMs"]?.jsonPrimitive?.longOrNull ?: 0L,
+                    cooldownUntil = obj["cooldownUntil"]?.jsonPrimitive?.longOrNull ?: 0L,
+                )
+            }
+        }.getOrDefault(emptyMap())
+    }
+
+    override fun updateRouteHealth(health: Map<String, RouteHealth>) {
+        val obj = buildJsonObject {
+            health.forEach { (id, route) ->
+                put(
+                    id,
+                    buildJsonObject {
+                        put("lastSuccessAt", route.lastSuccessAt)
+                        put("lastFailureAt", route.lastFailureAt)
+                        put("consecutiveFailures", route.consecutiveFailures)
+                        put("lastLatencyMs", route.lastLatencyMs)
+                        put("cooldownUntil", route.cooldownUntil)
+                    },
+                )
+            }
+        }
+        prefs.edit().putString(KEY_ROUTE_HEALTH, obj.toString()).apply()
+    }
+
     override fun clearCache() {
         prefs.edit()
             .remove(KEY_C_VERSION)
@@ -88,10 +186,17 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
     }
 
     private companion object {
+        val json = Json
         const val PREFS_NAME = "app_update"
         const val KEY_LAST_SUCCESS = "last_success_at"
         const val KEY_LAST_ATTEMPT = "last_attempt_at"
         const val KEY_DISMISSED = "dismissed_version"
+        const val KEY_AUTO_CHECK = "auto_check_enabled"
+        const val KEY_CHANNEL = "update_channel"
+        const val KEY_INSTALL_ID = "install_id"
+        const val KEY_ROUTE_HEALTH = "route_health"
+        const val KEY_DOWNLOADED_VERSION = "downloaded_version"
+        const val KEY_DOWNLOADED_APK_PATH = "downloaded_apk_path"
         const val KEY_C_VERSION = "cached_version"
         const val KEY_C_TAG = "cached_tag"
         const val KEY_C_TITLE = "cached_title"

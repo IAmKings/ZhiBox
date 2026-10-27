@@ -131,4 +131,41 @@ class AppUpdateDialogTest {
         composeRule.onNodeWithText("已是最新版本（0.1.6）").assertExists()
         composeRule.onNodeWithText("发现新版本 0.1.7").assertExists()
     }
+    @Test
+    fun forcedAvailableHidesLaterButton() {
+        render(UpdatePhase.Available(UpdateTrigger.MANUAL, info(), forced = true))
+        composeRule.onNodeWithText("需要更新").assertExists()
+        composeRule.onNodeWithText("此版本包含重要修复，请更新后继续使用。").assertExists()
+        composeRule.onNodeWithText("立即更新").assertExists()
+        composeRule.onNodeWithText("稍后").assertDoesNotExist()
+    }
+
+    @Test
+    fun forcedDownloadFailedOnlyAllowsRetryUntilEscape() {
+        render(
+            UpdatePhase.DownloadFailed(
+                info(),
+                UpdateFailure.Network,
+                forced = true,
+                escapeAllowed = false,
+            ),
+        )
+        composeRule.onNodeWithText("重试").assertExists()
+        composeRule.onNodeWithText("关闭").assertDoesNotExist()
+        composeRule.onNodeWithText("暂时退出").assertDoesNotExist()
+    }
+
+    @Test
+    fun forcedDownloadFailedAllowsEscapeAfterThreshold() {
+        render(
+            UpdatePhase.DownloadFailed(
+                info(),
+                UpdateFailure.Network,
+                forced = true,
+                escapeAllowed = true,
+            ),
+        )
+        composeRule.onNodeWithText("暂时退出").assertExists()
+    }
+
 }

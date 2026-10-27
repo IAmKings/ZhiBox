@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -86,9 +87,11 @@ fun ZhiBoxTopBar(
     title: String,
     onBack: (() -> Unit)? = null,
     backEnabled: Boolean = true,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     TopAppBar(
         title = { Text(title) },
+        actions = actions,
         navigationIcon = {
             if (onBack != null) {
                 IconButton(onClick = onBack, enabled = backEnabled) {
@@ -115,6 +118,7 @@ fun ZhiBoxScreen(
     title: String,
     onBack: (() -> Unit)? = null,
     backEnabled: Boolean = true,
+    actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
     // Scaffold 默认 containerColor = colorScheme.surface（卡片白），会导致二级页画布发白；
@@ -122,7 +126,7 @@ fun ZhiBoxScreen(
     // 其 Surface 底色同时覆盖状态栏区域，配合透明顶栏 → 全屏一个底色。
     Scaffold(
         containerColor = MaterialTheme.zhiBoxColors.paper,
-        topBar = { ZhiBoxTopBar(title, onBack, backEnabled) },
+        topBar = { ZhiBoxTopBar(title, onBack, backEnabled, actions) },
     ) { padding ->
         content(padding)
     }

@@ -108,6 +108,49 @@ jobs:
           ls -l dist/
           cat "$OUT.sha256"
 
+      - name: Generate update metadata
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          SHA7="$(git rev-parse --short=7 HEAD)"
+          APK="dist/zhibox-${TAG}-${SHA7}-release-signed.apk"
+          [ -f "$APK" ] || { echo "::error::缺少 APK：$APK"; exit 1; }
+          SHA256="$(cut -d' ' -f1 "${APK}.sha256")"
+          SIZE="$(stat -c%s "$APK")"
+          CHANNEL="stable"; if [[ "$TAG" == *-* ]]; then CHANNEL="beta"; fi
+          TAG_NAME="v${TAG}" SHA256="$SHA256" SIZE="$SIZE" CHANNEL="$CHANNEL" \
+            APK_NAME="$(basename "$APK")" HTML_URL="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}" \
+            python3 - <<'PY' > "dist/zhibox-${TAG}-${SHA7}-update.json"
+          import json, os, re, datetime
+          policy = json.load(open("release/update-policy.json", encoding="utf-8"))
+          schema = policy.get("schema", 1)
+          if schema != 1:
+              raise SystemExit(f"unsupported schema: {schema}")
+          rollout = int(policy.get("rolloutPercent", 100))
+          if not 0 <= rollout <= 100:
+              raise SystemExit(f"invalid rolloutPercent: {rollout}")
+          min_supported = str(policy.get("minSupportedVersion", "0.1.0")).strip()
+          if not re.fullmatch(r"v?\d+(\.\d+)*([.-][0-9A-Za-z.]+)?", min_supported):
+              raise SystemExit(f"invalid minSupportedVersion: {min_supported}")
+          payload = {
+              "schema": 1,
+              "versionName": os.environ["TAG_NAME"].lstrip("vV"),
+              "tagName": os.environ["TAG_NAME"],
+              "channel": os.environ["CHANNEL"],
+              "rolloutPercent": rollout,
+              "minSupportedVersion": min_supported,
+              "publishedAt": datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+              "htmlUrl": os.environ["HTML_URL"],
+              "apk": {
+                  "name": os.environ["APK_NAME"],
+                  "size": int(os.environ["SIZE"]),
+                  "sha256": os.environ["SHA256"],
+              },
+          }
+          print(json.dumps(payload, ensure_ascii=False, indent=2))
+          PY
+          cat "dist/zhibox-${TAG}-${SHA7}-update.json"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -126,8 +169,15 @@ jobs:
             exit 1
           fi
           echo "release notes head: $(head -1 build/release-notes.md)"
+          # 预发布通道：tag 含 "-"（如 v0.1.7-beta.1）必须标记为 GitHub prerelease，
+          # 否则 stable 用户的 releases/latest 会把 Beta 当正式版。
+          PRERELEASE_FLAG=""
+          if [[ "${GITHUB_REF_NAME#v}" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+            echo "prerelease tag detected: $GITHUB_REF_NAME"
+          fi
           gh release create "$GITHUB_REF_NAME" \
-            dist/*.apk dist/*.apk.sha256 dist/*-mapping.txt \
-            --verify-tag \
+            dist/*.apk dist/*.apk.sha256 dist/*-mapping.txt dist/*-update.json \
+            --verify-tag $PRERELEASE_FLAG \
             --title "ZhiBox $GITHUB_REF_NAME" \
             --notes-file build/release-notes.md

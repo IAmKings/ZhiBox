@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,9 +33,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.zhibox.memory.R
+import com.zhibox.memory.core.update.UpdateChannel
 import com.zhibox.memory.core.update.UpdateFailure
 import com.zhibox.memory.core.update.UpdateInfo
 import com.zhibox.memory.core.update.UpdatePhase
+import com.zhibox.memory.core.update.UpdateRouteSelector
+import com.zhibox.memory.core.update.RouteHealth
 import com.zhibox.memory.core.update.UpdateUiState
 import com.zhibox.memory.ui.ZhiBoxCard
 import com.zhibox.memory.ui.theme.ZhiBoxRadius
@@ -62,11 +66,9 @@ fun AppUpdateDialog(
 ) {
     val phase = state.phase
     val cancellable = when (phase) {
-        is UpdatePhase.Available,
-        is UpdatePhase.DownloadFailed,
-        is UpdatePhase.NeedInstallPermission,
-        -> true
-
+        is UpdatePhase.Available -> !phase.forced
+        is UpdatePhase.DownloadFailed -> !phase.forced || phase.escapeAllowed
+        is UpdatePhase.NeedInstallPermission -> true
         else -> false
     }
     val visible = phase is UpdatePhase.Available ||
@@ -99,6 +101,7 @@ fun AppUpdateDialog(
                     is UpdatePhase.Available -> AvailableContent(
                         currentVersion = state.currentVersionName,
                         info = phase.info,
+                        forced = phase.forced,
                         onOpenReleasePage = { url ->
                             runCatching {
                                 context.startActivity(
@@ -145,12 +148,28 @@ fun AppUpdateDialog(
         },
         dismissButton = {
             when (phase) {
-                is UpdatePhase.Available -> TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.update_dialog_later))
+                is UpdatePhase.Available -> if (!phase.forced) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.update_dialog_later))
+                    }
+                } else {
+                    Unit
                 }
 
-                is UpdatePhase.DownloadFailed -> TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.update_dialog_close))
+                is UpdatePhase.DownloadFailed -> if (!phase.forced || phase.escapeAllowed) {
+                    TextButton(onClick = onDismiss) {
+                        Text(
+                            stringResource(
+                                if (phase.forced) {
+                                    R.string.update_dialog_exit_temporarily
+                                } else {
+                                    R.string.update_dialog_close
+                                },
+                            ),
+                        )
+                    }
+                } else {
+                    Unit
                 }
 
                 is UpdatePhase.NeedInstallPermission -> TextButton(onClick = onDismiss) {
@@ -165,7 +184,11 @@ fun AppUpdateDialog(
 
 @Composable
 private fun dialogTitle(phase: UpdatePhase): String = when (phase) {
-    is UpdatePhase.Available -> stringResource(R.string.update_dialog_title_available)
+    is UpdatePhase.Available -> if (phase.forced) {
+        stringResource(R.string.update_dialog_title_forced)
+    } else {
+        stringResource(R.string.update_dialog_title_available)
+    }
     is UpdatePhase.Downloading -> stringResource(R.string.update_dialog_title_downloading)
     is UpdatePhase.Verifying -> stringResource(R.string.update_dialog_title_verifying)
     is UpdatePhase.DownloadFailed -> stringResource(R.string.update_dialog_title_failed)
@@ -177,8 +200,16 @@ private fun dialogTitle(phase: UpdatePhase): String = when (phase) {
 private fun AvailableContent(
     currentVersion: String,
     info: UpdateInfo,
+    forced: Boolean,
     onOpenReleasePage: (String) -> Unit,
 ) {
+    if (forced) {
+        Text(
+            stringResource(R.string.update_dialog_forced_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
     Text(
         stringResource(
             R.string.update_dialog_version_line,
@@ -299,6 +330,7 @@ internal fun failureText(failure: UpdateFailure): String = when (failure) {
     UpdateFailure.InstallPermission -> stringResource(R.string.update_error_install_permission)
     UpdateFailure.InstallFailed -> stringResource(R.string.update_error_install)
     UpdateFailure.FileUnavailable -> stringResource(R.string.update_error_file)
+    UpdateFailure.Cancelled -> stringResource(R.string.update_error_cancelled)
 }
 
 /**
@@ -325,6 +357,12 @@ fun UpdateSettingsRow(
         is UpdatePhase.Available -> stringResource(
             R.string.update_row_available,
             phase.info.versionName,
+        )
+
+        is UpdatePhase.RolloutPending -> stringResource(
+            R.string.update_row_rollout_pending,
+            phase.info.versionName,
+            phase.rolloutPercent,
         )
 
         is UpdatePhase.Downloading -> {
@@ -402,4 +440,140 @@ internal fun formatBytes(bytes: Long): String {
     } else {
         String.format(Locale.US, "%.1f MB", mb)
     }
+}
+
+
+/**
+ * 「更新设置」卡：自动检查开关 + Beta 通道开关。
+ * 两个开关都只改本地偏好；不触发网络请求（手动「检查更新」才重新查询）。
+ */
+@Composable
+fun UpdateSettingsSwitches(
+    state: UpdateUiState,
+    onAutoCheckChange: (Boolean) -> Unit,
+    onChannelChange: (UpdateChannel) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ZhiBoxCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("settings_update_switches"),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                stringResource(R.string.update_settings_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            UpdateSwitchRow(
+                title = stringResource(R.string.update_settings_auto_title),
+                description = stringResource(R.string.update_settings_auto_desc),
+                checked = state.autoCheckEnabled,
+                onCheckedChange = onAutoCheckChange,
+            )
+            UpdateSwitchRow(
+                title = stringResource(R.string.update_settings_beta_title),
+                description = stringResource(R.string.update_settings_beta_desc),
+                checked = state.channel == UpdateChannel.BETA,
+                onCheckedChange = { beta ->
+                    onChannelChange(if (beta) UpdateChannel.BETA else UpdateChannel.STABLE)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun UpdateSwitchRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier
+                .padding(start = 8.dp)
+                .semantics { contentDescription = title },
+        )
+    }
+}
+
+
+/**
+ * 高级与诊断页（技术细节开启时）的「更新线路」只读诊断 + 重置。
+ * 数据来自真实下载结果（本地统计），不发探测请求、不上报。
+ */
+@Composable
+fun UpdateRouteDiagnosticsRow(
+    routeHealth: Map<String, RouteHealth>,
+    onReset: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val now = System.currentTimeMillis()
+    val direct = routeHealth[UpdateRouteSelector.DIRECT_ID]
+    val mirrors = routeHealth.values.filter { it.id != UpdateRouteSelector.DIRECT_ID }
+        .sortedBy { it.id }
+        .take(2)
+    val parts = buildList {
+        add("${stringResource(R.string.update_route_direct)} ${routeStatusText(direct, now)}")
+        mirrors.forEach { route ->
+            add(
+                "${stringResource(R.string.update_route_mirror, route.id)} " +
+                    routeStatusText(route, now),
+            )
+        }
+    }
+    val summary = parts.joinToString(" · ")
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                stringResource(R.string.update_route_title),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                summary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(onClick = onReset) {
+            Text(
+                stringResource(R.string.update_route_reset),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun routeStatusText(health: RouteHealth?, now: Long): String = when {
+    health == null -> stringResource(R.string.update_route_none)
+    health.cooldownUntil > now -> stringResource(R.string.update_route_cooling)
+    else -> stringResource(R.string.update_route_ok)
 }

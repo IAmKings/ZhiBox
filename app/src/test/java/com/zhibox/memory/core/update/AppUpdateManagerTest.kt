@@ -35,6 +35,9 @@ class AppUpdateManagerTest {
         override var lastSuccessAtMillis: Long = 0L
         override var lastAttemptAtMillis: Long = 0L
         override var dismissedVersion: String? = null
+        override var autoCheckEnabled: Boolean = true
+        override var channel: UpdateChannel = UpdateChannel.STABLE
+        override var installId: String = "test-install-id"
         var cached: UpdateInfo? = null
         override fun cachedInfo(): UpdateInfo? = cached
         override fun saveCached(info: UpdateInfo) {
@@ -44,6 +47,15 @@ class AppUpdateManagerTest {
         override fun clearCache() {
             cached = null
         }
+
+        private var routes: Map<String, RouteHealth> = emptyMap()
+        override fun routeHealth(): Map<String, RouteHealth> = routes
+        override fun updateRouteHealth(health: Map<String, RouteHealth>) {
+            routes = health
+        }
+
+        override var downloadedVersion: String? = null
+        override var downloadedApkPath: String? = null
     }
 
     private class FakeApi(
@@ -51,7 +63,7 @@ class AppUpdateManagerTest {
         private val delayMs: Long = 0L,
     ) : UpdateApi {
         var calls: Int = 0
-        override suspend fun fetchLatest(): Result<UpdateInfo> {
+        override suspend fun fetchLatest(channel: UpdateChannel): Result<UpdateInfo> {
             calls++
             // 先取结果再 delay：模拟"请求已发出、结果已确定但尚未返回"，
             // 这样被取消的旧任务不会吃掉下一次调用的返回值。
@@ -62,25 +74,18 @@ class AppUpdateManagerTest {
         }
     }
 
-    private class FakeDownloader(
-        private val content: ByteArray = ByteArray(16) { it.toByte() },
-        private val failure: UpdateFailure? = null,
-        private val onProgressToo: Boolean = true,
-    ) : UpdateDownloader {
-        override suspend fun download(
-            info: UpdateInfo,
-            targetDir: File,
-            onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit,
-        ): File {
-            failure?.let { throw UpdateException(it) }
-            val file = File(targetDir, "zhibox-${info.versionName}.apk")
-            file.parentFile?.mkdirs()
-            file.writeBytes(content)
-            if (onProgressToo) {
-                onProgress(content.size.toLong() / 2, content.size.toLong())
-                onProgress(content.size.toLong(), content.size.toLong())
-            }
-            return file
+    private class FakeScheduler : UpdateDownloadScheduler {
+        var enqueued: UpdateInfo? = null
+        private val states = kotlinx.coroutines.flow.MutableSharedFlow<DownloadWorkState>(
+            extraBufferCapacity = 64,
+        )
+        override fun enqueue(info: UpdateInfo) {
+            enqueued = info
+        }
+
+        override fun observe(): kotlinx.coroutines.flow.Flow<DownloadWorkState> = states
+        fun emit(work: DownloadWorkState) {
+            check(states.tryEmit(work)) { "work state buffer full" }
         }
     }
 
@@ -101,7 +106,11 @@ class AppUpdateManagerTest {
         override fun installPermissionIntent(): Intent = Intent()
     }
 
-    private fun info(version: String) = UpdateInfo(
+    private fun info(
+        version: String,
+        rolloutPercent: Int = 100,
+        minSupportedVersion: String? = null,
+    ) = UpdateInfo(
         versionName = version,
         tagName = "v$version",
         title = "ZhiBox v$version",
@@ -112,30 +121,30 @@ class AppUpdateManagerTest {
         apkSizeBytes = 16,
         sha256 = "e".repeat(64),
         sha256Url = null,
+        rolloutPercent = rolloutPercent,
+        minSupportedVersion = minSupportedVersion,
     )
 
     private fun manager(
         scope: CoroutineScope,
         store: UpdateStore = FakeStore(),
         api: UpdateApi = FakeApi(),
-        downloader: UpdateDownloader = FakeDownloader(),
+        scheduler: FakeScheduler = FakeScheduler(),
         validator: ApkValidator = FakeValidator(),
         installer: UpdateInstaller = FakeInstaller(),
         now: Long = 1_700_000_000_000L,
+        foreground: () -> Boolean = { true },
     ): AppUpdateManager = AppUpdateManager(
         appContext = ApplicationProvider.getApplicationContext<Context>(),
         api = api,
-        downloader = downloader,
+        scheduler = scheduler,
         installer = installer,
         validator = validator,
         store = store,
         scope = scope,
         clock = { now },
         currentVersionName = "0.1.6",
-        downloadDir = File(
-            ApplicationProvider.getApplicationContext<Context>().cacheDir,
-            "updates-test",
-        ),
+        foreground = foreground,
     )
 
     @Test
@@ -234,18 +243,35 @@ class AppUpdateManagerTest {
     }
 
     @Test
-    fun downloadVerifiesAndLaunchesInstaller() = runTest {
+    fun downloadWorkSuccessVerifiesAndLaunchesInstaller() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         try {
             val installer = FakeInstaller()
+            val scheduler = FakeScheduler()
             val manager = manager(
                 scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
                 api = FakeApi(mutableListOf(Result.success(info("0.1.7")))),
+                scheduler = scheduler,
                 installer = installer,
             )
             manager.onAppEntered()
             advanceUntilIdle()
             manager.startDownload()
+            advanceUntilIdle()
+            assertEquals("0.1.7", scheduler.enqueued?.versionName)
+
+            val apk = File(
+                ApplicationProvider.getApplicationContext<Context>().cacheDir,
+                "updates-test/zhibox-0.1.7.apk",
+            )
+            apk.parentFile?.mkdirs()
+            apk.writeBytes(ByteArray(16))
+            scheduler.emit(
+                DownloadWorkState(
+                    status = DownloadWorkState.Status.SUCCEEDED,
+                    apkPath = apk.absolutePath,
+                ),
+            )
             advanceUntilIdle()
 
             assertTrue(installer.installed != null)
@@ -256,17 +282,25 @@ class AppUpdateManagerTest {
     }
 
     @Test
-    fun checksumFailureBecomesDownloadFailed() = runTest {
+    fun downloadWorkFailureBecomesDownloadFailed() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         try {
+            val scheduler = FakeScheduler()
             val manager = manager(
                 scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
                 api = FakeApi(mutableListOf(Result.success(info("0.1.7")))),
-                downloader = FakeDownloader(failure = UpdateFailure.ChecksumMismatch),
+                scheduler = scheduler,
             )
             manager.onAppEntered()
             advanceUntilIdle()
             manager.startDownload()
+            advanceUntilIdle()
+            scheduler.emit(
+                DownloadWorkState(
+                    status = DownloadWorkState.Status.FAILED,
+                    failure = UpdateFailure.ChecksumMismatch,
+                ),
+            )
             advanceUntilIdle()
 
             val phase = manager.state.value.phase as UpdatePhase.DownloadFailed
@@ -281,15 +315,30 @@ class AppUpdateManagerTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         try {
             val installer = FakeInstaller()
+            val scheduler = FakeScheduler()
             val manager = manager(
                 scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
                 api = FakeApi(mutableListOf(Result.success(info("0.1.7")))),
+                scheduler = scheduler,
                 validator = FakeValidator(UpdateFailure.ApkInvalid),
                 installer = installer,
             )
             manager.onAppEntered()
             advanceUntilIdle()
             manager.startDownload()
+            advanceUntilIdle()
+            val apk = File(
+                ApplicationProvider.getApplicationContext<Context>().cacheDir,
+                "updates-test/zhibox-0.1.7.apk",
+            )
+            apk.parentFile?.mkdirs()
+            apk.writeBytes(ByteArray(16))
+            scheduler.emit(
+                DownloadWorkState(
+                    status = DownloadWorkState.Status.SUCCEEDED,
+                    apkPath = apk.absolutePath,
+                ),
+            )
             advanceUntilIdle()
 
             assertNull(installer.installed)
@@ -358,4 +407,88 @@ class AppUpdateManagerTest {
             Dispatchers.resetMain()
         }
     }
+    @Test
+    fun forcedUpdateBypassesRolloutAndDismiss() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = FakeApi(
+                    mutableListOf(
+                        Result.success(info("0.1.7", rolloutPercent = 0, minSupportedVersion = "0.1.7")),
+                    ),
+                ),
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            val phase = manager.state.value.phase as UpdatePhase.Available
+            assertTrue(phase.forced)
+            manager.dismiss()
+            advanceUntilIdle()
+            // 强制更新不可取消
+            assertTrue(manager.state.value.phase is UpdatePhase.Available)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun rolloutNotEligibleShowsPending() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = FakeApi(mutableListOf(Result.success(info("0.1.7", rolloutPercent = 0)))),
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            assertTrue(manager.state.value.phase is UpdatePhase.RolloutPending)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun forcedUpdateAllowsEscapeAfterThreeDownloadFailures() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val scheduler = FakeScheduler()
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = FakeApi(
+                    mutableListOf(
+                        Result.success(info("0.1.7", minSupportedVersion = "0.1.7")),
+                    ),
+                ),
+                scheduler = scheduler,
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            repeat(3) { attempt ->
+                manager.startDownload()
+                advanceUntilIdle()
+                scheduler.emit(
+                    DownloadWorkState(
+                        status = DownloadWorkState.Status.FAILED,
+                        failure = UpdateFailure.Network,
+                    ),
+                )
+                advanceUntilIdle()
+                val failed = manager.state.value.phase as UpdatePhase.DownloadFailed
+                assertTrue(failed.forced)
+                if (attempt < 2) {
+                    manager.retry()
+                    advanceUntilIdle()
+                }
+            }
+            val failed = manager.state.value.phase as UpdatePhase.DownloadFailed
+            assertTrue("第三次失败应允许退出", failed.escapeAllowed)
+            manager.dismiss()
+            advanceUntilIdle()
+            assertTrue(manager.state.value.phase is UpdatePhase.Idle)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
 }
