@@ -11,6 +11,11 @@ on:
         required: true
         type: choice
         options: [beta, drill]
+      version:
+        description: "演练版本号（如 0.1.10 → v0.1.10-beta.1 / v0.1.10-drill）"
+        required: true
+        default: "0.1.10"
+        type: string
 
 permissions:
   contents: write
@@ -24,6 +29,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           MODE: ${{ inputs.mode }}
+          VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
           mkdir -p dl dist
@@ -32,37 +38,38 @@ jobs:
           echo "source APK: $APK"
 
           if [ "$MODE" = "beta" ]; then
-            TAG="v0.1.9-beta.1"
-            OUT="dist/zhibox-0.1.9-beta.1-0000000-release-signed.apk"
+            TAG="v${VERSION}-beta.1"
+            OUT="dist/zhibox-${VERSION}-beta.1-0000000-release-signed.apk"
             gh release delete "$TAG" --cleanup-tag -y >/dev/null 2>&1 || true
             gh release create "$TAG" --prerelease --target master \
-              --title "TEMP v0.1.9-beta.1 (Beta drill)" \
-              --notes "临时 Beta 演练版本（APK 复用 v0.1.8，仅验证 Beta 通道可见性），演练后删除。"
+              --title "TEMP v${VERSION}-beta.1 (Beta drill)" \
+              --notes "临时 Beta 演练版本（APK 复用 v0.1.9，仅验证 Beta 通道可见性），演练后删除。"
           else
-            TAG="v0.1.9-drill"
-            OUT="dist/zhibox-0.1.9-drill-0000000-release-signed.apk"
+            TAG="v${VERSION}-drill"
+            OUT="dist/zhibox-${VERSION}-drill-0000000-release-signed.apk"
             gh release delete "$TAG" --cleanup-tag -y >/dev/null 2>&1 || true
             gh release create "$TAG" --target master \
-              --title "TEMP v0.1.9-drill (rollout drill)" \
-              --notes "临时灰度演练版本（APK 复用 v0.1.8，仅验证 rollout 分桶），演练后删除。"
+              --title "TEMP v${VERSION}-drill (rollout drill)" \
+              --notes "临时灰度演练版本（APK 复用 v0.1.9，仅验证 rollout 分桶），演练后删除。"
           fi
 
           cp -f "$APK" "$OUT"
           sha256sum "$OUT" | sed 's|dist/||' > "$OUT.sha256"
 
           if [ "$MODE" = "drill" ]; then
-            python3 - <<'PY' > dist/zhibox-0.1.9-drill-0000000-update.json
+            python3 - <<'PY' > "dist/zhibox-${VERSION}-drill-0000000-update.json"
           import json, os, hashlib
-          apk = "dist/zhibox-0.1.9-drill-0000000-release-signed.apk"
+          version = os.environ["VERSION"]
+          apk = f"dist/zhibox-{version}-drill-0000000-release-signed.apk"
           payload = {
               "schema": 1,
-              "versionName": "0.1.9-drill",
-              "tagName": "v0.1.9-drill",
+              "versionName": f"{version}-drill",
+              "tagName": f"v{version}-drill",
               "channel": "stable",
               "rolloutPercent": 0,
               "minSupportedVersion": "0.1.0",
               "publishedAt": "2026-10-28T00:00:00Z",
-              "htmlUrl": "https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.9-drill",
+              "htmlUrl": f"https://github.com/IAmKings/ZhiBox/releases/tag/v{version}-drill",
               "apk": {
                   "name": os.path.basename(apk),
                   "size": os.path.getsize(apk),
