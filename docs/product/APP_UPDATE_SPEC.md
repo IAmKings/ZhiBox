@@ -189,6 +189,26 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 > v0.1.8 的「直连失败回退镜像保留 `.part` 续传」修复未在 Android 17 网络复现触发条件，由 Android 14 真机与单测覆盖。
 
 
+### 9.4 二期 Beta / 灰度演练（Android 17，2026-10-28）
+
+环境：OPPO PJZ110 / Android 17，客户端 v0.1.9（含 update.json 重定向修复）。
+
+| 项 | 结果 |
+|---|---|
+| stable 通道看不到 prerelease | ✅ 手动检查显示「已是最新版本（0.1.9）」；`v0.1.10-beta.1` 未出现 |
+| Beta 通道可见 prerelease | ✅ 打开「接收预发布版本（Beta）」后手动检查弹出「当前 0.1.9 → 0.1.10-beta.1」；截图 `impl-drill-beta-android17.png` |
+| 关闭 Beta 恢复 stable | ✅ 再次检查回到「已是最新版本（0.1.9）」 |
+| 灰度 0% 不弹窗 | ✅ `update.json rolloutPercent=0`：设置行显示「新版本 0.1.10-drill 正在分批推送（0%）」，无弹窗；截图 `impl-drill-rollout-pending-android17.png` |
+| 灰度 100% 可更新 | ✅ 新建 `v0.1.11-drill`（rollout=100）后正常弹出更新框（0.1.9 → 0.1.11-drill）；截图 `impl-drill-rollout-available-android17.png` |
+| 强制更新 | 未在真机演练（避免锁死测试机）；`UpdateRollout.isForced` + 强制弹窗分支由单测覆盖 |
+| 通知被拒兜底 | v0.1.9 新增 `onAppResumed` 自动续装；单测覆盖。真机完整验证需下一个更高 versionCode 的正式包（drill APK 复用 v0.1.9，安装器版本校验不通过） |
+
+> **运维经验**：`gh release upload --clobber` 覆盖同名 `update.json` 后，部分 CDN 边缘会短暂
+> 返回旧内容（实测设备继续读到 rollout 0）。调整灰度建议新建 Release/资产，或等待缓存过期
+> 再验证；不要在覆盖后立刻断言失败。
+> 演练用临时 Release/工作流已删除，latest 恢复 v0.1.9。
+
+
 ## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
 
 - 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：

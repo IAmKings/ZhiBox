@@ -459,13 +459,25 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 项 | 值 |
 |---|---|
 | versionCode / versionName | **10 / 0.1.9** |
-| 基线提交 | 版本号提交（tag `v0.1.9`）；发布后回填 |
+| 基线提交 | `68d06f0`（tag `v0.1.9`） |
 | 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.8） |
 | 签名 | 沿用既有 release keystore（与 v0.1.8 同证书，可覆盖升级） |
 | 发布政策 | `release/update-policy.json`（全量 100%，minSupported 0.1.0） |
-| 发布产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；size/SHA-256 发布后回填 |
+| 发布产物 | `zhibox-0.1.9-68d06f0-release-signed.apk`（70,428,817 bytes）；SHA-256 `74b3dce4ba7250ab69a3d577a1b70c02166e9a82e6907c65eaccc8b581e7ba1a`；`.sha256`、mapping、`zhibox-0.1.9-68d06f0-update.json`（rollout 100 / minSupported 0.1.0）一并上传；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.9 |
 
 本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
 - 修复 `update.json` 元数据不跟随 GitHub 资产 302 重定向（灰度/强制此前未生效）；
 - 通知被拒时，后台下载完成回到前台自动续装；
 - Android 17 Beta/灰度真机演练记录（APP_UPDATE_SPEC §9.4）。
+
+### v0.1.9 发版后演练（Android 17，2026-10-28）
+
+- Beta：stable 通道看不到 `v0.1.10-beta.1`；打开 Beta 开关后可见并可弹出更新框；关闭后恢复 stable。
+- 灰度：`update.json rolloutPercent=0` 时设置行显示「新版本正在分批推送（0%）」、不弹窗；
+  `rolloutPercent=100`（新 Release）时正常弹出更新框。
+- 经验：`gh release upload --clobber` 覆盖同名 `update.json` 后，部分 CDN 边缘会短暂返回旧内容
+  （实测设备仍读到 rollout 0）；调整灰度建议**新建 Release/资产**或等待 CDN 缓存过期，
+  不要只覆盖同一资产后立刻验证。
+- 强制更新本轮未在真机演练（避免把测试机锁在强制态）；由 `UpdateRollout/Manager` 单测覆盖。
+- 通知被拒场景：v0.1.9 增加「回到前台自动续装」，单测覆盖；真机完整验证需要下一个
+  更高 versionCode 的正式安装包（本轮 drill APK 复用 v0.1.9，版本号不满足安装器校验）。
