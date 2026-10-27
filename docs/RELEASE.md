@@ -381,12 +381,12 @@ tag 与 versionName 由 release workflow 强校验。
 | 项 | 值 |
 |---|---|
 | versionCode / versionName | **7 / 0.1.6** |
-| 基线提交 | 版本号提交（tag `v0.1.6`） |
+| 基线提交 | `da561e5`（tag `v0.1.6`；含 GitHub 代理镜像回退修复，替代首版 `9cfb51a`） |
 | 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.5） |
 | 签名 | 沿用既有 release keystore（与 v0.1.5 同证书，可覆盖升级） |
 | 托管要求 | **GitHub 仓库 public**：应用匿名查询 `releases/latest` 并下载公开资产 |
-| 发布产物 | 由 tag 推送后的 Release workflow 构建；size/SHA-256 发布后回填 |
-| 发布通道 | tag 推送 → `.github/workflows/release.yml`（signed + apksigner/aapt2 + Release body 仅当前版本段落） |
+| 发布产物 | `zhibox-0.1.6-da561e5-release-signed.apk`（70,399,448 bytes）；SHA-256 `a1207dd28215bf29fdd7bb24f4a5d3ee2dd7a61ec54171d0c620605891c089f9`；同名 `.sha256` 与 `zhibox-0.1.6-da561e5-mapping.txt` 一并上传 |
+| 发布通道 | tag 推送 → `.github/workflows/release.yml`（signed + apksigner/aapt2 + Release body 仅当前版本段落）；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.6 |
 
 本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
 - 应用内更新服务：冷启动 24h 节流自动检查、DESIGN 更新弹窗、下载进度（下载/校验不可取消）、
