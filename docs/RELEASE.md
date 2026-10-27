@@ -372,3 +372,25 @@ tag 与 versionName 由 release workflow 强校验。
   ```
 - **端到端安装验证**需要连续两个带更新服务的版本：v0.1.6 首次带服务，无法从 v0.1.5 触发；
   在 v0.1.7 发布时用 v0.1.6 安装包走查「检查 → 下载 → 校验 → 系统安装器」。
+
+## 14. 2026-10-27 v0.1.6 发布记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **7 / 0.1.6** |
+| 基线提交 | 版本号提交（tag `v0.1.6`） |
+| 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.5） |
+| 签名 | 沿用既有 release keystore（与 v0.1.5 同证书，可覆盖升级） |
+| 托管要求 | **GitHub 仓库 public**：应用匿名查询 `releases/latest` 并下载公开资产 |
+| 发布产物 | 由 tag 推送后的 Release workflow 构建；size/SHA-256 发布后回填 |
+| 发布通道 | tag 推送 → `.github/workflows/release.yml`（signed + apksigner/aapt2 + Release body 仅当前版本段落） |
+
+本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
+- 应用内更新服务：冷启动 24h 节流自动检查、DESIGN 更新弹窗、下载进度（下载/校验不可取消）、
+  SHA-256 + 包名/versionCode/签名校验、自动拉起系统安装器、未知来源权限引导；
+- 设置 → 隐私与关于 → 检查更新：取消在途检查并重新生成任务；
+- 隐私声明新增第 4 条联网路径；GitHub 仓库改为 public 托管更新源；
+- 新增 4 个测试类（模型/Manager/Mock HTTPS/Robolectric 弹窗），真机 mock 走查截图 5 张。
+
+验收：CI（docs 一致性 + assembleDebug + 单测 + lint + androidTest 编译 + assembleRelease）通过后再打 tag；
+tag 与 versionName 由 release workflow 强校验。端到端下载/安装需在 v0.1.7 发布时从 v0.1.6 走查。
