@@ -159,6 +159,21 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 > 镜像顺序可通过 `BuildConfig.UPDATE_DOWNLOAD_MIRRORS` 调整（默认 `gh-proxy.com`、`ghfast.top`）。
 
 
+### 9.2 二期真机验收（v0.1.7，2026-10-27）
+
+| 项 | 结果 |
+|---|---|
+| release→release 完整升级 | ✅ 设备安装 v0.1.6 release → 自动发现 v0.1.7 → 镜像下载 67MB → SHA-256 → 系统安装器 → **v0.1.7 (versionCode 8) 安装成功** |
+| 设置搜索 | ✅ 顶栏入口、输入 GPU 命中「GPU 加速（高级与诊断）」、点击跳转并定位；截图 `impl-settings-search.png` / `impl-settings-search-target.png` |
+| 更新设置开关 | ✅ 自动检查 / Beta 两开关展示；截图 `impl-update-settings.png` |
+| 后台下载 + 通知 | ✅ 临时 debug 版本：WorkManager 任务、`POST_NOTIFICATIONS` 授权、`app_update` 渠道进度通知（0%→…），退出应用后继续 |
+| 跨进程续传 | ✅ 下载中 `force-stop` 后重新进入：`.part` 从 2,179,072 B 继续增长到 4,001,454 B（下载态/通知恢复），最终完成 |
+| 后台完成 → 通知安装 | ✅ 完成后发「更新已下载 / 点击安装 0.1.8-test2」通知；点通知进入应用并拉起系统安装器（0.1.7→0.1.8） |
+| 临时 tiny APK 安装 | ⚠️ 手工裁剪的小体积测试 APK 被 MIUI 判定「与系统不兼容」（缺 native 库/dx 的制品问题，非更新逻辑）；installer 已正确显示 0.1.7→0.1.8 |
+
+> 临时测试 Release 与工作流已删除；正式 Release 仍为 v0.1.7（latest）。
+
+
 ## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
 
 - 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：

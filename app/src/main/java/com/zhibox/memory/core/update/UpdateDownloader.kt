@@ -115,7 +115,9 @@ class HttpUpdateDownloader(
                     part = part,
                     target = target,
                     expectedSha = expectedSha,
-                    allowResume = index == 0,
+                    // 任意线路都尝试续传：镜像可能支持 Range；不支持时 attemptDownload
+                    // 会丢弃半包重下。进程被杀后 direct 先失败也能从 .part 继续。
+                    allowResume = true,
                     onProgress = onProgress,
                 )
                 onRouteResult(
@@ -145,8 +147,8 @@ class HttpUpdateDownloader(
                 } else {
                     throw e
                 }
-                // 下一次尝试从零开始（镜像不一定支持 Range；半包不可信）
-                part.delete()
+                // 保留 .part：下一条线路继续 Range；若响应不是 206/起点不符，
+                // attemptDownload 会自行丢弃半包重下。
             }
         }
         throw lastFailure ?: UpdateException(UpdateFailure.Network)

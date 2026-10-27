@@ -404,11 +404,11 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 项 | 值 |
 |---|---|
 | versionCode / versionName | **8 / 0.1.7** |
-| 基线提交 | 版本号提交（tag `v0.1.7`）；发布后回填 |
+| 基线提交 | `8de29e1`（tag `v0.1.7`） |
 | 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.6） |
 | 签名 | 沿用既有 release keystore（与 v0.1.6 同证书，可覆盖升级） |
 | 发布政策 | `release/update-policy.json`（本版本 `rolloutPercent=100`、`minSupportedVersion=0.1.0`） |
-| 发布产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；size/SHA-256 发布后回填 |
+| 发布产物 | `zhibox-0.1.7-8de29e1-release-signed.apk`（70,428,826 bytes）；SHA-256 `e47d79b4b0de3cc8389185217530212c548d36c1ecac5e795ad4c6a13a6843ee`；`.sha256`、mapping、`zhibox-0.1.7-8de29e1-update.json`（rollout 100 / minSupported 0.1.0）一并上传；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.7 |
 
 ### 灰度/强制更新发布操作
 
@@ -428,3 +428,10 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 - 自动检查开关、Beta 通道、灰度/强制更新元数据；
 - 下载线路健康监控、设置搜索；
 - 不包含增量更新（APK 签名约束）。
+
+### 发版后修复（进入下一个版本）
+
+- `UpdateDownloader` 跨线路续传：直连失败回退镜像时保留 `.part` 并尝试 Range，
+  镜像不支持 Range 再由 `attemptDownload` 丢弃半包重下。修复前「直连不可达 + 镜像」
+  场景下进程被杀会从头下载；修复后真机验证 `.part` 2,179,072 B → 4,001,454 B 续传成功。
+- 该修复不改变 v0.1.7 已发布产物，随下一版本（v0.1.8）发布。
