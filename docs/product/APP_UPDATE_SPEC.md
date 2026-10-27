@@ -202,7 +202,9 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
   `FOREGROUND_SERVICE_DATA_SYNC`；WorkManager 的 `SystemForegroundService` 通过
   `tools:node="merge"` 声明 `foregroundServiceType="dataSync"`（Android 14+ 必需）。
 - 完成行为：前台 → 直接拉起安装器；后台 → 发「更新已下载，点击安装」通知，
-  点击进入 MainActivity（`EXTRA_INSTALL_UPDATE`）或在下次进入应用时自动安装。
+  点击进入 MainActivity（`EXTRA_INSTALL_UPDATE`）或在下次进入应用时自动安装；
+  **通知被拒/不可见时**：下载完成后 store 记录待安装 APK，用户回到前台
+  （`onAppResumed`）自动校验并拉起安装器（v0.1.9 修复，此前需进程重启）。
 - 后台不能直接启动 Activity（Android 限制），因此通知是后台完成的唯一自动路径；
   通知被拒时降级为「下次进入应用时提示安装」。
 - 取消/失败：下载中弹窗仍不可取消；失败在弹窗内可重试。
@@ -223,7 +225,8 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 ### 11.3 灰度（staged rollout）
 - Release 资产 `*-update.json`（由 `release/update-policy.json` 生成）：
   `{schema, versionName, tagName, channel, rolloutPercent, minSupportedVersion, publishedAt, htmlUrl, apk{name,size,sha256}}`；
-- 客户端读取该资产（≤64KB，失败回退 100%/非强制）；旧版本无该资产 → 默认全量；
+- 客户端读取该资产（≤64KB，失败回退 100%/非强制；**必须跟随 GitHub 资产 302 重定向**，
+  v0.1.8 及以前因未跟随重定向导致元数据被忽略，v0.1.9 修复）；旧版本无该资产 → 默认全量；
 - 分桶：`cohort = sha256(installId + "|" + versionName)` 前 8 hex → `% 100`；
   `installId` 为本地随机 UUID，不上报；`eligible = rolloutPercent>=100 || cohort<rolloutPercent`；
 - 未命中：不弹窗；手动检查时设置行提示「新版本正在分批推送（N%）」；

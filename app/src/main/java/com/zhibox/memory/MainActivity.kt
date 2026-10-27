@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
                     val observer = LifecycleEventObserver { _, event ->
                         // 从「安装未知应用」系统页返回后，若已授权则自动继续安装。
                         if (event == Lifecycle.Event.ON_RESUME) {
-                            updateManager.onResumeForInstallPermission()
+                            updateManager.onAppResumed()
                         }
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)

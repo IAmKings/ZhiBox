@@ -358,8 +358,10 @@ object UpdateReleaseParser {
         val metaAsset = assets.firstOrNull {
             assetName(it).endsWith(UpdateConfig.UPDATE_META_ASSET_SUFFIX)
         }
+        // 初始地址仍要求 https；host 白名单由 HttpUpdateApi 在拉取元数据时校验
+        // （测试用 Mock HTTPS 需要非 github host）。
         val metaUrl = metaAsset?.let { str(it, "browser_download_url") }
-            ?.takeIf { it.startsWith("https://github.com/") }
+            ?.takeIf { it.startsWith("https://") }
         val shaAsset = assets.firstOrNull { assetName(it) == apkName + UpdateConfig.SHA256_ASSET_SUFFIX }
         val shaUrl = shaAsset?.let { str(it, "browser_download_url") }
             ?.takeIf { it.startsWith("https://github.com/") }

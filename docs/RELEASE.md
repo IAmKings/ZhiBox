@@ -452,3 +452,20 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 - 跨线路续传修复（回退镜像时保留 `.part`，Range 续传；镜像不支持则丢弃半包重下）；
 - Android 17（OPPO PJZ110）真机验收补充；
 - 无更新策略/界面变更（全量、非强制）。
+
+
+## 17. 2026-10-28 v0.1.9 发布记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **10 / 0.1.9** |
+| 基线提交 | 版本号提交（tag `v0.1.9`）；发布后回填 |
+| 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.8） |
+| 签名 | 沿用既有 release keystore（与 v0.1.8 同证书，可覆盖升级） |
+| 发布政策 | `release/update-policy.json`（全量 100%，minSupported 0.1.0） |
+| 发布产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；size/SHA-256 发布后回填 |
+
+本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
+- 修复 `update.json` 元数据不跟随 GitHub 资产 302 重定向（灰度/强制此前未生效）；
+- 通知被拒时，后台下载完成回到前台自动续装；
+- Android 17 Beta/灰度真机演练记录（APP_UPDATE_SPEC §9.4）。

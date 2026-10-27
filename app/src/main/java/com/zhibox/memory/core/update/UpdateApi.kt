@@ -35,6 +35,8 @@ class HttpUpdateApi(
     private val openConnection: (URL) -> HttpURLConnection = { url ->
         url.openConnection() as HttpURLConnection
     },
+    /** 仅测试用：非空时把 update.json 的 host 白名单限制为该集合。 */
+    private val testMetaHosts: Set<String> = emptySet(),
 ) : UpdateApi {
 
     override suspend fun fetchLatest(
@@ -101,14 +103,19 @@ class HttpUpdateApi(
      */
     private fun applyReleaseMeta(info: UpdateInfo): UpdateInfo {
         val metaUrl = info.metaUrl ?: return info
-        if (!metaUrl.startsWith("https://github.com/")) return info
+        val url = runCatching { URL(metaUrl) }.getOrNull() ?: return info
+        if (!url.protocol.equals("https", ignoreCase = true)) return info
+        val allowedHosts = if (testMetaHosts.isNotEmpty()) testMetaHosts else META_ALLOWED_HOSTS
+        if (url.host?.lowercase() !in allowedHosts) return info
         var connection: HttpURLConnection? = null
         return try {
-            connection = openConnection(URL(metaUrl)).apply {
+            connection = openConnection(url).apply {
                 requestMethod = "GET"
                 connectTimeout = 8_000
                 readTimeout = 10_000
-                instanceFollowRedirects = false
+                // GitHub Release 资产 URL 会 302 到 objects.githubusercontent.com；
+                // 元数据很小，跟随重定向（初始 host 已白名单校验）。
+                instanceFollowRedirects = true
                 setRequestProperty("User-Agent", userAgent)
                 setRequestProperty("Accept", "application/json")
             }
@@ -123,6 +130,11 @@ class HttpUpdateApi(
     }
 
     private companion object {
+        val META_ALLOWED_HOSTS = setOf(
+            "github.com",
+            "objects.githubusercontent.com",
+            "release-assets.githubusercontent.com",
+        )
         const val META_MAX_BODY_BYTES = 64 * 1024
         const val CONNECT_TIMEOUT_MS = 10_000
         const val READ_TIMEOUT_MS = 15_000

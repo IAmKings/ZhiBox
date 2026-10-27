@@ -78,6 +78,53 @@ class UpdateApiAndDownloaderTest {
     }
 
     @Test
+    fun api_appliesUpdateMetaFromReleaseAsset() = runBlocking {
+        var serverRef: MockHttpsServer? = null
+        val server = MockHttpsServer { request ->
+            when {
+                request.path.startsWith("/repos/") -> {
+                    val metaUrl = serverRef!!.baseUrl("/meta/update.json")
+                    val json = """
+                        {
+                          "tag_name": "v0.1.9",
+                          "name": "ZhiBox v0.1.9",
+                          "draft": false,
+                          "prerelease": false,
+                          "published_at": "2026-10-28T00:00:00Z",
+                          "html_url": "https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.9",
+                          "body": "- 更新",
+                          "assets": [
+                            {"name": "zhibox-0.1.9-abc1234-release-signed.apk", "size": 9,
+                             "browser_download_url": "https://github.com/IAmKings/ZhiBox/releases/download/v0.1.9/zhibox-0.1.9-abc1234-release-signed.apk",
+                             "digest": "sha256:${"a".repeat(64)}"},
+                            {"name": "zhibox-0.1.9-abc1234-update.json", "size": 100,
+                             "browser_download_url": "$metaUrl"}
+                          ]
+                        }
+                    """.trimIndent()
+                    MockResponse(200, json)
+                }
+
+                request.path.startsWith("/meta/") -> MockResponse(
+                    200,
+                    """{"schema":1,"rolloutPercent":25,"minSupportedVersion":"0.1.5"}""",
+                )
+
+                else -> MockResponse(404, "{}")
+            }
+        }.also { serverRef = it }
+        server.use {
+            val api = HttpUpdateApi(
+                releasesApiBase = server.baseUrl("/repos/IAmKings/ZhiBox/releases"),
+                testMetaHosts = setOf("127.0.0.1"),
+            )
+            val info = api.fetchLatest().getOrThrow()
+            assertEquals(25, info.rolloutPercent)
+            assertEquals("0.1.5", info.minSupportedVersion)
+        }
+    }
+
+    @Test
     fun api_404MapsToNoRelease() = runBlocking {
         MockHttpsServer { MockResponse(404, "{}") }.use { server ->
             val api = HttpUpdateApi(

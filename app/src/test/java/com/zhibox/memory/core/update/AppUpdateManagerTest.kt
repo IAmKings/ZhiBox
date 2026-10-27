@@ -491,4 +491,32 @@ class AppUpdateManagerTest {
         }
     }
 
+    @Test
+    fun pendingInstallResumesWhenAppReturnsToForeground() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val installer = FakeInstaller()
+            val store = FakeStore()
+            val apk = File(
+                ApplicationProvider.getApplicationContext<Context>().cacheDir,
+                "updates-test/pending-0.1.7.apk",
+            )
+            apk.parentFile?.mkdirs()
+            apk.writeBytes(ByteArray(8))
+            store.downloadedVersion = "0.1.7"
+            store.downloadedApkPath = apk.absolutePath
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                store = store,
+                installer = installer,
+            )
+            manager.onAppResumed()
+            advanceUntilIdle()
+            assertTrue(installer.installed != null)
+            assertTrue(manager.state.value.phase is UpdatePhase.Idle)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
 }

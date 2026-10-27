@@ -395,6 +395,21 @@ class AppUpdateManager internal constructor(
         scope.launch { installPendingIfAny() }
     }
 
+    /**
+     * 应用回到前台：处理「安装权限」返回续装，以及**通知被拒/后台完成**场景。
+     * 后台下载完成时若通知不可见，管理器只会把 APK 落到 store；用户下一次回到应用时
+     * 在这里自动继续安装（无需等进程重启）。
+     */
+    fun onAppResumed() {
+        onResumeForInstallPermission()
+        scope.launch {
+            when (_state.value.phase) {
+                is UpdatePhase.Idle, is UpdatePhase.UpToDate -> installPendingIfAny()
+                else -> Unit
+            }
+        }
+    }
+
     fun openInstallPermissionSettings() {
         runCatching { appContext.startActivity(installer.installPermissionIntent()) }
     }
