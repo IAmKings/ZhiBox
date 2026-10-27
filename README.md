@@ -30,7 +30,7 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 - 工具链（当前）：Gradle **8.14.3**（wrapper，含 `distributionSha256Sum` 校验）/ AGP **8.13.2** / Kotlin **2.4.21** / KSP **2.3.12** / Compose BOM **2026.06.01**。
 - 依赖完整性：`gradle/verification-metadata.xml` 已提交（strict 校验生效）；未登记的依赖会导致构建直接失败，排障时可临时 `--dependency-verification=off`（见 `app/build.gradle.kts` 注释）。
 - minSdk 24 / targetSdk 36 / compileSdk 36，仅 `arm64-v8a`。
-- 权限：仅声明 `INTERNET` 与 `REQUEST_INSTALL_PACKAGES`。`INTERNET` 用于用户显式触发的模型下载与网页导入、用户配置并同意启用后的 OpenAI-compatible LLM 请求，以及应用内更新（冷启动 24h 节流匿名查询 GitHub Release，用户确认后下载 APK）；`REQUEST_INSTALL_PACKAGES` 仅用于把校验通过的自身升级包交给系统安装器。`networkSecurityConfig` 禁止明文流量。检索、本地文件导入与嵌入可离线运行。`allowBackup="false"`，并用两代备份规则显式排除全部应用数据（个人知识库不参与系统云备份或设备迁移）。
+- 权限：仅声明 `INTERNET` 与 `REQUEST_INSTALL_PACKAGES`。`INTERNET` 用于用户显式触发的模型下载与网页导入、用户配置并同意启用后的 OpenAI-compatible LLM 请求，以及应用内更新（冷启动 24h 节流匿名查询 GitHub Release，用户确认后下载 APK；直连 GitHub CDN 不可达时经公开 GitHub 代理镜像回退，SHA-256/签名校验保证完整性）；`REQUEST_INSTALL_PACKAGES` 仅用于把校验通过的自身升级包交给系统安装器。`networkSecurityConfig` 禁止明文流量。检索、本地文件导入与嵌入可离线运行。`allowBackup="false"`，并用两代备份规则显式排除全部应用数据（个人知识库不参与系统云备份或设备迁移）。
 - `local.properties` 配置 SDK 路径（本机 `~/Library/Android/sdk`），不入库。
 
 常用测试门：

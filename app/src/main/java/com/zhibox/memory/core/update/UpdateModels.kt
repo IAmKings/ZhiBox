@@ -27,6 +27,16 @@ object UpdateConfig {
 
     val userAgent: String = "ZhiBox/${BuildConfig.VERSION_NAME} (+https://github.com/$repoOwner/$repoName)"
 
+    /**
+     * GitHub Release 资产直连在部分网络不可达时的下载镜像前缀（按顺序回退）。
+     * 镜像只看到公开 APK；完整性由 SHA-256（API digest / `.sha256` 资产）与安装前
+     * 包名/versionCode/签名证书校验共同保证。
+     */
+    val downloadMirrors: List<String> = BuildConfig.UPDATE_DOWNLOAD_MIRRORS
+        .split(',')
+        .map { it.trim() }
+        .filter { it.startsWith("https://") && it.endsWith("/") }
+
     /** Release 资产命名契约（release.yml：`zhibox-<version>-<sha7>-release-signed.apk`）。 */
     const val APK_ASSET_SUFFIX = "-release-signed.apk"
     const val SHA256_ASSET_SUFFIX = ".sha256"

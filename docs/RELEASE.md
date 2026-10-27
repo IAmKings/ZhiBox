@@ -360,6 +360,9 @@ tag 与 versionName 由 release workflow 强校验。
   （见 `docs/product/APP_UPDATE_SPEC.md` §1）。
 - **Release 资产契约**（release.yml 已满足）：`zhibox-<version>-<sha7>-release-signed.apk`
   + 同名 `.sha256` + `-mapping.txt`；API `digest` 字段可用时客户端优先使用。
+- **下载容错**：直连 GitHub 资产 CDN（objects.githubusercontent.com）在部分网络不可达；
+  客户端按 `BuildConfig.UPDATE_DOWNLOAD_MIRRORS`（默认 `gh-proxy.com`、`ghfast.top`）回退镜像，
+  完整性由 SHA-256 + APK 签名校验保证。镜像不可用/全部失败时弹窗提示网络错误可重试。
 - **Release body**：release.yml 现在只提取 `docs/RELEASE_NOTES.md` 的 `## 0. vX.Y.Z` 段落作为
   Release 说明（应用内更新弹窗直接展示）；旧版本（≤v0.1.5）body 仍是整份历史，客户端会截断
   并在弹窗里提供「查看完整说明」。

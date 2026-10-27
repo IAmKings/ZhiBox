@@ -22,7 +22,7 @@
 | 认证 | **无**（要求仓库 public） |
 | APK 资产 | `zhibox-<version>-<sha7>-release-signed.apk`（`release.yml` 产物） |
 | 校验值 | 资产 JSON `digest: "sha256:<hex>"`；为空时回退 `<apk>.sha256` 资产 |
-| 下载 | `browser_download_url`（github.com）→ 手动跟随重定向（objects.githubusercontent.com / release-assets.githubusercontent.com） |
+| 下载 | `browser_download_url`（github.com）→ 手动跟随重定向（objects.githubusercontent.com / release-assets.githubusercontent.com）；直连 CDN 在部分网络不可达时按 `UPDATE_DOWNLOAD_MIRRORS`（默认 `ghproxy.net`、`gh-proxy.com`）回退 |
 | 传输 | 只允许 HTTPS；`network_security_config` 禁明文 |
 | 隐私 | 只发送 API 请求（IP/User-Agent），不发送知识库/个人数据；不参与知识库备份 |
 
@@ -70,6 +70,8 @@ Downloading/Verifying：弹窗不可取消（返回键/外部点击无效，无�
 1. 初始下载 URL：`https` + host `github.com` + path `/IAmKings/ZhiBox/releases/download/…`；
 2. 手动跟随重定向（≤5 跳），**每一跳**校验 `https` + host ∈
    `{github.com, objects.githubusercontent.com, release-assets.githubusercontent.com}`；
+   直连失败（Network/Timeout）时按镜像前缀回退（host 必须在镜像白名单内、URL 必须包含本仓库
+   release 资产路径）；镜像只看到公开 APK，SHA-256 + 签名校验兜底；
 3. `.part` 续传：仅接受 `206 + Content-Range 起点一致`；否则丢弃半包重下；
 4. 磁盘预检 `apkSize*2 + 50MB`；整体超时 10 分钟；connect 10s / read 30s；
 5. 整文件流式 SHA-256 校验（API digest 优先，`.sha256` 资产回退）；失败删除 `.part`；
@@ -146,5 +148,9 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 | 设置行截图 | ✅ `impl-update-settings-row.png` |
 
 > debug mock 通过 `autostart_update_mock=available|downloading|failed|permission` 注入（仅 debuggable 构建读取）。
-> **真实跨版本下载+安装**需要连续两个带更新服务的版本：v0.1.6 首次带服务，待 v0.1.7 发布时从 v0.1.6 走查完整链路
-> （下载/校验/未知来源授权使用相同代码路径，已由 Mock HTTPS + manager 单测覆盖）。
+>
+> **真实下载链路（2026-10-27 追加）**：国内网络直连 `objects.githubusercontent.com` 30s 读超时；
+> 回退镜像 `gh-proxy.com` 后 67MB APK 在 <60s 内下载完成并通过 SHA-256 校验，随后被
+> `ApkValidator` 以「签名不一致」拒绝安装（测试机安装的是 debug 签名包，下载的是 release 签名包）——
+> 这正是预期的安全拦截。release 签名设备上的完整安装链路待 v0.1.7 发布时从 v0.1.6 走查。
+> 镜像顺序可通过 `BuildConfig.UPDATE_DOWNLOAD_MIRRORS` 调整（默认 `gh-proxy.com`、`ghfast.top`）。

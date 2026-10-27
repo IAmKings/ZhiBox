@@ -92,6 +92,13 @@ android {
         // 应用内更新：GitHub Release 查询地址由 owner/repo 派生（公开仓库匿名 API）。
         buildConfigField("String", "UPDATE_REPO_OWNER", "\"IAmKings\"")
         buildConfigField("String", "UPDATE_REPO_NAME", "\"ZhiBox\"")
+        // GitHub Release 资产直连在部分网络（国内常见）不可达时的下载镜像前缀（逗号分隔，
+        // 逐个回退；只看到公开 APK，完整性由 SHA-256 + APK 签名校验保证）。
+        buildConfigField(
+            "String",
+            "UPDATE_DOWNLOAD_MIRRORS",
+            "\"https://gh-proxy.com/,https://ghfast.top/\"",
+        )
     }
 
     signingConfigs {

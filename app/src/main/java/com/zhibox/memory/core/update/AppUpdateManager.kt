@@ -1,6 +1,7 @@
 package com.zhibox.memory.core.update
 
 import android.content.Context
+import android.util.Log
 import com.zhibox.memory.BuildConfig
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -163,12 +164,15 @@ class AppUpdateManager internal constructor(
                 }
                 launchInstaller(info, file)
             } catch (e: TimeoutCancellationException) {
+                Log.w(TAG, "update download timeout", e)
                 failDownload(info, UpdateFailure.Timeout)
             } catch (e: UpdateException) {
+                Log.w(TAG, "update download failed: ${e.failure}", e)
                 failDownload(info, e.failure)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                Log.w(TAG, "update download failed (unexpected)", e)
                 failDownload(info, UpdateFailure.Network)
             }
         }
@@ -268,6 +272,7 @@ class AppUpdateManager internal constructor(
     }
 
     companion object {
+        private const val TAG = "AppUpdate"
         private const val PROGRESS_STEP_BYTES = 512L * 1024
 
         @Volatile
