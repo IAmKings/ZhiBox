@@ -435,3 +435,20 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
   镜像不支持 Range 再由 `attemptDownload` 丢弃半包重下。修复前「直连不可达 + 镜像」
   场景下进程被杀会从头下载；修复后真机验证 `.part` 2,179,072 B → 4,001,454 B 续传成功。
 - 该修复不改变 v0.1.7 已发布产物，随下一版本（v0.1.8）发布。
+
+
+## 16. 2026-10-27 v0.1.8 发布记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **9 / 0.1.8** |
+| 基线提交 | 版本号提交（tag `v0.1.8`）；发布后回填 |
+| 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.7） |
+| 签名 | 沿用既有 release keystore（与 v0.1.7 同证书，可覆盖升级） |
+| 发布政策 | `release/update-policy.json`（本版本 `rolloutPercent=100`、`minSupportedVersion=0.1.0`） |
+| 发布产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；size/SHA-256 发布后回填 |
+
+本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
+- 跨线路续传修复（回退镜像时保留 `.part`，Range 续传；镜像不支持则丢弃半包重下）；
+- Android 17（OPPO PJZ110）真机验收补充；
+- 无更新策略/界面变更（全量、非强制）。
