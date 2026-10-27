@@ -174,6 +174,21 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 > 临时测试 Release 与工作流已删除；正式 Release 仍为 v0.1.7（latest）。
 
 
+### 9.3 Android 17 真机验收（OPPO PJZ110 / Android 17，2026-10-28）
+
+| 项 | 结果 |
+|---|---|
+| v0.1.6 → v0.1.7 真实升级 | ✅ 手动检查发现 v0.1.7；下载 67MB → SHA-256 → 系统安装器；Android 17 首次需「安装未知应用」+ OPPO 风险确认（勾选已知悉风险）→ versionCode 8 安装成功 |
+| 更新设置页 | ✅ Android 17 显示自动检查/Beta 开关与检查更新行 |
+| v0.1.7 → v0.1.8 后台下载 | ✅ 确认更新后请求 `POST_NOTIFICATIONS`；允许后 WorkManager 后台下载 67MB；退出应用后完成 |
+| 后台完成通知 | ✅ Android 17 通知渠道 `app_update` 显示「更新已下载 / 点击安装 0.1.8」 |
+| 点通知安装 | ✅ 通知 → MainActivity → 系统安装器 → OPPO 风险确认 → **v0.1.8 (versionCode 9) 安装成功** |
+| 设置搜索 | ✅ Android 17 输入 GPU 命中「GPU 加速（高级与诊断）」；截图 `impl-settings-search-android17.png` |
+| 备注 | 本次 Android 17 网络直连 GitHub CDN 可用，未触发镜像回退与续传分支（续传在 Android 14 已验证） |
+
+> v0.1.8 的「直连失败回退镜像保留 `.part` 续传」修复未在 Android 17 网络复现触发条件，由 Android 14 真机与单测覆盖。
+
+
 ## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
 
 - 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：

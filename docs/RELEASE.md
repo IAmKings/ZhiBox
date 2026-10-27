@@ -442,11 +442,11 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 项 | 值 |
 |---|---|
 | versionCode / versionName | **9 / 0.1.8** |
-| 基线提交 | 版本号提交（tag `v0.1.8`）；发布后回填 |
+| 基线提交 | `049c249`（tag `v0.1.8`） |
 | 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.7） |
 | 签名 | 沿用既有 release keystore（与 v0.1.7 同证书，可覆盖升级） |
 | 发布政策 | `release/update-policy.json`（本版本 `rolloutPercent=100`、`minSupportedVersion=0.1.0`） |
-| 发布产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；size/SHA-256 发布后回填 |
+| 发布产物 | `zhibox-0.1.8-049c249-release-signed.apk`（70,428,815 bytes）；SHA-256 `3d5b65a13e1d727f78bd275e7f260558452f6853e88f6e7f45edb481311f30c5`；`.sha256`、mapping、`zhibox-0.1.8-049c249-update.json`（rollout 100 / minSupported 0.1.0）一并上传；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.8 |
 
 本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
 - 跨线路续传修复（回退镜像时保留 `.part`，Range 续传；镜像不支持则丢弃半包重下）；

@@ -8,8 +8,9 @@
 - **跨线路续传修复**：直连 GitHub 资产失败回退镜像时保留 `.part` 并尝试 Range 续传；
   镜像不支持 Range 时自动丢弃半包重下。修复前「直连不可达 + 镜像」场景下进程被杀
   （或后台任务重启）会从头下载；真机验证 `.part` 从 2,179,072 B 续传到 4,001,454 B。
-- **Android 17 验收**：在 OPPO PJZ110 / Android 17 上完成 v0.1.6→v0.1.7 真实升级，
-  并验证 v0.1.7 的后台下载/通知/安装（详见 `docs/product/APP_UPDATE_SPEC.md` §9.2）。
+- **Android 17 验收**：在 OPPO PJZ110 / Android 17 上完成 v0.1.6→v0.1.7 真实升级；
+  并由 v0.1.7 接收 v0.1.8 更新，验证后台下载/通知/安装全链路（详见
+  `docs/product/APP_UPDATE_SPEC.md` §9.3）。
 - **无行为变更**：更新检查、安全校验、Beta、灰度/强制、设置搜索均与 v0.1.7 一致；
   `update-policy.json` 仍为全量（100%）、非强制（minSupported 0.1.0）。
 
