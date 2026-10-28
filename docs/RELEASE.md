@@ -567,3 +567,16 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 后续 | 验收通过后发 `v0.1.13-qa.2`（rollout=100）验证命中安装；完成后恢复 policy 100/0.1.0 |
 
 本版本内容：与 v0.1.13-beta.1 同功能，仅版本号提升；stable latest 保持 v0.1.12。
+
+## 23. 2026-10-28 v0.1.13-qa.2 灰度演练记录（rollout=100）
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **16 / 0.1.13-qa.2** |
+| 类型 | prerelease（Beta 通道可见；高于 qa.1） |
+| 发布政策 | `rolloutPercent=100`、`minSupportedVersion=0.1.0` |
+| 用途 | 灰度「命中」边界：弹窗、可下载安装；完成后检查更新为最新 |
+| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
+| 后续 | 验收通过后恢复 policy 100/0.1.0；如需强制演练另发 force drill；再发正式稳定版 |
+
+本版本内容：与 qa.1/beta 同功能，仅版本号提升；stable latest 保持 v0.1.12。
