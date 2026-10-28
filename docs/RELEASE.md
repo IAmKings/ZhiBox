@@ -646,5 +646,15 @@ F-03 最终验收需用 v0.1.15 作为基线 + 新强制目标包复测；完成
 | 基线 | v0.1.15（缓存元数据/冷启动灰度强制修复） |
 | 发布政策 | `minSupportedVersion=0.1.16`、`rolloutPercent=100` |
 | 复测点 | 3 次失败→暂时退出→重启：仍强制不可取消；无历史更新失败；缓存元数据不丢 |
-| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
-| 后续 | 通过后删除本 Release/tag、恢复 policy 100/0.1.0；不进入 stable |
+| 产物 | `zhibox-0.1.16-force.1-70d08ab-release-signed.apk`（70,428,827 bytes）；SHA-256 `368cd3511b9693c91d47dee3de259f928ca99ff134cee4cea2137a5b428bda61`；update.json minSupported=0.1.16；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.16-force.1 |
+| 结果 | **2026-10-29 人工验收通过**：重启后仍强制且不可取消，无「更新失败」 |
+| 后续 | 已删除本临时 Release/tag；policy 恢复 100/0.1.0 |
+
+## 29. 2026-10-29 收尾：内测验收结论
+
+- **通过项**：普通更新、Beta 通道、灰度 0%/100%、强制更新、F-03 失败逃生/重启行为；
+- **最终稳定版**：**v0.1.15（versionCode 20）**，latest stable；修复缓存元数据丢失与冷启动灰度/强制判定；
+- **清理**：已删除 `v0.1.13-qa.1`、`v0.1.13-qa.2`、`v0.1.14-force.1`、`v0.1.15-force.1`、`v0.1.16-force.1` 临时 Release/tag；Beta 临时包 `v0.1.13-beta.1` 一并删除；
+- **策略**：`release/update-policy.json` 恢复为 `rolloutPercent=100`、`minSupportedVersion=0.1.0`；
+- **文档**：`RELEASE_NOTES.md` 仅保留稳定版本说明；临时验收记录保留在本文件 §21~§28；
+- **后续**：以 v0.1.15 作为正式基线，后续发版走正常 `release/update-policy.json` 流程。
