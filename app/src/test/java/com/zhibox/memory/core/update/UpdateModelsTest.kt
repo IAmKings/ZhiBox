@@ -171,7 +171,7 @@ class UpdateModelsTest {
         override var downloadedApkPath: String? = null
     }
 
-    private fun info(version: String) = UpdateInfo(
+    private fun info(version: String, minSupportedVersion: String? = null) = UpdateInfo(
         versionName = version,
         tagName = "v$version",
         title = "t",
@@ -182,6 +182,7 @@ class UpdateModelsTest {
         apkSizeBytes = 1,
         sha256 = "d".repeat(64),
         sha256Url = null,
+        minSupportedVersion = minSupportedVersion,
     )
 
     @Test
@@ -239,6 +240,18 @@ class UpdateModelsTest {
         }
         val action = UpdatePolicy.decideOnLaunch(500_000L, store, "0.1.6")
         assertTrue(action is UpdatePolicy.LaunchAction.ShowCached)
+    }
+
+    @Test
+    fun launchPolicy_forcedCachedOverridesDismissedAndAutoCheckOff() {
+        val store = FakeStore().apply {
+            autoCheckEnabled = false
+            lastSuccessAtMillis = 500_000L
+            cached = info("0.1.7", minSupportedVersion = "0.1.7")
+            dismissedVersion = "0.1.7"
+        }
+        val action = UpdatePolicy.decideOnLaunch(500_000L, store, "0.1.6")
+        assertTrue("强制缓存必须展示（即使取消过/关闭自动检查）", action is UpdatePolicy.LaunchAction.ShowCached)
     }
 
     @Test

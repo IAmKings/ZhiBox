@@ -24,14 +24,20 @@ object UpdatePolicy {
         store: UpdateStore,
         currentVersionName: String,
     ): LaunchAction {
-        // 用户关闭自动检查后：冷启动完全不联网，也不展示缓存（手动检查始终可用）。
-        if (!store.autoCheckEnabled) return LaunchAction.Skip
         val cached = store.cachedInfo()
-        if (cached != null &&
-            isNewerVersion(cached.versionName, currentVersionName) &&
-            cached.versionName != store.dismissedVersion
-        ) {
-            return LaunchAction.ShowCached(cached)
+        if (cached != null && isNewerVersion(cached.versionName, currentVersionName)) {
+            // 强制更新优先级最高：即使用户取消过该版本、或关闭了自动检查，
+            // 冷启动也应展示（不联网、纯缓存），且由 UI 层禁止取消。
+            if (UpdateRollout.isForced(cached, currentVersionName)) {
+                return LaunchAction.ShowCached(cached)
+            }
+            // 用户关闭自动检查后：冷启动完全不联网，也不展示非强制缓存（手动检查始终可用）。
+            if (!store.autoCheckEnabled) return LaunchAction.Skip
+            if (cached.versionName != store.dismissedVersion) {
+                return LaunchAction.ShowCached(cached)
+            }
+        } else if (!store.autoCheckEnabled) {
+            return LaunchAction.Skip
         }
         if (nowMillis - store.lastAttemptAtMillis < UpdateConfig.AUTO_RETRY_INTERVAL_MS) {
             return LaunchAction.Skip

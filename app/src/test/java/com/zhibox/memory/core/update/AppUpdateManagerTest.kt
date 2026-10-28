@@ -593,4 +593,27 @@ class AppUpdateManagerTest {
         }
     }
 
+    @Test
+    fun cachedForcedUpdateOnLaunchIsNotDismissible() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val store = FakeStore().apply {
+                saveCached(info("0.1.7", minSupportedVersion = "0.1.7"))
+            }
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                store = store,
+            )
+            manager.onAppEntered()
+            advanceUntilIdle()
+            val phase = manager.state.value.phase as UpdatePhase.Available
+            assertTrue("冷启动缓存也必须保留 forced", phase.forced)
+            manager.dismiss()
+            advanceUntilIdle()
+            assertTrue("强制更新不可取消", manager.state.value.phase is UpdatePhase.Available)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
 }
