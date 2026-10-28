@@ -107,9 +107,14 @@ class HttpUpdateApi(
         if (!url.protocol.equals("https", ignoreCase = true)) return info
         val allowedHosts = if (testMetaHosts.isNotEmpty()) testMetaHosts else META_ALLOWED_HOSTS
         if (url.host?.lowercase() !in allowedHosts) return info
+        // GitHub Release 资产走 CDN；同名资产被 --clobber 覆盖后部分边缘会短暂返回旧内容。
+        // 加 cache-buster + no-cache，保证灰度/强制元数据调整后能立即读到新值。
+        val cacheBusted = runCatching {
+            URL(metaUrl + (if ('?' in metaUrl) "&" else "?") + "t=" + System.currentTimeMillis())
+        }.getOrNull() ?: url
         var connection: HttpURLConnection? = null
         return try {
-            connection = openConnection(url).apply {
+            connection = openConnection(cacheBusted).apply {
                 requestMethod = "GET"
                 connectTimeout = 8_000
                 readTimeout = 10_000
@@ -118,6 +123,7 @@ class HttpUpdateApi(
                 instanceFollowRedirects = true
                 setRequestProperty("User-Agent", userAgent)
                 setRequestProperty("Accept", "application/json")
+                setRequestProperty("Cache-Control", "no-cache")
             }
             if (connection.responseCode !in 200..299) return info
             val body = connection.inputStream.use { readLimited(it, META_MAX_BODY_BYTES) }

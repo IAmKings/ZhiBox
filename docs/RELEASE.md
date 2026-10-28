@@ -481,3 +481,18 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 - 强制更新本轮未在真机演练（避免把测试机锁在强制态）；由 `UpdateRollout/Manager` 单测覆盖。
 - 通知被拒场景：v0.1.9 增加「回到前台自动续装」，单测覆盖；真机完整验证需要下一个
   更高 versionCode 的正式安装包（本轮 drill APK 复用 v0.1.9，版本号不满足安装器校验）。
+
+## 18. 2026-10-28 v0.1.10 发布记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **11 / 0.1.10** |
+| 基线提交 | 版本号提交（tag `v0.1.10`）；发布后回填 |
+| 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.9） |
+| 签名 | 沿用既有 release keystore（与 v0.1.9 同证书，可覆盖升级） |
+| 发布政策 | `release/update-policy.json`（全量 100%，minSupported 0.1.0） |
+| 发布产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；size/SHA-256 发布后回填 |
+
+本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
+- `update.json` 拉取加 cache-buster + `Cache-Control: no-cache`，灰度/强制元数据调整即时生效；
+- 强制更新、通知被拒自动续装的真机演练记录（APP_UPDATE_SPEC §9.5）。

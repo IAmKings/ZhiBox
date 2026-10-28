@@ -246,7 +246,8 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 - Release 资产 `*-update.json`（由 `release/update-policy.json` 生成）：
   `{schema, versionName, tagName, channel, rolloutPercent, minSupportedVersion, publishedAt, htmlUrl, apk{name,size,sha256}}`；
 - 客户端读取该资产（≤64KB，失败回退 100%/非强制；**必须跟随 GitHub 资产 302 重定向**，
-  v0.1.8 及以前因未跟随重定向导致元数据被忽略，v0.1.9 修复）；旧版本无该资产 → 默认全量；
+  v0.1.8 及以前因未跟随重定向导致元数据被忽略，v0.1.9 修复；v0.1.10 起追加
+  cache-buster + `Cache-Control: no-cache`，避免覆盖同名资产后 CDN 返回旧内容）；旧版本无该资产 → 默认全量；
 - 分桶：`cohort = sha256(installId + "|" + versionName)` 前 8 hex → `% 100`；
   `installId` 为本地随机 UUID，不上报；`eligible = rolloutPercent>=100 || cohort<rolloutPercent`；
 - 未命中：不弹窗；手动检查时设置行提示「新版本正在分批推送（N%）」；
