@@ -506,7 +506,7 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.10） |
 | 签名 | 沿用既有 release keystore（与 v0.1.10 同证书，可覆盖升级） |
 | 发布政策 | `release/update-policy.json`（全量 100%，minSupported 0.1.0） |
-| 发布产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；size/SHA-256 发布后回填 |
+| 发布产物 | `zhibox-0.1.12-6110dfc-release-signed.apk`（70,428,809 bytes）；SHA-256 `4604bf0ad936e063a0a938827dfaeb3926ba6d39386ba41370ac60797bc93cba`；`.sha256`、mapping、`zhibox-0.1.12-6110dfc-update.json`（rollout 100 / minSupported 0.1.0）一并上传；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.12 |
 
 本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
 - `update.json` 拉取镜像回退（受限网络下灰度/强制元数据不再静默失效）；
@@ -517,7 +517,7 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 项 | 值 |
 |---|---|
 | versionCode / versionName | **13 / 0.1.12** |
-| 基线提交 | 版本号提交（tag `v0.1.12`）；发布后回填 |
+| 基线提交 | `6110dfc`（tag `v0.1.12`） |
 | 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.11） |
 | 签名 | 沿用既有 release keystore（与 v0.1.11 同证书，可覆盖升级） |
 | 发布政策 | `release/update-policy.json`（全量 100%，minSupported 0.1.0） |
@@ -529,3 +529,12 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 - 回归测试 + 人工验收手册 O-04 预期更新。
 - 根因与复现：v0.1.9 → v0.1.11 前台更新完成后，新进程消费旧 SUCCEEDED →
   ApkValidator 判 versionCode 不再更大 → DownloadFailed；关闭后才看到已更新。
+
+### v0.1.12 修复验证（2026-10-28）
+
+- 另一台可访问 GitHub 的真机按 O-04 流程从 **v0.1.11 前台更新到 v0.1.12**：
+  **未再出现「更新失败」弹窗**；安装后版本正确，检查更新为最新。
+- K60U 受限网络下旧 bug 未稳定复现（新进程 WorkManager 初始化时清理了旧任务）；
+  修复以回归单测（旧 SUCCEEDED + 已安装版本 → Idle）与上述真机验证为准。
+- 根因：≤v0.1.11 自更新完成后，新进程再次消费 WorkManager 的 SUCCEEDED 旧任务，
+  `ApkValidator` 因目标版本已安装、versionCode 不再更大而判无效 → 弹「更新失败」。
