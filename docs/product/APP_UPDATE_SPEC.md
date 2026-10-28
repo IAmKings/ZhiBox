@@ -209,6 +209,25 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 > 演练用临时 Release/工作流已删除，latest 恢复 v0.1.9。
 
 
+### 9.5 强制更新 + 通知被拒真机演练（Redmi K60U / Android 14，2026-10-28）
+
+环境：Redmi K60U（23078PND5G）/ Android 14；基础包 debug v0.1.11-beta.1（versionCode 12），
+目标临时 Release v0.1.12-beta.1（versionCode 13，minSupported=0.1.12，rollout=100）。
+
+| 项 | 结果 |
+|---|---|
+| 受限网络下元数据 | ✅ 直连 GitHub 资产超时，`update.json` 走镜像回退成功读取 minSupported（修复前会静默回退默认值） |
+| 强制弹窗 | ✅ 标题「需要更新」+ 重要修复提示；无「稍后」；返回键/点外部不关闭 |
+| 通知权限拒绝 | ✅ 点「立即更新」后系统通知权限选择「拒绝」；后台下载继续，无进度/完成通知 |
+| 后台下载完成 | ✅ 下载完成且 `cache/updates/*.apk` 落盘校验通过；通知数量 0 |
+| 回到前台自动安装 | ✅ 重新进入应用触发 `onAppResumed` → 自动校验并拉起系统安装器（无需点通知） |
+| 安装结果 | ✅ 系统安装器完成 0.1.11-beta.1 → 0.1.12-beta.1（versionCode 13）安装 |
+
+> 演练用临时 Release/工作流已删除；本轮同时验证了「强制更新不可取消」与「通知被拒时的
+> 前台续装」两条此前只有单测的链路。强制失败 3 次后的「暂时退出」仍由单测覆盖。
+> 测试用目标 APK 为 8.6KB 最小制品（仅验证安装器链路），非真实功能包。
+
+
 ## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
 
 - 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：
@@ -246,6 +265,7 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 - Release 资产 `*-update.json`（由 `release/update-policy.json` 生成）：
   `{schema, versionName, tagName, channel, rolloutPercent, minSupportedVersion, publishedAt, htmlUrl, apk{name,size,sha256}}`；
 - 客户端读取该资产（≤64KB，失败回退 100%/非强制；**必须跟随 GitHub 资产 302 重定向**，
+  v0.1.11 起直连不可达时按镜像前缀回退；
   v0.1.8 及以前因未跟随重定向导致元数据被忽略，v0.1.9 修复；v0.1.10 起追加
   cache-buster + `Cache-Control: no-cache`，避免覆盖同名资产后 CDN 返回旧内容）；旧版本无该资产 → 默认全量；
 - 分桶：`cohort = sha256(installId + "|" + versionName)` 前 8 hex → `% 100`；
