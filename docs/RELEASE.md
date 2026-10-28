@@ -619,5 +619,20 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 基线 | v0.1.14（含强制缓存 forced / 历史 FAILED 回放修复） |
 | 发布政策 | `minSupportedVersion=0.1.15`、`rolloutPercent=100` |
 | 复测点 | 3 次失败→暂时退出→重启：仍强制且不可取消；无历史「更新失败」回放 |
-| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
-| 后续 | 通过后删除本 Release/tag、恢复 policy 100/0.1.0；不进入 stable |
+| 产物 | `zhibox-0.1.15-force.1-443f5f4-release-signed.apk`（70,428,822 bytes）；SHA-256 `e1efeceef47f1f5ebb60b6d52c53c894f843fcab1b927bdfd22429cf9395e18c`；update.json minSupported=0.1.15；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.15-force.1 |
+| 复测结果 | 暴露缓存丢失 minSupportedVersion/rolloutPercent 的更深层根因（v0.1.14 修复不完整）；本包不作最终验收，修复见 §27 |
+| 后续 | v0.1.15 修复后重发新强制目标复测；删除本 Release/tag |
+
+## 27. 2026-10-29 v0.1.15 正式稳定版记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **20 / 0.1.15** |
+| 基线提交 | 版本号提交（tag `v0.1.15`）；发布后回填 |
+| 数据库 schema | v9（可覆盖升级 v0.1.14） |
+| 签名 | 沿用既有 release keystore（可覆盖升级） |
+| 发布政策 | `release/update-policy.json`（rollout 100%，minSupported 0.1.0） |
+| 产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；发布后回填 |
+| 修复 | 缓存持久化补齐 minSupportedVersion/rolloutPercent/channel；冷启动重新判定 forced/灰度；旧缓存无元数据时联网刷新 |
+
+F-03 最终验收需用 v0.1.15 作为基线 + 新强制目标包复测；完成后清理临时 Release。

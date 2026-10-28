@@ -15,6 +15,9 @@ object UpdatePolicy {
 
     sealed interface LaunchAction {
         data class ShowCached(val info: UpdateInfo) : LaunchAction
+
+        /** 缓存版本命中灰度但当前设备不在投放比例内：只显示分批推送提示，不弹窗。 */
+        data class RolloutPending(val info: UpdateInfo) : LaunchAction
         data object Check : LaunchAction
         data object Skip : LaunchAction
     }
@@ -33,6 +36,12 @@ object UpdatePolicy {
             }
             // 用户关闭自动检查后：冷启动完全不联网，也不展示非强制缓存（手动检查始终可用）。
             if (!store.autoCheckEnabled) return LaunchAction.Skip
+            // 旧版本缓存没有灰度/强制元数据，不能用于分桶判断：强制联网刷新一次。
+            if (!store.cachedMetaKnown) return LaunchAction.Check
+            // 冷启动同样必须遵守灰度分桶：未命中只显示分批推送，不能弹更新框。
+            if (!UpdateRollout.isEligible(store.installId, cached)) {
+                return LaunchAction.RolloutPending(cached)
+            }
             if (cached.versionName != store.dismissedVersion) {
                 return LaunchAction.ShowCached(cached)
             }

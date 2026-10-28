@@ -86,15 +86,29 @@ class AppUpdateManager internal constructor(
             installPendingIfAny()
             when (val action = UpdatePolicy.decideOnLaunch(clock(), store, currentVersionName)) {
                 is UpdatePolicy.LaunchAction.ShowCached -> {
-                    // 冷启动展示缓存时也必须重新计算 forced：否则「暂时退出」后重启
-                    // 的强制弹窗会丢失 forced 标记，变成可取消的普通更新。
+                    // 冷启动展示缓存时也必须重新计算 forced 与灰度资格：
+                    // - 否则「暂时退出」后重启的强制弹窗会丢失 forced，变成可取消；
+                    // - 未命中灰度的设备也不能因为缓存而绕过 rollout。
                     val forced = UpdateRollout.isForced(action.info, currentVersionName)
+                    val eligible = UpdateRollout.isEligible(store.installId, action.info)
+                    val phase = if (forced) {
+                        UpdatePhase.Available(UpdateTrigger.AUTO, action.info, forced = true)
+                    } else if (eligible) {
+                        UpdatePhase.Available(UpdateTrigger.AUTO, action.info)
+                    } else {
+                        UpdatePhase.RolloutPending(action.info, action.info.rolloutPercent)
+                    }
+                    _state.update {
+                        it.copy(phase = phase, lastCheckAtMillis = store.lastSuccessAtMillis)
+                    }
+                }
+
+                is UpdatePolicy.LaunchAction.RolloutPending -> {
                     _state.update {
                         it.copy(
-                            phase = UpdatePhase.Available(
-                                trigger = UpdateTrigger.AUTO,
-                                info = action.info,
-                                forced = forced,
+                            phase = UpdatePhase.RolloutPending(
+                                action.info,
+                                action.info.rolloutPercent,
                             ),
                             lastCheckAtMillis = store.lastSuccessAtMillis,
                         )

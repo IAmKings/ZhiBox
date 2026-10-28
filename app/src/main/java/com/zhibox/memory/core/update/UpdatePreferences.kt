@@ -33,6 +33,9 @@ interface UpdateStore {
     fun saveCached(info: UpdateInfo)
     fun clearCache()
 
+    /** 缓存是否包含灰度/强制元数据（v0.1.15+；旧缓存为 false，不能用于灰度/强制判断）。 */
+    val cachedMetaKnown: Boolean
+
     /** 下载线路健康统计（本地，不上报）。 */
     fun routeHealth(): Map<String, RouteHealth>
     fun updateRouteHealth(health: Map<String, RouteHealth>)
@@ -105,6 +108,12 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
             apkSizeBytes = prefs.getLong(KEY_C_APK_SIZE, 0L),
             sha256 = prefs.getString(KEY_C_SHA, null),
             sha256Url = prefs.getString(KEY_C_SHA_URL, null),
+            rolloutPercent = prefs.getInt(KEY_C_ROLLOUT, 100).coerceIn(0, 100),
+            minSupportedVersion = prefs.getString(KEY_C_MIN_SUPPORTED, null),
+            channel = when (prefs.getString(KEY_C_CHANNEL, null)) {
+                UpdateChannel.BETA.name -> UpdateChannel.BETA
+                else -> UpdateChannel.STABLE
+            },
         )
     }
 
@@ -120,8 +129,15 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
             .putLong(KEY_C_APK_SIZE, info.apkSizeBytes)
             .putString(KEY_C_SHA, info.sha256)
             .putString(KEY_C_SHA_URL, info.sha256Url)
+            .putInt(KEY_C_ROLLOUT, info.rolloutPercent.coerceIn(0, 100))
+            .putString(KEY_C_MIN_SUPPORTED, info.minSupportedVersion)
+            .putString(KEY_C_CHANNEL, info.channel.name)
+            .putInt(KEY_C_META_SCHEMA, CACHE_META_SCHEMA)
             .apply()
     }
+
+    override val cachedMetaKnown: Boolean
+        get() = prefs.getInt(KEY_C_META_SCHEMA, 0) >= CACHE_META_SCHEMA
 
     override var downloadedVersion: String?
         get() = prefs.getString(KEY_DOWNLOADED_VERSION, null)
@@ -182,6 +198,10 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
             .remove(KEY_C_APK_SIZE)
             .remove(KEY_C_SHA)
             .remove(KEY_C_SHA_URL)
+            .remove(KEY_C_ROLLOUT)
+            .remove(KEY_C_MIN_SUPPORTED)
+            .remove(KEY_C_CHANNEL)
+            .remove(KEY_C_META_SCHEMA)
             .apply()
     }
 
@@ -207,5 +227,10 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
         const val KEY_C_APK_SIZE = "cached_apk_size"
         const val KEY_C_SHA = "cached_sha"
         const val KEY_C_SHA_URL = "cached_sha_url"
+        const val KEY_C_ROLLOUT = "cached_rollout_percent"
+        const val KEY_C_MIN_SUPPORTED = "cached_min_supported"
+        const val KEY_C_CHANNEL = "cached_channel"
+        const val KEY_C_META_SCHEMA = "cached_meta_schema"
+        const val CACHE_META_SCHEMA = 2
     }
 }

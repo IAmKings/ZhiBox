@@ -253,6 +253,19 @@ F-03 验收发现两处问题，v0.1.14 修复：
 回归测试：历史 FAILED 静默忽略；同会话 FAILED 仍提示；缓存强制不可取消。
 
 
+### 9.8 v0.1.15 缓存元数据持久化修复（2026-10-29）
+
+F-03 复测发现 v0.1.14 修复不完整的更深层根因：`SharedPrefsUpdateStore` 的
+`saveCached/cachedInfo` 未持久化 `minSupportedVersion` / `rolloutPercent` / `channel`，
+重启后缓存重建默认 `minSupported=null`、`rollout=100`，导致 forced 丢失、灰度可能被绕过。
+
+v0.1.15 修复：
+- 缓存补齐上述字段并增加 `cache_meta_schema`；旧缓存标记为未知，冷启动强制联网刷新一次；
+- `UpdatePolicy` 冷启动展示缓存前重新判断 forced 与灰度资格；未命中灰度只显示分批推送；
+- `AppUpdateManager` 的 ShowCached 分支同样防御性重算；
+- 新增真实 SharedPreferences save→read 往返测试与旧缓存兼容测试。
+
+
 ## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
 
 - 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：

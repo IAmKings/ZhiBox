@@ -152,6 +152,7 @@ class UpdateModelsTest {
         override var channel: UpdateChannel = UpdateChannel.STABLE
         override var installId: String = "test-install-id"
         var cached: UpdateInfo? = null
+        override var cachedMetaKnown: Boolean = true
         override fun cachedInfo(): UpdateInfo? = cached
         override fun saveCached(info: UpdateInfo) {
             cached = info
@@ -171,7 +172,11 @@ class UpdateModelsTest {
         override var downloadedApkPath: String? = null
     }
 
-    private fun info(version: String, minSupportedVersion: String? = null) = UpdateInfo(
+    private fun info(
+        version: String,
+        minSupportedVersion: String? = null,
+        rolloutPercent: Int = 100,
+    ) = UpdateInfo(
         versionName = version,
         tagName = "v$version",
         title = "t",
@@ -183,6 +188,7 @@ class UpdateModelsTest {
         sha256 = "d".repeat(64),
         sha256Url = null,
         minSupportedVersion = minSupportedVersion,
+        rolloutPercent = rolloutPercent,
     )
 
     @Test
@@ -252,6 +258,27 @@ class UpdateModelsTest {
         }
         val action = UpdatePolicy.decideOnLaunch(500_000L, store, "0.1.6")
         assertTrue("强制缓存必须展示（即使取消过/关闭自动检查）", action is UpdatePolicy.LaunchAction.ShowCached)
+    }
+
+    @Test
+    fun launchPolicy_cachedRolloutMissReturnsPending() {
+        val store = FakeStore().apply {
+            lastSuccessAtMillis = 500_000L
+            cached = info("0.1.7", rolloutPercent = 0)
+        }
+        val action = UpdatePolicy.decideOnLaunch(500_000L, store, "0.1.6")
+        assertTrue("未命中灰度不应展示更新框", action is UpdatePolicy.LaunchAction.RolloutPending)
+    }
+
+    @Test
+    fun launchPolicy_legacyCacheWithoutMetaTriggersCheck() {
+        val store = FakeStore().apply {
+            lastSuccessAtMillis = 500_000L
+            cached = info("0.1.7")
+            cachedMetaKnown = false
+        }
+        val action = UpdatePolicy.decideOnLaunch(500_000L, store, "0.1.6")
+        assertEquals(UpdatePolicy.LaunchAction.Check, action)
     }
 
     @Test

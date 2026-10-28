@@ -40,6 +40,7 @@ class AppUpdateManagerTest {
         override var channel: UpdateChannel = UpdateChannel.STABLE
         override var installId: String = "test-install-id"
         var cached: UpdateInfo? = null
+        override var cachedMetaKnown: Boolean = true
         override fun cachedInfo(): UpdateInfo? = cached
         override fun saveCached(info: UpdateInfo) {
             cached = info
