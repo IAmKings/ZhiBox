@@ -72,8 +72,8 @@ android {
         applicationId = "com.zhibox.memory"
         minSdk = 24
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.1.10"
+        versionCode = 12
+        versionName = "0.1.11-beta.1"
 
         // Phase 0/1 仅针对 arm64 设备矩阵（实施计划第 2 节）
         ndk {

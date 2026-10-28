@@ -3,6 +3,14 @@
 > 适用：**v0.1.6**（2026-10-27 发布；v0.1.5/v0.1.4/v0.1.3/v0.1.1/v0.1.0-mvp 为历史版本）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/`、`docs/product/APP_UPDATE_SPEC.md`、`docs/product/INTELLIGENCE_HUB_SPEC.md` 与 `docs/product/INTELLIGENCE_HUB_ACCEPTANCE.md`。
 > **发布状态**：v0.1.6 已 tag/发布（GitHub Release 自动构建签名 APK）；v0.1.5、v0.1.4、v0.1.3、v0.1.1、v0.1.0-mvp 已发布。
 
+## 0. v0.1.11-beta.1（2026-10-28 临时演练）：强制更新 + 通知被拒链路
+
+- 临时 Beta 版本（与 v0.1.10 同代码），仅用于：
+  - 正式流程发布 prerelease（tag 含 `-` 自动 `--prerelease`）；
+  - `update-policy.json minSupportedVersion=0.1.11` 触发强制更新弹窗；
+  - 通知权限被拒时，后台下载完成回到前台自动安装。
+- 演练后删除 Release/tag，版本号回退。
+
 ## 0. v0.1.10（2026-10-28 发布）：灰度元数据即时生效
 
 - **update.json 缓存绕过**：拉取元数据时追加 cache-buster 并发送 `Cache-Control: no-cache`，
