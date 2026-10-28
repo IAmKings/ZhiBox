@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -84,6 +85,11 @@ class AppUpdateManagerTest {
         }
 
         override fun observe(): kotlinx.coroutines.flow.Flow<DownloadWorkState> = states
+        var cancelCalls: Int = 0
+        override fun cancel() {
+            cancelCalls++
+        }
+
         fun emit(work: DownloadWorkState) {
             check(states.tryEmit(work)) { "work state buffer full" }
         }
@@ -134,6 +140,7 @@ class AppUpdateManagerTest {
         installer: UpdateInstaller = FakeInstaller(),
         now: Long = 1_700_000_000_000L,
         foreground: () -> Boolean = { true },
+        currentVersionName: String = "0.1.6",
     ): AppUpdateManager = AppUpdateManager(
         appContext = ApplicationProvider.getApplicationContext<Context>(),
         api = api,
@@ -143,7 +150,7 @@ class AppUpdateManagerTest {
         store = store,
         scope = scope,
         clock = { now },
-        currentVersionName = "0.1.6",
+        currentVersionName = currentVersionName,
         foreground = foreground,
     )
 
@@ -514,6 +521,73 @@ class AppUpdateManagerTest {
             advanceUntilIdle()
             assertTrue(installer.installed != null)
             assertTrue(manager.state.value.phase is UpdatePhase.Idle)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun staleWorkSuccessAfterAppAlreadyUpdatedDoesNotShowFailure() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val store = FakeStore().apply { saveCached(info("0.1.7")) }
+            val installer = FakeInstaller()
+            val scheduler = FakeScheduler()
+            val apk = File(
+                ApplicationProvider.getApplicationContext<Context>().cacheDir,
+                "updates-test/stale-0.1.7.apk",
+            )
+            apk.parentFile?.mkdirs()
+            apk.writeBytes(ByteArray(8))
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                store = store,
+                scheduler = scheduler,
+                installer = installer,
+                // 模拟自更新已完成：当前进程已经是 0.1.7，而 WorkManager 里还有旧的 SUCCEEDED。
+                currentVersionName = "0.1.7",
+            )
+            advanceUntilIdle()
+            scheduler.emit(
+                DownloadWorkState(
+                    status = DownloadWorkState.Status.SUCCEEDED,
+                    apkPath = apk.absolutePath,
+                ),
+            )
+            advanceUntilIdle()
+
+            assertNull("已安装完成不应再拉起安装器", installer.installed)
+            assertTrue("已安装完成不应弹更新失败：${manager.state.value.phase}",
+                manager.state.value.phase is UpdatePhase.Idle)
+            assertFalse("残留下载文件应被清理", apk.exists())
+            assertTrue("应取消旧 WorkManager 任务", scheduler.cancelCalls >= 1)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun staleWorkSuccessEvenIfInstallersWereIdleIsSilent() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val store = FakeStore()
+            val scheduler = FakeScheduler()
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                store = store,
+                scheduler = scheduler,
+                currentVersionName = "0.1.7",
+            )
+            advanceUntilIdle()
+            scheduler.emit(
+                DownloadWorkState(
+                    status = DownloadWorkState.Status.SUCCEEDED,
+                    apkPath = null,
+                ),
+            )
+            advanceUntilIdle()
+            assertTrue(manager.state.value.phase is UpdatePhase.Idle)
+            assertTrue(scheduler.cancelCalls >= 1)
         } finally {
             Dispatchers.resetMain()
         }

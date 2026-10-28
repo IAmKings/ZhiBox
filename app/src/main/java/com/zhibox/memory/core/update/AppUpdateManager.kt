@@ -228,7 +228,20 @@ class AppUpdateManager internal constructor(
     }
 
     private suspend fun handleDownloadSucceeded(apkPath: String?) {
-        val info = currentActionInfo() ?: store.cachedInfo() ?: return
+        val info = currentActionInfo() ?: store.cachedInfo()
+        if (info == null) {
+            // 无对应更新信息：旧 WorkInfo 残留，静默清理，不能弹失败。
+            cleanupStaleDownload(apkPath)
+            return
+        }
+        if (!isNewerVersion(info.versionName, currentVersionName)) {
+            // 关键修复：自更新成功后进程会以新版本重启，但 WorkManager 里仍有
+            // SUCCEEDED 的旧任务；再次消费时会因“目标版本已安装、versionCode 不再更大”
+            // 被 ApkValidator 判为无效，从而在已成功升级后弹出「更新失败」。
+            // 这里以当前版本为真相：已安装则清缓存/取消旧任务，静默回到 Idle。
+            cleanupStaleDownload(apkPath)
+            return
+        }
         val file = apkPath?.let { File(it) }
         _state.update { it.copy(phase = UpdatePhase.Verifying(info)) }
         if (file == null || !file.isFile) {
@@ -241,6 +254,8 @@ class AppUpdateManager internal constructor(
             failDownload(info, invalid)
             return
         }
+        // 校验通过后先取消旧任务：避免安装期间进程重启后再次消费同一 SUCCEEDED。
+        scheduler.cancel()
         store.downloadedVersion = info.versionName
         store.downloadedApkPath = file.absolutePath
         if (foreground()) {
@@ -250,6 +265,17 @@ class AppUpdateManager internal constructor(
             UpdateNotifications.notifyDownloadComplete(appContext, info)
             _state.update { it.copy(phase = UpdatePhase.Idle) }
         }
+    }
+
+    /** 清理“目标版本已安装/无更新信息”场景的残留下载与 WorkManager 状态。 */
+    private fun cleanupStaleDownload(apkPath: String?) {
+        runCatching { apkPath?.let { File(it).delete() } }
+        runCatching {
+            File(appContext.cacheDir, "updates").listFiles()?.forEach { it.delete() }
+        }
+        clearPendingInstall()
+        scheduler.cancel()
+        _state.update { if (it.phase is UpdatePhase.Idle) it else it.copy(phase = UpdatePhase.Idle) }
     }
 
     /** 前台/点通知后安装已下载的 APK（从持久化 store 恢复，跨进程可用）。 */
@@ -323,6 +349,11 @@ class AppUpdateManager internal constructor(
     }
 
     private fun failDownload(info: UpdateInfo, failure: UpdateFailure) {
+        if (!isNewerVersion(info.versionName, currentVersionName)) {
+            // 已安装完成后的迟到失败（旧工作/旧回调）不应再打扰用户。
+            cleanupStaleDownload(null)
+            return
+        }
         val forced = activeForced || (_state.value.phase as? UpdatePhase.DownloadFailed)?.forced == true
         downloadFailureCount++
         val escapeAllowed = forced && downloadFailureCount >= FORCED_ESCAPE_FAILURES

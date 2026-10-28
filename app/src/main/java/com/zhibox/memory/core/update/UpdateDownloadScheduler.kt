@@ -33,4 +33,7 @@ data class DownloadWorkState(
 interface UpdateDownloadScheduler {
     fun enqueue(info: UpdateInfo)
     fun observe(): kotlinx.coroutines.flow.Flow<DownloadWorkState>
+
+    /** 终止并清理当前下载任务（自更新完成后避免新进程再次消费旧 WorkInfo）。 */
+    fun cancel()
 }

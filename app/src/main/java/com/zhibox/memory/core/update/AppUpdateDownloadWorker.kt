@@ -239,6 +239,10 @@ class WorkManagerUpdateDownloadScheduler(context: Context) : UpdateDownloadSched
         )
     }
 
+    override fun cancel() {
+        workManager.cancelUniqueWork(UpdateDownloadContract.UNIQUE_WORK)
+    }
+
     override fun observe(): Flow<DownloadWorkState> =
         workManager.getWorkInfosForUniqueWorkFlow(UpdateDownloadContract.UNIQUE_WORK)
             .map { infos -> infos.firstOrNull()?.toDownloadState() ?: DownloadWorkState() }

@@ -243,6 +243,9 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 - 权限/清单：`POST_NOTIFICATIONS`（Android 13+ 首次下载时请求）、`FOREGROUND_SERVICE`、
   `FOREGROUND_SERVICE_DATA_SYNC`；WorkManager 的 `SystemForegroundService` 通过
   `tools:node="merge"` 声明 `foregroundServiceType="dataSync"`（Android 14+ 必需）。
+- 自更新成功后的旧任务清理（v0.1.12 修复）：安装完成后新进程会再次收到 WorkManager
+  的 SUCCEEDED；manager 以当前版本为真相，目标版本已安装则静默清理缓存并取消唯一任务，
+  不再因 `versionCode` 不再更大而弹「更新失败」。
 - 完成行为：前台 → 直接拉起安装器；后台 → 发「更新已下载，点击安装」通知，
   点击进入 MainActivity（`EXTRA_INSTALL_UPDATE`）或在下次进入应用时自动安装；
   **通知被拒/不可见时**：下载完成后 store 记录待安装 APK，用户回到前台
