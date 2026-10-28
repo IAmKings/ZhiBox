@@ -554,3 +554,16 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 本版本内容：
 - 与 v0.1.12 同功能，仅版本号提升；
 - 验收：stable 看不到、开启 Beta 可见、可正常下载安装。
+
+## 22. 2026-10-28 v0.1.13-qa.1 灰度演练记录（rollout=0）
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **15 / 0.1.13-qa.1** |
+| 类型 | prerelease（Beta 通道可见） |
+| 发布政策 | `rolloutPercent=0`、`minSupportedVersion=0.1.0` |
+| 用途 | 灰度「未命中」边界：不弹窗、不下载、显示分批推送提示 |
+| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
+| 后续 | 验收通过后发 `v0.1.13-qa.2`（rollout=100）验证命中安装；完成后恢复 policy 100/0.1.0 |
+
+本版本内容：与 v0.1.13-beta.1 同功能，仅版本号提升；stable latest 保持 v0.1.12。
