@@ -628,11 +628,23 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 项 | 值 |
 |---|---|
 | versionCode / versionName | **20 / 0.1.15** |
-| 基线提交 | 版本号提交（tag `v0.1.15`）；发布后回填 |
+| 基线提交 | `038699a`（tag `v0.1.15`） |
 | 数据库 schema | v9（可覆盖升级 v0.1.14） |
 | 签名 | 沿用既有 release keystore（可覆盖升级） |
 | 发布政策 | `release/update-policy.json`（rollout 100%，minSupported 0.1.0） |
-| 产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；发布后回填 |
+| 产物 | `zhibox-0.1.15-038699a-release-signed.apk`（70,428,828 bytes）；SHA-256 `13415073d98c2fbdee335c7bba9339321dda0fa37d06bfb7c2d0d86040d79909`；`.sha256`、mapping、`zhibox-0.1.15-038699a-update.json`（rollout 100 / minSupported 0.1.0）；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.15 |
 | 修复 | 缓存持久化补齐 minSupportedVersion/rolloutPercent/channel；冷启动重新判定 forced/灰度；旧缓存无元数据时联网刷新 |
 
 F-03 最终验收需用 v0.1.15 作为基线 + 新强制目标包复测；完成后清理临时 Release。
+
+## 28. 2026-10-29 v0.1.16-force.1 F-03 最终复测记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **21 / 0.1.16-force.1** |
+| 类型 | prerelease（Beta 通道可见） |
+| 基线 | v0.1.15（缓存元数据/冷启动灰度强制修复） |
+| 发布政策 | `minSupportedVersion=0.1.16`、`rolloutPercent=100` |
+| 复测点 | 3 次失败→暂时退出→重启：仍强制不可取消；无历史更新失败；缓存元数据不丢 |
+| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
+| 后续 | 通过后删除本 Release/tag、恢复 policy 100/0.1.0；不进入 stable |

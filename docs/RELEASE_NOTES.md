@@ -3,7 +3,15 @@
 > 适用：**v0.1.6**（2026-10-27 发布；v0.1.5/v0.1.4/v0.1.3/v0.1.1/v0.1.0-mvp 为历史版本）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/`、`docs/product/APP_UPDATE_SPEC.md`、`docs/product/INTELLIGENCE_HUB_SPEC.md` 与 `docs/product/INTELLIGENCE_HUB_ACCEPTANCE.md`。
 > **发布状态**：v0.1.6 已 tag/发布（GitHub Release 自动构建签名 APK）；v0.1.5、v0.1.4、v0.1.3、v0.1.1、v0.1.0-mvp 已发布。
 
-## 0. v0.1.15（2026-10-29 发布）：缓存元数据持久化 + 冷启动灰度/强制判定
+## 0. v0.1.16-force.1（2026-10-29 F-03 最终复测）：minSupported=0.1.16
+
+- **prerelease**，用于在修复后的 **v0.1.15** 基线上做 F-03 最终复测；
+- `update.json`：channel=beta、rolloutPercent=100、**minSupportedVersion=0.1.16**；
+- 复测重点：强制下载失败 3 次→暂时退出→重启后仍强制且不可取消；
+  不出现历史「更新失败」；缓存中的 minSupported/rollout 不丢失；
+- stable latest 仍为 v0.1.15；通过后删除临时 Release、恢复 policy 100 / 0.1.0。
+
+## 0.1 v0.1.15（2026-10-29 发布）：缓存元数据持久化 + 冷启动灰度/强制判定
 
 - **F-03 真正根因修复**：`SharedPrefsUpdateStore` 缓存持久化遗漏
   `minSupportedVersion` / `rolloutPercent` / `channel`；重启后缓存重建丢失 forced 元数据，
@@ -14,7 +22,7 @@
   旧缓存标记未知；缓存灰度未命中/强制覆盖用例。
 - **发布政策**：全量 100%、minSupported 0.1.0；F-03 需用本版本作为基线 + 新强制目标复测。
 
-## 0.1 v0.1.15-force.1（2026-10-28 F-03 复测）：minSupported=0.1.15
+## 0.2 v0.1.15-force.1（2026-10-28 F-03 复测）：minSupported=0.1.15
 
 - **prerelease**，用于在修复后的 **v0.1.14** 基线上复测 F-03；
 - `update.json`：channel=beta、rolloutPercent=100、**minSupportedVersion=0.1.15**；
@@ -22,7 +30,7 @@
   不得再出现历史 FAILED 回放的「更新失败」；
 - stable latest 仍为 v0.1.14；复测通过后删除本临时 Release、恢复 policy 100 / 0.1.0。
 
-## 0.2 v0.1.14（2026-10-28 发布）：强制更新重启行为修复
+## 0.3 v0.1.14（2026-10-28 发布）：强制更新重启行为修复
 
 - **修复 1（F-03）**：冷启动展示缓存时重新计算强制标记；强制更新即使被取消过、
   或关闭了自动检查，重启后仍会弹出**不可取消**的强制弹窗。
@@ -33,7 +41,7 @@
 - **发布政策**：`update-policy.json` 恢复为全量（100%）、非强制（minSupported 0.1.0）；
   清理灰度/强制 QA 临时 Release 后发布正式稳定版。
 
-## 0.3 v0.1.14-force.1（2026-10-28 强制演练）：minSupported=0.1.14
+## 0.4 v0.1.14-force.1（2026-10-28 强制演练）：minSupported=0.1.14
 
 - 与 qa.2 同功能，仅版本号提升；**prerelease**，Beta 通道可见（高于 qa.2；stable latest 仍为 v0.1.12）；
 - `update.json`：channel=beta、rolloutPercent=100、**minSupportedVersion=0.1.14**；
@@ -41,7 +49,7 @@
   下载安装后解除；强制优先于用户取消与灰度；
 - 验收后恢复 `release/update-policy.json` 为 `100 / 0.1.0`，清理 QA/force 临时 Release。
 
-## 0.4 v0.1.13-qa.2（2026-10-28 灰度演练）：rollout=100 边界
+## 0.5 v0.1.13-qa.2（2026-10-28 灰度演练）：rollout=100 边界
 
 - 与 qa.1 同功能，仅版本号提升；**prerelease**，Beta 通道可见（高于 qa.1；stable latest 仍为 v0.1.12）；
 - `update.json`：channel=beta、**rolloutPercent=100**、minSupported=0.1.0；
@@ -49,7 +57,7 @@
   可下载/安装；完成后检查更新为最新；
 - 验收后恢复 `release/update-policy.json` 为 100 / 0.1.0，再准备正式稳定版。
 
-## 0.5 v0.1.13-qa.1（2026-10-28 灰度演练）：rollout=0 边界
+## 0.6 v0.1.13-qa.1（2026-10-28 灰度演练）：rollout=0 边界
 
 - 与 v0.1.13-beta.1 同功能，仅版本号提升；**prerelease**，需开启 Beta 通道验收；
 - `update.json`：channel=beta、**rolloutPercent=0**、minSupported=0.1.0；
@@ -57,7 +65,7 @@
   **不弹窗、不下载**；stable latest 仍为 v0.1.12；
 - 灰度 100% 边界与安装验证将在本包验收通过后另发 `v0.1.13-qa.2`（rollout=100）。
 
-## 0.6 v0.1.13-beta.1（2026-10-28 内测 Beta）：Beta 通道人工验收
+## 0.7 v0.1.13-beta.1（2026-10-28 内测 Beta）：Beta 通道人工验收
 
 - 与 v0.1.12 同功能，仅版本号提升，用于 GitHub prerelease / 应用内 Beta 通道人工验收；
 - GitHub prerelease：不进入 stable 的 `releases/latest`（stable 仍为 v0.1.12）；
@@ -65,7 +73,7 @@
 - 验收要点：stable 通道看不到 → 打开「接收预发布版本（Beta）」后可见 → 可下载/安装；
 - 灰度/强制演练请另发独立 drill Release（避免影响本 Beta 包）。
 
-## 0.7 v0.1.12（2026-10-28 发布）：修复自更新后误弹「更新失败」
+## 0.8 v0.1.12（2026-10-28 发布）：修复自更新后误弹「更新失败」
 
 - **问题**：自更新（如 0.1.9 → 0.1.11）安装完成后，应用以新版本重启，但 WorkManager
   中仍保留旧的 SUCCEEDED 任务；新进程再次消费该任务时，`ApkValidator` 因「目标版本已安装、
@@ -77,7 +85,7 @@
 - 新增回归测试（旧 SUCCEEDED + 已安装版本 → Idle、无安装器、无失败、清理缓存/取消任务）。
 - 人工验收手册 O-04 增加预期：自更新完成不得出现「更新失败」弹框。
 
-## 0.8 v0.1.11（2026-10-28 发布）：受限网络元数据镜像回退
+## 0.9 v0.1.11（2026-10-28 发布）：受限网络元数据镜像回退
 
 - **update.json 镜像回退**：直连 GitHub Release 资产不可达时，按 `UPDATE_DOWNLOAD_MIRRORS`
   回退拉取元数据（与 APK 下载一致）；修复受限网络下灰度/强制元数据被静默忽略
@@ -86,7 +94,7 @@
   回到前台自动拉起安装器并完成安装（详见 `docs/product/APP_UPDATE_SPEC.md` §9.5）。
 - 无界面/安全策略变更；`release/update-policy.json` 恢复全量（100%）、非强制（0.1.0）。
 
-## 0.9 v0.1.10（2026-10-28 发布）：灰度元数据即时生效
+## 0.10 v0.1.10（2026-10-28 发布）：灰度元数据即时生效
 
 - **update.json 缓存绕过**：拉取元数据时追加 cache-buster 并发送 `Cache-Control: no-cache`，
   避免 Release 资产被覆盖/更新后 CDN 边缘仍返回旧内容（v0.1.9 演练中观察到 rollout 调整
@@ -95,7 +103,7 @@
   （详见 APP_UPDATE_SPEC §9.5）。
 - 无界面/安全策略变更；update-policy 仍为全量、非强制。
 
-## 0.10 v0.1.9（2026-10-28 发布）：更新元数据与通知降级修复
+## 0.11 v0.1.9（2026-10-28 发布）：更新元数据与通知降级修复
 
 - **`update.json` 元数据拉取修复**：GitHub Release 资产 URL 会 302 到
   `objects.githubusercontent.com`，v0.1.8 及以前未跟随重定向，导致灰度/强制元数据被忽略
@@ -106,7 +114,7 @@
   真机验证（详见 APP_UPDATE_SPEC §9.4）。
 - 无界面/安全策略变更；update-policy 仍为全量、非强制。
 
-## 0.11 v0.1.8（2026-10-27 发布）：更新下载可靠性修复
+## 0.12 v0.1.8（2026-10-27 发布）：更新下载可靠性修复
 
 - **跨线路续传修复**：直连 GitHub 资产失败回退镜像时保留 `.part` 并尝试 Range 续传；
   镜像不支持 Range 时自动丢弃半包重下。修复前「直连不可达 + 镜像」场景下进程被杀
@@ -117,7 +125,7 @@
 - **无行为变更**：更新检查、安全校验、Beta、灰度/强制、设置搜索均与 v0.1.7 一致；
   `update-policy.json` 仍为全量（100%）、非强制（minSupported 0.1.0）。
 
-## 0.12 v0.1.7（2026-10-27 发布）：应用内更新二期 + 设置搜索
+## 0.13 v0.1.7（2026-10-27 发布）：应用内更新二期 + 设置搜索
 
 - **后台下载**：下载交给 WorkManager（退出应用/锁屏/杀进程后继续），通知栏显示进度，
   进程重启后从 `.part` 续传；前台完成自动拉起安装器，后台完成点通知安装。
@@ -130,7 +138,7 @@
 - **安全不变**：HTTPS + 域名白名单 + SHA-256 + APK 包名/versionCode/签名校验。
 - **不包含**：增量更新（bsdiff 受 APK 签名约束，见 APP_UPDATE_SPEC §14）。
 
-## 0.13 v0.1.6（2026-10-27 发布）：应用内更新服务
+## 0.14 v0.1.6（2026-10-27 发布）：应用内更新服务
 
 - **进入应用自动检查**：冷启动（每进程一次）匿名查询 GitHub `releases/latest`，成功检查后 24h 内不重复请求、失败 1h 退避；
 - **更新弹窗**：发现新版本时按 DESIGN.md 展示版本/大小/日期/更新内容；「稍后」或点外部/返回键可关闭；
@@ -144,7 +152,7 @@
 - **隐私**：新增第 4 条联网路径并在隐私声明中说明（只查询版本元数据，不发送知识库/个人数据；下载仅在确认后发生）；
 - **发布**：GitHub 仓库公开以支持匿名 API/资产下载；Release 说明改为只包含当前版本段落，供更新弹窗展示。
 
-## 0.14 v0.1.5（2026-10-27 发布，历史）：设置页简化（简单模式 + 高级与诊断）
+## 0.15 v0.1.5（2026-10-27 发布，历史）：设置页简化（简单模式 + 高级与诊断）
 
 - **默认设置页改为「简单首页」**：本地 AI / 资料库 / 联网问答 / 隐私与关于 4 张主卡 + 高级与诊断入口；
   首屏不出现实现术语，4 个典型任务（换模型/导入/开关联网问答/查看资料库）≤2 击。
@@ -159,7 +167,7 @@
   截图见 `design/main_screen/impl/impl-settings-*.png`。
 - **文档**：设置相关点击路径（用户指南/验收/回滚 runbook）统一改为「设置 → 高级与诊断 → …」。
 
-## 0.15 v0.1.4（2026-10-24 发布，历史）
+## 0.16 v0.1.4（2026-10-24 发布，历史）
 
 - **智能状态中枢（M1/M2/M3）**：首页左上角状态点改为真实四态（就绪/部分就绪/未就绪/异常）+ 首次引导条；
   点击打开「智能状态」Bottom Sheet（结论 + 4 个只读 pill + 快捷动作 + 待处理区 + 设置入口）；
@@ -180,7 +188,7 @@
 - **已知限制**：READY 呼吸动画与下载/同步脉冲未在"无模型"设备上可视化验证（单测覆盖判定与映射）；
   Agent/问答真实质量仍 `QUALITY_CLAIM_ALLOWED=false`；启动基准存在设备噪声（建议 CI 固定环境重录基线）。
 
-## 0.16 v0.1.3（2026-10-22 发布，历史）
+## 0.17 v0.1.3（2026-10-22 发布，历史）
 
 - **质量审查修复**：R8 版本入 catalog、备份快照持久化/失败保护、来源范围检索分批/流式过滤、导出一致性 reader transaction、SharedModelStore 原子切换、备份排除规则。
 - **R1/R2/R5 回归**：快照失败不动库、生成 50 文档/200 chunk 导出导入回环、导入/重嵌入/抽取活动期间导出拒绝、来源范围端到端检索。
@@ -188,7 +196,7 @@
 - **限制**：Agent/问答真实质量仍 `QUALITY_CLAIM_ALLOWED=false`；R5 真机大库 ANR/进程中断仍建议发布前补测。
 - **签名 RC**：`dist/zhibox-0.1.3-bdc8be2-release-signed.apk`（70,164,017 bytes，SHA-256 `0f47cdffcea8eb2d4b626401904686393bc2275357f2a2d651070ee6fdf4a03b`，apksigner PASS）；PJZ110 同签名覆盖升级 smoke 通过。
 
-## 0.17 v0.1.2（历史，未发布）
+## 0.18 v0.1.2（历史，未发布）
 
 - **P1 导入扩展**：文本型 PDF（PDFBox-Android；owner-password-only 可抽取）、DOCX/PPTX/XLSX、HTML、网页 URL、SAF 多选文件；staging 白名单与 50MB 流式上限；旧 `.doc/.ppt/.xls` 返回明确的“另存为 OOXML”错误；URL 导入把原始地址写入 `source.originUrl`（staging 旁车，schema v8）；**扫描件 OCR（ML Kit 离线，默认开启）与 user-password PDF 输入密码重试**。
 - **P1 多轮问答首版（B13）**：最近 6 条历史作为上下文（不是证据），历史 `[S#]` 剥离，引用仍只来自本轮证据；见 `docs/review/B13_MULTITURN_CHAT_REPORT.md`。
