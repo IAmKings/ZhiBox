@@ -544,11 +544,11 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 项 | 值 |
 |---|---|
 | versionCode / versionName | **14 / 0.1.13-beta.1** |
-| 基线提交 | 版本号提交（tag `v0.1.13-beta.1`）；发布后回填 |
+| 基线提交 | `0ab5ad0`（tag `v0.1.13-beta.1`） |
 | 数据库 schema | v9（与 v0.1.12 同 schema，可覆盖升级） |
 | 签名 | 沿用既有 release keystore（可覆盖升级） |
 | 发布政策 | `release/update-policy.json`（rollout 100%，minSupported 0.1.0） |
-| 产物 | Release workflow 构建：APK/.sha256/mapping/`update.json`（channel=beta）；prerelease |
+| 产物 | `zhibox-0.1.13-beta.1-0ab5ad0-release-signed.apk`（70,428,827 bytes）；SHA-256 `8f8d260e2889cc696f452bae91de8739c542496318313ce641e176871094a8d1`；`.sha256`、mapping、`zhibox-0.1.13-beta.1-0ab5ad0-update.json`（channel=beta、rollout 100、minSupported 0.1.0）；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.13-beta.1 |
 | 用途 | Beta 预发布通道人工验收；stable 用户不可见；不用于灰度/强制演练 |
 
 本版本内容：
