@@ -241,6 +241,18 @@ README 网络说明均已同步。**不**受 LLM「禁止网络」开关约束�
 | 说明 | K60U 受限网络下旧 bug 未稳定复现（新进程 WorkManager 初始化清理旧任务）；以单测 + 上述真机回归为准 |
 
 
+### 9.7 v0.1.14 强制更新重启行为修复（2026-10-28）
+
+F-03 验收发现两处问题，v0.1.14 修复：
+
+| 问题 | 根因 | 修复 |
+|---|---|---|
+| 「暂时退出」后重启，强制弹窗变成可取消 | 冷启动 `ShowCached` 未重新计算 forced；`UpdatePolicy` 还会被 dismissed/自动检查关闭过滤 | 强制缓存优先 ShowCached；manager 展示缓存时重算 `UpdateRollout.isForced` |
+| 再次重启直接弹「更新失败」 | WorkManager 持久化的历史 FAILED/CANCELLED 在进程重启后被回放，manager 用缓存信息还原为 DownloadFailed | 终端状态按进程会话过滤：本进程未跟踪下载则静默忽略并取消旧任务；同会话失败正常提示；处理完取消唯一任务，重试重新入队 |
+
+回归测试：历史 FAILED 静默忽略；同会话 FAILED 仍提示；缓存强制不可取消。
+
+
 ## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
 
 - 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：

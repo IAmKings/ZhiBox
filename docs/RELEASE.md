@@ -589,7 +589,21 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 类型 | prerelease（Beta 通道可见，高于 qa.2） |
 | 发布政策 | `minSupportedVersion=0.1.14`、`rolloutPercent=100` |
 | 用途 | 强制更新边界：当前 < 0.1.14 → 弹「需要更新」不可取消；安装后解除 |
-| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
-| 后续 | 验收通过后恢复 policy 100/0.1.0；清理 QA/force 临时 Release；准备正式稳定版 |
+| 产物 | `zhibox-0.1.14-force.1-581491b-release-signed.apk`（70,428,821 bytes）；SHA-256 `b97454dacc1c48be7c1d7b44364f2a22af6917f1d71ba095a57daa61a7106ea4`；update.json minSupported=0.1.14；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.14-force.1 |
+| 后续 | 验收发现两处重启行为问题（缓存丢失 forced / 历史 FAILED 回放）；修复见 §25 正式版 |
 
 本版本：与 qa.2 同功能，仅版本号提升；stable latest 保持 v0.1.12。
+
+## 25. 2026-10-28 v0.1.14 正式稳定版记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **18 / 0.1.14** |
+| 基线提交 | 版本号提交（tag `v0.1.14`）；发布后回填 |
+| 数据库 schema | v9（可覆盖升级 v0.1.12 / QA/force 包） |
+| 签名 | 沿用既有 release keystore（同证书，可覆盖升级） |
+| 发布政策 | `release/update-policy.json`（rollout 100%，minSupported 0.1.0） |
+| 产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；发布后回填 |
+| 内容 | F-03 修复：冷启动缓存保留 forced；历史 WorkManager FAILED/CANCELLED 不再回放误弹更新失败；清理 QA/force 临时 Release |
+
+本版本为正式稳定版；发布前已清理 `v0.1.13-qa.1`、`v0.1.13-qa.2`、`v0.1.14-force.1` 临时 Release。

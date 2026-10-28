@@ -2,7 +2,7 @@
 
 本地优先的 Android 端侧 RAG 记忆系统骨架：文档导入 → 分块 → 端侧 embedding → SQLite 检索 → 原文证据回溯，全程可离线。架构移植自 SAG 的检索数据模型思想（Kotlin 重写，非直接复用 Python 引擎）。
 
-当前状态：**v0.1.12 已发布（latest）**；Beta `v0.1.13-beta.1`、灰度 `v0.1.13-qa.1/qa.2` 已人工验收通过；master 正在构建 **v0.1.14-force.1**（prerelease，强制更新演练：minSupported=0.1.14、rollout=100），用于强制更新人工验收。版本 `versionName = 0.1.14-force.1` / `versionCode = 17`；发布说明见 [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) 与 `docs/RELEASE.md`。Phase 1 MVP-1 验收与 262 条/50 卡评测历史见 `docs/phase1/`。
+当前状态：**v0.1.12 已发布（latest）**；Beta/灰度人工验收通过；强制 `v0.1.14-force.1` 验收发现并修复「重启后强制可取消」与「历史 FAILED 回放误弹更新失败」；master 正在准备正式稳定版 **v0.1.14**（versionName `0.1.14` / versionCode 18）。发布说明见 [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) 与 `docs/RELEASE.md`。Phase 1 MVP-1 验收与 262 条/50 卡评测历史见 `docs/phase1/`。
 
 ## 模型路线（B7 起）
 

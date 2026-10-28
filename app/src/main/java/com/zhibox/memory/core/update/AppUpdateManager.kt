@@ -53,6 +53,14 @@ class AppUpdateManager internal constructor(
     private var downloadFailureCount = 0
     private var activeForced = false
 
+    /**
+     * 本进程是否正在跟踪一次下载。
+     * WorkManager 会在进程重启后回放历史的 FAILED/CANCELLED 终端状态；若没有本进程的
+     * 下载上下文（startDownload 或先观察到 RUNNING），这些历史失败不能重新弹「更新失败」。
+     */
+    @Volatile
+    private var downloadActiveInProcess = false
+
     init {
         scope.launch {
             _state.update {
@@ -196,6 +204,7 @@ class AppUpdateManager internal constructor(
         UpdateNotifications.ensureChannel(appContext)
         clearPendingInstall()
         activeForced = available.forced
+        downloadActiveInProcess = true
         _state.update {
             it.copy(
                 phase = UpdatePhase.Downloading(info, 0L, info.apkSizeBytes),
@@ -210,6 +219,7 @@ class AppUpdateManager internal constructor(
             DownloadWorkState.Status.IDLE -> Unit
             DownloadWorkState.Status.RUNNING -> {
                 val info = currentActionInfo() ?: store.cachedInfo() ?: return
+                downloadActiveInProcess = true
                 _state.update { current ->
                     if (current.phase is UpdatePhase.Downloading) {
                         current.copy(phase = UpdatePhase.Downloading(info, work.downloadedBytes, work.totalBytes))
@@ -221,10 +231,33 @@ class AppUpdateManager internal constructor(
                 }
             }
 
-            DownloadWorkState.Status.SUCCEEDED -> handleDownloadSucceeded(work.apkPath)
+            DownloadWorkState.Status.SUCCEEDED -> {
+                downloadActiveInProcess = false
+                // 终端状态只消费一次：先取消唯一任务，避免进程重启后再次回放。
+                scheduler.cancel()
+                handleDownloadSucceeded(work.apkPath)
+            }
+
             DownloadWorkState.Status.FAILED, DownloadWorkState.Status.CANCELLED -> {
+                if (!downloadActiveInProcess) {
+                    // 历史会话的 FAILED/CANCELLED（进程重启后 WorkManager 回放）：
+                    // 静默清理，不再用缓存信息弹「更新失败」。
+                    scheduler.cancel()
+                    clearPendingInstall()
+                    _state.update { current ->
+                        if (current.phase is UpdatePhase.Downloading || current.phase is UpdatePhase.Verifying) {
+                            current.copy(phase = UpdatePhase.Idle)
+                        } else {
+                            current
+                        }
+                    }
+                    return
+                }
+                downloadActiveInProcess = false
                 val info = currentActionInfo() ?: store.cachedInfo()
                 clearPendingInstall()
+                // 失败弹窗展示后同样取消任务：重试会重新入队，不再回放旧 FAILED。
+                scheduler.cancel()
                 if (info != null) {
                     failDownload(info, work.failure ?: UpdateFailure.Network)
                 } else {
@@ -261,8 +294,6 @@ class AppUpdateManager internal constructor(
             failDownload(info, invalid)
             return
         }
-        // 校验通过后先取消旧任务：避免安装期间进程重启后再次消费同一 SUCCEEDED。
-        scheduler.cancel()
         store.downloadedVersion = info.versionName
         store.downloadedApkPath = file.absolutePath
         if (foreground()) {

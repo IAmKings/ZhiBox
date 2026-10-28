@@ -616,4 +616,63 @@ class AppUpdateManagerTest {
         }
     }
 
+    @Test
+    fun historicalFailedWorkInfoAfterRestartDoesNotShowFailure() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val store = FakeStore().apply {
+                saveCached(info("0.1.7", minSupportedVersion = "0.1.7"))
+            }
+            val scheduler = FakeScheduler()
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                store = store,
+                scheduler = scheduler,
+            )
+            manager.onAppEntered()
+            advanceUntilIdle()
+            assertTrue(manager.state.value.phase is UpdatePhase.Available)
+
+            // 模拟重启后 WorkManager 回放上一会话的 FAILED：不能覆盖成「更新失败」。
+            scheduler.emit(
+                DownloadWorkState(
+                    status = DownloadWorkState.Status.FAILED,
+                    failure = UpdateFailure.Network,
+                ),
+            )
+            advanceUntilIdle()
+
+            val phase = manager.state.value.phase
+            assertTrue("历史 FAILED 不应弹更新失败：$phase", phase is UpdatePhase.Available)
+            assertTrue((phase as UpdatePhase.Available).forced)
+            assertTrue(scheduler.cancelCalls >= 1)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun historicalFailedWorkInfoWithoutUpdateIsSilentlyIgnored() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val scheduler = FakeScheduler()
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                scheduler = scheduler,
+            )
+            advanceUntilIdle()
+            scheduler.emit(
+                DownloadWorkState(
+                    status = DownloadWorkState.Status.FAILED,
+                    failure = UpdateFailure.Network,
+                ),
+            )
+            advanceUntilIdle()
+            assertTrue(manager.state.value.phase is UpdatePhase.Idle)
+            assertTrue(scheduler.cancelCalls >= 1)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
 }
