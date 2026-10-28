@@ -553,7 +553,7 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 
 本版本内容：
 - 与 v0.1.12 同功能，仅版本号提升；
-- 验收：stable 看不到、开启 Beta 可见、可正常下载安装。
+- 验收：stable 看不到、开启 Beta 可见、可正常下载安装（**2026-10-28 人工验收通过**）。
 
 ## 22. 2026-10-28 v0.1.13-qa.1 灰度演练记录（rollout=0）
 
@@ -563,7 +563,7 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 类型 | prerelease（Beta 通道可见） |
 | 发布政策 | `rolloutPercent=0`、`minSupportedVersion=0.1.0` |
 | 用途 | 灰度「未命中」边界：不弹窗、不下载、显示分批推送提示 |
-| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
+| 产物 | `zhibox-0.1.13-qa.1-3d70b8d-release-signed.apk`（70,428,813 bytes）；SHA-256 `505867f0a1b88dd6919f00c2d9c9bf8d783491f3c4142fe51952afb609c3b2f8`；`.sha256`、mapping、`zhibox-0.1.13-qa.1-3d70b8d-update.json`（channel=beta、rollout 0、minSupported 0.1.0）；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.13-qa.1 |
 | 后续 | 验收通过后发 `v0.1.13-qa.2`（rollout=100）验证命中安装；完成后恢复 policy 100/0.1.0 |
 
 本版本内容：与 v0.1.13-beta.1 同功能，仅版本号提升；stable latest 保持 v0.1.12。
