@@ -672,3 +672,16 @@ F-03 最终验收需用 v0.1.15 作为基线 + 新强制目标包复测；完成
 | 产物 | `zhibox-0.1.16-0ea927d-release-signed.apk`（70,429,284 bytes）；SHA-256 `8cb6985a36daba2ec3039c317167b6c75599bb1c5425570a25c625a8821b59e4`；`.sha256`、mapping、`zhibox-0.1.16-0ea927d-update.json`（rollout 100 / minSupported 0.1.0）；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.16 |
 
 本版本解决「删除 force Release 后，客户端仍按缓存强制、点击更新 404 死循环」。
+
+## 31. 2026-10-29 v0.1.17-force.1 强制缓存失效复测记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **23 / 0.1.17-force.1** |
+| 类型 | prerelease（Beta 通道可见） |
+| 基线 | v0.1.16（强制缓存后台校验 + 404/410 下架清理） |
+| 发布政策 | `minSupportedVersion=0.1.17`、`rolloutPercent=100` |
+| 复测流程 | 强制→断网失败 3 次→暂时退出→删除本 Release→关飞行→重启 |
+| 预期 | 重启后后台校验发现无该版本→清缓存/关闭弹窗；或点更新得到可关闭「版本已下架」 |
+| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
+| 后续 | 通过后删除本 Release/tag、恢复 policy 100/0.1.0；不进入 stable |
