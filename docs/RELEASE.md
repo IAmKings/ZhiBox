@@ -538,3 +538,19 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
   修复以回归单测（旧 SUCCEEDED + 已安装版本 → Idle）与上述真机验证为准。
 - 根因：≤v0.1.11 自更新完成后，新进程再次消费 WorkManager 的 SUCCEEDED 旧任务，
   `ApkValidator` 因目标版本已安装、versionCode 不再更大而判无效 → 弹「更新失败」。
+
+## 21. 2026-10-28 v0.1.13-beta.1 内测 Beta 记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **14 / 0.1.13-beta.1** |
+| 基线提交 | 版本号提交（tag `v0.1.13-beta.1`）；发布后回填 |
+| 数据库 schema | v9（与 v0.1.12 同 schema，可覆盖升级） |
+| 签名 | 沿用既有 release keystore（可覆盖升级） |
+| 发布政策 | `release/update-policy.json`（rollout 100%，minSupported 0.1.0） |
+| 产物 | Release workflow 构建：APK/.sha256/mapping/`update.json`（channel=beta）；prerelease |
+| 用途 | Beta 预发布通道人工验收；stable 用户不可见；不用于灰度/强制演练 |
+
+本版本内容：
+- 与 v0.1.12 同功能，仅版本号提升；
+- 验收：stable 看不到、开启 Beta 可见、可正常下载安装。
