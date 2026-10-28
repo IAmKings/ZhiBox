@@ -331,6 +331,7 @@ internal fun failureText(failure: UpdateFailure): String = when (failure) {
     UpdateFailure.InstallFailed -> stringResource(R.string.update_error_install)
     UpdateFailure.FileUnavailable -> stringResource(R.string.update_error_file)
     UpdateFailure.Cancelled -> stringResource(R.string.update_error_cancelled)
+    UpdateFailure.ReleaseUnavailable -> stringResource(R.string.update_error_release_unavailable)
 }
 
 /**

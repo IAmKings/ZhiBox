@@ -207,6 +207,27 @@ class UpdateApiAndDownloaderTest {
     )
 
     @Test
+    fun downloader_404MapsToReleaseUnavailable() = runBlocking {
+        val dir = createTempDir("update-dl-gone")
+        try {
+            MockHttpsServer { MockResponse(404, "not found") }.use { server ->
+                val error = try {
+                    newDownloader().download(
+                        testInfo(apkUrl = server.baseUrl("/gone.apk")),
+                        dir,
+                    )
+                    null
+                } catch (e: UpdateException) {
+                    e
+                }
+                assertEquals(UpdateFailure.ReleaseUnavailable, error?.failure)
+            }
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
     fun downloader_downloadsVerifiesAndRenames() = runBlocking {
         val dir = createTempDir("update-dl-ok")
         try {

@@ -658,3 +658,17 @@ F-03 最终验收需用 v0.1.15 作为基线 + 新强制目标包复测；完成
 - **策略**：`release/update-policy.json` 恢复为 `rolloutPercent=100`、`minSupportedVersion=0.1.0`；
 - **文档**：`RELEASE_NOTES.md` 仅保留稳定版本说明；临时验收记录保留在本文件 §21~§28；
 - **后续**：以 v0.1.15 作为正式基线，后续发版走正常 `release/update-policy.json` 流程。
+
+## 30. 2026-10-29 v0.1.16 稳定版记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **22 / 0.1.16** |
+| 基线提交 | 版本号提交（tag `v0.1.16`）；发布后回填 |
+| 数据库 schema | v9（可覆盖升级 v0.1.15） |
+| 签名 | 沿用既有 release keystore（可覆盖升级） |
+| 发布政策 | `release/update-policy.json`（rollout 100%，minSupported 0.1.0） |
+| 修复 | 强制缓存后台校验；force Release 删除后清缓存/关闭弹窗；下载 404/410 视为版本下架并清缓存；强制缓存 24h 过期先校验 |
+| 产物 | Release workflow 构建；发布后回填 |
+
+本版本解决「删除 force Release 后，客户端仍按缓存强制、点击更新 404 死循环」。

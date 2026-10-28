@@ -71,6 +71,7 @@ internal fun decodeUpdateFailure(value: String?): UpdateFailure {
         "InstallFailed" -> UpdateFailure.InstallFailed
         "FileUnavailable" -> UpdateFailure.FileUnavailable
         "Cancelled" -> UpdateFailure.Cancelled
+        "ReleaseUnavailable" -> UpdateFailure.ReleaseUnavailable
         else -> UpdateFailure.Network
     }
 }

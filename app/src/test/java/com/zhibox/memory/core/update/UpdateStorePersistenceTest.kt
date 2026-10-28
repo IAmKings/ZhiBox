@@ -48,6 +48,7 @@ class UpdateStorePersistenceTest {
         store.saveCached(info)
 
         assertTrue(store.cachedMetaKnown)
+        assertTrue("缓存时间应被记录", store.cachedAtMillis > 0L)
         val cached = store.cachedInfo()!!
         assertEquals("0.1.15-force.1", cached.versionName)
         assertEquals(25, cached.rolloutPercent)

@@ -49,6 +49,7 @@ class AppUpdateManager internal constructor(
     private val entered = AtomicBoolean(false)
     private var taskId = 0L
     private var checkJob: Job? = null
+    private var verifyCachedJob: Job? = null
     /** 强制更新下载失败次数（3 次后允许暂时退出，避免锁死）。 */
     private var downloadFailureCount = 0
     private var activeForced = false
@@ -101,6 +102,7 @@ class AppUpdateManager internal constructor(
                     _state.update {
                         it.copy(phase = phase, lastCheckAtMillis = store.lastSuccessAtMillis)
                     }
+                    if (forced) verifyCachedForced()
                 }
 
                 is UpdatePolicy.LaunchAction.RolloutPending -> {
@@ -164,12 +166,24 @@ class AppUpdateManager internal constructor(
                 onFailure = { error ->
                     val failure = (error as? UpdateException)?.failure ?: UpdateFailure.Network
                     store.lastAttemptAtMillis = clock()
+                    val fallbackForced = if (trigger == UpdateTrigger.AUTO) {
+                        store.cachedInfo()?.takeIf {
+                            isNewerVersion(it.versionName, currentVersionName) &&
+                                UpdateRollout.isForced(it, currentVersionName)
+                        }
+                    } else {
+                        null
+                    }
                     _state.update {
                         it.copy(
-                            phase = if (trigger == UpdateTrigger.MANUAL) {
-                                UpdatePhase.CheckFailed(trigger, failure)
-                            } else {
-                                UpdatePhase.Idle
+                            phase = when {
+                                trigger == UpdateTrigger.MANUAL ->
+                                    UpdatePhase.CheckFailed(trigger, failure)
+
+                                fallbackForced != null ->
+                                    UpdatePhase.Available(trigger, fallbackForced, forced = true)
+
+                                else -> UpdatePhase.Idle
                             },
                             lastCheckAtMillis = clock(),
                         )
@@ -391,6 +405,52 @@ class AppUpdateManager internal constructor(
         }
     }
 
+    /**
+     * 强制缓存展示后后台校验：Release 被删除/元数据回滚时，服务端结果会清缓存并关闭弹窗；
+     * 网络失败则保留缓存的强制提示（离线降级）。
+     */
+    private fun verifyCachedForced() {
+        if (!store.autoCheckEnabled) return
+        if (verifyCachedJob?.isActive == true) return
+        val id = taskId
+        verifyCachedJob = scope.launch {
+            val result = api.fetchLatest(store.channel)
+            if (id != taskId) return@launch
+            if (_state.value.phase !is UpdatePhase.Available) return@launch
+            result.onSuccess { latest ->
+                store.lastSuccessAtMillis = clock()
+                store.lastAttemptAtMillis = clock()
+                val newer = isNewerVersion(latest.versionName, currentVersionName)
+                val forced = UpdateRollout.isForced(latest, currentVersionName)
+                val eligible = UpdateRollout.isEligible(store.installId, latest)
+                val phase = when {
+                    !newer -> {
+                        store.clearCache()
+                        UpdatePhase.UpToDate(UpdateTrigger.AUTO, currentVersionName)
+                    }
+
+                    forced -> {
+                        store.saveCached(latest)
+                        UpdatePhase.Available(UpdateTrigger.AUTO, latest, forced = true)
+                    }
+
+                    !eligible -> {
+                        store.saveCached(latest)
+                        UpdatePhase.RolloutPending(latest, latest.rolloutPercent)
+                    }
+
+                    else -> {
+                        store.saveCached(latest)
+                        UpdatePhase.Available(UpdateTrigger.AUTO, latest)
+                    }
+                }
+                _state.update { it.copy(phase = phase, lastCheckAtMillis = clock()) }
+            }.onFailure {
+                // 离线/网络异常：保留缓存强制（用户仍可尝试下载或稍后重试）。
+            }
+        }
+    }
+
     private fun currentActionInfo(): UpdateInfo? = when (val phase = _state.value.phase) {
         is UpdatePhase.Available -> phase.info
         is UpdatePhase.Downloading -> phase.info
@@ -401,6 +461,27 @@ class AppUpdateManager internal constructor(
     }
 
     private fun failDownload(info: UpdateInfo, failure: UpdateFailure) {
+        if (failure == UpdateFailure.ReleaseUnavailable) {
+            // Release/资产已下架：清缓存与强制状态，弹可关闭的一次性失败提示，
+            // 避免用同一缓存 URL 无限重试/重启后再次强制。
+            store.clearCache()
+            clearPendingInstall()
+            scheduler.cancel()
+            downloadActiveInProcess = false
+            activeForced = false
+            _state.update {
+                it.copy(
+                    phase = UpdatePhase.DownloadFailed(
+                        info = info,
+                        failure = failure,
+                        forced = false,
+                        escapeAllowed = true,
+                    ),
+                    forcedEscapeAllowed = true,
+                )
+            }
+            return
+        }
         if (!isNewerVersion(info.versionName, currentVersionName)) {
             // 已安装完成后的迟到失败（旧工作/旧回调）不应再打扰用户。
             cleanupStaleDownload(null)
@@ -456,6 +537,10 @@ class AppUpdateManager internal constructor(
             is UpdatePhase.CheckFailed -> checkNow()
             is UpdatePhase.DownloadFailed -> {
                 val failed = _state.value.phase as UpdatePhase.DownloadFailed
+                if (failed.failure == UpdateFailure.ReleaseUnavailable) {
+                    checkNow()
+                    return
+                }
                 _state.update {
                     it.copy(
                         phase = UpdatePhase.Available(

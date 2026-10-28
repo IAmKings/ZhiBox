@@ -36,6 +36,9 @@ interface UpdateStore {
     /** 缓存是否包含灰度/强制元数据（v0.1.15+；旧缓存为 false，不能用于灰度/强制判断）。 */
     val cachedMetaKnown: Boolean
 
+    /** 缓存写入时间（0=旧缓存/未知）；用于强制缓存的过期校验。 */
+    val cachedAtMillis: Long
+
     /** 下载线路健康统计（本地，不上报）。 */
     fun routeHealth(): Map<String, RouteHealth>
     fun updateRouteHealth(health: Map<String, RouteHealth>)
@@ -133,11 +136,15 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
             .putString(KEY_C_MIN_SUPPORTED, info.minSupportedVersion)
             .putString(KEY_C_CHANNEL, info.channel.name)
             .putInt(KEY_C_META_SCHEMA, CACHE_META_SCHEMA)
+            .putLong(KEY_C_AT, System.currentTimeMillis())
             .apply()
     }
 
     override val cachedMetaKnown: Boolean
         get() = prefs.getInt(KEY_C_META_SCHEMA, 0) >= CACHE_META_SCHEMA
+
+    override val cachedAtMillis: Long
+        get() = prefs.getLong(KEY_C_AT, 0L)
 
     override var downloadedVersion: String?
         get() = prefs.getString(KEY_DOWNLOADED_VERSION, null)
@@ -202,6 +209,7 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
             .remove(KEY_C_MIN_SUPPORTED)
             .remove(KEY_C_CHANNEL)
             .remove(KEY_C_META_SCHEMA)
+            .remove(KEY_C_AT)
             .apply()
     }
 
@@ -232,5 +240,6 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
         const val KEY_C_CHANNEL = "cached_channel"
         const val KEY_C_META_SCHEMA = "cached_meta_schema"
         const val CACHE_META_SCHEMA = 2
+        const val KEY_C_AT = "cached_at"
     }
 }

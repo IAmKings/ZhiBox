@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -41,6 +42,7 @@ class AppUpdateManagerTest {
         override var installId: String = "test-install-id"
         var cached: UpdateInfo? = null
         override var cachedMetaKnown: Boolean = true
+        override var cachedAtMillis: Long = 1_700_000_000_000L
         override fun cachedInfo(): UpdateInfo? = cached
         override fun saveCached(info: UpdateInfo) {
             cached = info
@@ -671,6 +673,99 @@ class AppUpdateManagerTest {
             advanceUntilIdle()
             assertTrue(manager.state.value.phase is UpdatePhase.Idle)
             assertTrue(scheduler.cancelCalls >= 1)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun forcedCachedUpdateIsClearedWhenServerNoLongerOffersIt() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val store = FakeStore().apply {
+                saveCached(info("0.1.7", minSupportedVersion = "0.1.7"))
+            }
+            // 服务端最新就是当前版本（force Release 已删除/回滚）
+            val api = FakeApi(mutableListOf(Result.success(info("0.1.6"))))
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = api,
+                store = store,
+            )
+            manager.onAppEntered()
+            advanceUntilIdle()
+
+            assertTrue("服务端无更新后应回到最新态：${manager.state.value.phase}",
+                manager.state.value.phase is UpdatePhase.UpToDate)
+            assertNull("失效的强制缓存应被清理", store.cachedInfo())
+            assertEquals(1, api.calls)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun forcedCachedUpdateStaysWhenVerificationFails() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val store = FakeStore().apply {
+                saveCached(info("0.1.7", minSupportedVersion = "0.1.7"))
+            }
+            val api = FakeApi(
+                mutableListOf(Result.failure(UpdateException(UpdateFailure.Network))),
+            )
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = api,
+                store = store,
+            )
+            manager.onAppEntered()
+            advanceUntilIdle()
+
+            val phase = manager.state.value.phase as UpdatePhase.Available
+            assertTrue("离线时应保留缓存强制", phase.forced)
+            assertNotNull(store.cachedInfo())
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun releaseUnavailableClearsForcedCacheAndIsNotForced() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val store = FakeStore().apply {
+                saveCached(info("0.1.7", minSupportedVersion = "0.1.7"))
+            }
+            val scheduler = FakeScheduler()
+            // verify 返回同一强制目标，让弹窗保持在 Available(forced)
+            val api = FakeApi(
+                mutableListOf(Result.success(info("0.1.7", minSupportedVersion = "0.1.7"))),
+            )
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = api,
+                store = store,
+                scheduler = scheduler,
+            )
+            manager.onAppEntered()
+            advanceUntilIdle()
+            assertTrue((manager.state.value.phase as UpdatePhase.Available).forced)
+
+            manager.startDownload()
+            advanceUntilIdle()
+            scheduler.emit(
+                DownloadWorkState(
+                    status = DownloadWorkState.Status.FAILED,
+                    failure = UpdateFailure.ReleaseUnavailable,
+                ),
+            )
+            advanceUntilIdle()
+
+            val phase = manager.state.value.phase as UpdatePhase.DownloadFailed
+            assertEquals(UpdateFailure.ReleaseUnavailable, phase.failure)
+            assertFalse("版本已下架后不应继续强制", phase.forced)
+            assertNull("版本已下架应清缓存", store.cachedInfo())
         } finally {
             Dispatchers.resetMain()
         }

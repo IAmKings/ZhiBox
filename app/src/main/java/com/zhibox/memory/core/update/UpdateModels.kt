@@ -54,6 +54,9 @@ object UpdateConfig {
     /** 自动检查失败后退避：1h 内不再自动重试（手动始终可重试）。 */
     const val AUTO_RETRY_INTERVAL_MS = 60 * 60 * 1_000L
 
+    /** 强制缓存超过该年龄时，冷启动先联网校验，失败再回退缓存。 */
+    const val FORCED_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1_000L
+
     /** 下载整体超时：避免网络卡死时不可取消的进度框永久停留。 */
     const val DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1_000L
 }
@@ -163,6 +166,9 @@ sealed interface UpdateFailure {
     data object InstallFailed : UpdateFailure
     data object FileUnavailable : UpdateFailure
     data object Cancelled : UpdateFailure
+
+    /** 下载时 Release 资产已不存在（404/410）：版本已下架，应清缓存并重新检查。 */
+    data object ReleaseUnavailable : UpdateFailure
 }
 
 class UpdateException(

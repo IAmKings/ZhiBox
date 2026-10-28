@@ -32,7 +32,17 @@ object UpdatePolicy {
             // 强制更新优先级最高：即使用户取消过该版本、或关闭了自动检查，
             // 冷启动也应展示（不联网、纯缓存），且由 UI 层禁止取消。
             if (UpdateRollout.isForced(cached, currentVersionName)) {
-                return LaunchAction.ShowCached(cached)
+                val age = if (store.cachedAtMillis > 0L) {
+                    nowMillis - store.cachedAtMillis
+                } else {
+                    Long.MAX_VALUE
+                }
+                return if (age <= UpdateConfig.FORCED_CACHE_MAX_AGE_MS) {
+                    LaunchAction.ShowCached(cached)
+                } else {
+                    // 强制缓存过期：先联网校验，失败时 manager 回退缓存（避免 Release 已删除仍被强制）。
+                    LaunchAction.Check
+                }
             }
             // 用户关闭自动检查后：冷启动完全不联网，也不展示非强制缓存（手动检查始终可用）。
             if (!store.autoCheckEnabled) return LaunchAction.Skip

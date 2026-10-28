@@ -153,6 +153,7 @@ class UpdateModelsTest {
         override var installId: String = "test-install-id"
         var cached: UpdateInfo? = null
         override var cachedMetaKnown: Boolean = true
+        override var cachedAtMillis: Long = 1_700_000_000_000L
         override fun cachedInfo(): UpdateInfo? = cached
         override fun saveCached(info: UpdateInfo) {
             cached = info
@@ -258,6 +259,17 @@ class UpdateModelsTest {
         }
         val action = UpdatePolicy.decideOnLaunch(500_000L, store, "0.1.6")
         assertTrue("强制缓存必须展示（即使取消过/关闭自动检查）", action is UpdatePolicy.LaunchAction.ShowCached)
+    }
+
+    @Test
+    fun launchPolicy_staleForcedCacheTriggersCheck() {
+        val store = FakeStore().apply {
+            lastSuccessAtMillis = 500_000L
+            cached = info("0.1.7", minSupportedVersion = "0.1.7")
+            cachedAtMillis = 500_000L - UpdateConfig.FORCED_CACHE_MAX_AGE_MS - 1
+        }
+        val action = UpdatePolicy.decideOnLaunch(500_000L, store, "0.1.6")
+        assertEquals(UpdatePolicy.LaunchAction.Check, action)
     }
 
     @Test

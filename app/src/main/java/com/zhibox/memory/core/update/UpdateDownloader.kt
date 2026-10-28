@@ -195,6 +195,9 @@ class HttpUpdateDownloader(
                     code = connection.responseCode
                 }
             }
+            if (code == 404 || code == 410) {
+                throw UpdateException(UpdateFailure.ReleaseUnavailable)
+            }
             if (code !in 200..299) {
                 throw UpdateException(UpdateFailure.Http(code))
             }
@@ -253,8 +256,12 @@ class HttpUpdateDownloader(
             var connection: HttpURLConnection? = null
             try {
                 connection = openFollowingRedirects(URL(shaUrl), mirror = false, rangeFrom = 0L)
-                if (connection.responseCode !in 200..299) {
-                    throw UpdateException(UpdateFailure.Http(connection.responseCode))
+                val shaCode = connection.responseCode
+                if (shaCode == 404 || shaCode == 410) {
+                    throw UpdateException(UpdateFailure.ReleaseUnavailable)
+                }
+                if (shaCode !in 200..299) {
+                    throw UpdateException(UpdateFailure.Http(shaCode))
                 }
                 val text = connection.inputStream.use { readLimited(it, MAX_SHA_FILE_BYTES) }
                 UpdateReleaseParser.parseSha256File(text)
