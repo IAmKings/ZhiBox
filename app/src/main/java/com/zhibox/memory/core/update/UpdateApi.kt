@@ -37,6 +37,8 @@ class HttpUpdateApi(
     },
     /** 仅测试用：非空时把 update.json 的 host 白名单限制为该集合。 */
     private val testMetaHosts: Set<String> = emptySet(),
+    /** update.json 直连不可达时的镜像前缀（与 APK 下载共用配置；测试可注入）。 */
+    private val metaMirrors: List<String> = UpdateConfig.downloadMirrors,
 ) : UpdateApi {
 
     override suspend fun fetchLatest(
@@ -103,36 +105,55 @@ class HttpUpdateApi(
      */
     private fun applyReleaseMeta(info: UpdateInfo): UpdateInfo {
         val metaUrl = info.metaUrl ?: return info
-        val url = runCatching { URL(metaUrl) }.getOrNull() ?: return info
-        if (!url.protocol.equals("https", ignoreCase = true)) return info
+        val direct = runCatching { URL(metaUrl) }.getOrNull() ?: return info
+        if (!direct.protocol.equals("https", ignoreCase = true)) return info
         val allowedHosts = if (testMetaHosts.isNotEmpty()) testMetaHosts else META_ALLOWED_HOSTS
-        if (url.host?.lowercase() !in allowedHosts) return info
-        // GitHub Release 资产走 CDN；同名资产被 --clobber 覆盖后部分边缘会短暂返回旧内容。
-        // 加 cache-buster + no-cache，保证灰度/强制元数据调整后能立即读到新值。
-        val cacheBusted = runCatching {
-            URL(metaUrl + (if ('?' in metaUrl) "&" else "?") + "t=" + System.currentTimeMillis())
-        }.getOrNull() ?: url
-        var connection: HttpURLConnection? = null
-        return try {
-            connection = openConnection(cacheBusted).apply {
-                requestMethod = "GET"
-                connectTimeout = 8_000
-                readTimeout = 10_000
-                // GitHub Release 资产 URL 会 302 到 objects.githubusercontent.com；
-                // 元数据很小，跟随重定向（初始 host 已白名单校验）。
-                instanceFollowRedirects = true
-                setRequestProperty("User-Agent", userAgent)
-                setRequestProperty("Accept", "application/json")
-                setRequestProperty("Cache-Control", "no-cache")
-            }
-            if (connection.responseCode !in 200..299) return info
-            val body = connection.inputStream.use { readLimited(it, META_MAX_BODY_BYTES) }
-            UpdateMetaParser.apply(info, UpdateMetaParser.parse(body))
-        } catch (e: Exception) {
-            info
-        } finally {
-            runCatching { connection?.disconnect() }
+        val mirrorPrefixes = metaMirrors.filter { it.startsWith("https://") && it.endsWith("/") }
+        val mirrorHosts = mirrorPrefixes.mapNotNull {
+            runCatching { URL(it).host?.lowercase() }.getOrNull()
+        }.toSet()
+
+        // 与 APK 下载一致：直连（GitHub 资产 CDN）不可达时按镜像前缀回退。
+        // 每条线路都加 cache-buster + no-cache，保证灰度/强制元数据调整后立即生效。
+        val candidates = buildList {
+            add(metaUrl to false)
+            mirrorPrefixes.forEach { prefix -> add(prefix + metaUrl to true) }
         }
+        for ((candidate, mirrored) in candidates) {
+            val url = runCatching { URL(candidate) }.getOrNull() ?: continue
+            if (!url.protocol.equals("https", ignoreCase = true)) continue
+            val host = url.host?.lowercase()
+            if (mirrored) {
+                if (host == null || host !in mirrorHosts) continue
+            } else {
+                if (host == null || host !in allowedHosts) continue
+            }
+            val cacheBusted = runCatching {
+                URL(candidate + (if ('?' in candidate) "&" else "?") + "t=" + System.currentTimeMillis())
+            }.getOrNull() ?: url
+            var connection: HttpURLConnection? = null
+            try {
+                connection = openConnection(cacheBusted).apply {
+                    requestMethod = "GET"
+                    connectTimeout = if (mirrored) 8_000 else 5_000
+                    readTimeout = if (mirrored) 10_000 else 8_000
+                    // GitHub Release 资产 URL 会 302 到 objects.githubusercontent.com；
+                    // 元数据很小，跟随重定向（初始 host 已白名单校验）。
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", userAgent)
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("Cache-Control", "no-cache")
+                }
+                if (connection.responseCode !in 200..299) continue
+                val body = connection.inputStream.use { readLimited(it, META_MAX_BODY_BYTES) }
+                return UpdateMetaParser.apply(info, UpdateMetaParser.parse(body))
+            } catch (e: Exception) {
+                // 尝试下一条线路
+            } finally {
+                runCatching { connection?.disconnect() }
+            }
+        }
+        return info
     }
 
     private companion object {
