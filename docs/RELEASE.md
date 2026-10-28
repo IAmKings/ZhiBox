@@ -491,7 +491,7 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.9） |
 | 签名 | 沿用既有 release keystore（与 v0.1.9 同证书，可覆盖升级） |
 | 发布政策 | `release/update-policy.json`（全量 100%，minSupported 0.1.0） |
-| 发布产物 | 由 tag 推送后的 Release workflow 构建；APK/.sha256/mapping/`update.json`；size/SHA-256 发布后回填 |
+| 发布产物 | `zhibox-0.1.11-27be156-release-signed.apk`（70,428,817 bytes）；SHA-256 `93fbdaf5b9d3cb21f1f5886227c04a0905e0c5dea96418d4e0e319787d43c919`；`.sha256`、mapping、`zhibox-0.1.11-27be156-update.json`（rollout 100 / minSupported 0.1.0）一并上传；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.11 |
 
 本版本内容概要（详见 `docs/RELEASE_NOTES.md` §0）：
 - `update.json` 拉取加 cache-buster + `Cache-Control: no-cache`，灰度/强制元数据调整即时生效；
@@ -502,7 +502,7 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 项 | 值 |
 |---|---|
 | versionCode / versionName | **12 / 0.1.11** |
-| 基线提交 | 版本号提交（tag `v0.1.11`）；发布后回填 |
+| 基线提交 | `27be156`（tag `v0.1.11`） |
 | 数据库 schema | v9（本版本无 schema 迁移，可覆盖升级 v0.1.10） |
 | 签名 | 沿用既有 release keystore（与 v0.1.10 同证书，可覆盖升级） |
 | 发布政策 | `release/update-policy.json`（全量 100%，minSupported 0.1.0） |
