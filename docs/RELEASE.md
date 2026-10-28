@@ -609,3 +609,15 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 本版本为正式稳定版；已清理 `v0.1.13-qa.1`、`v0.1.13-qa.2`、`v0.1.14-force.1` 临时 Release/tag；
 `v0.1.13-beta.1` 作为 Beta 验收记录保留（stable 高于它，Beta 用户会收到 v0.1.14）。
 下一步：用 v0.1.14 作为基线 + 新的强制目标包复测 F-03（重启后仍强制、不可取消、无历史失败回放）。
+
+## 26. 2026-10-28 v0.1.15-force.1 F-03 复测记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **19 / 0.1.15-force.1** |
+| 类型 | prerelease（Beta 通道可见） |
+| 基线 | v0.1.14（含强制缓存 forced / 历史 FAILED 回放修复） |
+| 发布政策 | `minSupportedVersion=0.1.15`、`rolloutPercent=100` |
+| 复测点 | 3 次失败→暂时退出→重启：仍强制且不可取消；无历史「更新失败」回放 |
+| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
+| 后续 | 通过后删除本 Release/tag、恢复 policy 100/0.1.0；不进入 stable |

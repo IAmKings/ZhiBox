@@ -1,5 +1,5 @@
 {
   "schema": 1,
   "rolloutPercent": 100,
-  "minSupportedVersion": "0.1.0"
+  "minSupportedVersion": "0.1.15"
 }
