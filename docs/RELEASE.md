@@ -576,7 +576,20 @@ tag 与 versionName 由 release workflow 强校验。端到端下载/安装需�
 | 类型 | prerelease（Beta 通道可见；高于 qa.1） |
 | 发布政策 | `rolloutPercent=100`、`minSupportedVersion=0.1.0` |
 | 用途 | 灰度「命中」边界：弹窗、可下载安装；完成后检查更新为最新 |
-| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
-| 后续 | 验收通过后恢复 policy 100/0.1.0；如需强制演练另发 force drill；再发正式稳定版 |
+| 产物 | `zhibox-0.1.13-qa.2-2a470ae-release-signed.apk`（70,428,821 bytes）；SHA-256 `51d800eac054e8432223c59cd2654366e4bc6aafbbd96185803ff035e45bbc9f`；update.json rollout=100；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.13-qa.2 |
+| 后续 | 验收通过后恢复 policy 100/0.1.0；强制演练见 §24；再发正式稳定版 |
 
 本版本内容：与 qa.1/beta 同功能，仅版本号提升；stable latest 保持 v0.1.12。
+
+## 24. 2026-10-28 v0.1.14-force.1 强制演练记录
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **17 / 0.1.14-force.1** |
+| 类型 | prerelease（Beta 通道可见，高于 qa.2） |
+| 发布政策 | `minSupportedVersion=0.1.14`、`rolloutPercent=100` |
+| 用途 | 强制更新边界：当前 < 0.1.14 → 弹「需要更新」不可取消；安装后解除 |
+| 产物 | tag 推送后 Release workflow 构建；发布后回填 |
+| 后续 | 验收通过后恢复 policy 100/0.1.0；清理 QA/force 临时 Release；准备正式稳定版 |
+
+本版本：与 qa.2 同功能，仅版本号提升；stable latest 保持 v0.1.12。
