@@ -136,6 +136,12 @@ curl -s https://api.github.com/repos/IAmKings/ZhiBox/releases/latest | jq .tag_n
 3. 若 WorkManager 长时间处于 ENQUEUED：20s 内自动失败，可重试/关闭；
 4. 恢复网络重试可继续下载（`.part` 续传）。
 
+### O-07 第二轮审查回归（v0.1.17-beta.4+）
+1. 旧入队结果迟到：看门狗失败后重试，新任务不应被旧入队结果覆盖或旧成功结果打断；
+2. 重复 SUCCEEDED：待安装/NeedInstallPermission 不应被清空，记录仍保留；
+3. 早到 RUNNING：真实 RUNNING 应关闭启动看门狗，20s 后不得误判超时；
+4. 新入队期间旧成功结果：不得拉起旧 APK 安装器。
+
 ### O-06 更新阻塞回归（v0.1.17-beta.3+）
 1. 异步入队/无 WAITING 回调：断网或强杀 WorkManager 场景下，20s 内应从下载态变为可重试失败，不得永久 0%；
 2. 旧任务回调：看门狗取消后立即重试，旧 CANCELLED 不应取消新任务；
