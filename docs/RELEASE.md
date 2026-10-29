@@ -721,3 +721,15 @@ F-03 最终验收需用 v0.1.15 作为基线 + 新强制目标包复测；完成
 | 发布政策 | rollout 100%、minSupported 0.1.0 |
 | 产物 | `zhibox-0.1.17-beta.3-a253ff9-release-signed.apk`（70,445,674 bytes）；SHA-256 `980f4049374050d7c877931ee8d216dbfa5fd4efc315a4f344833991d189fc7a`；`.sha256`、mapping、`zhibox-0.1.17-beta.3-a253ff9-update.json`（beta、100%、0.1.0）；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.17-beta.3 |
 | 后续 | 内测验收通过后发布正式 v0.1.17，清理 beta 临时包 |
+
+## 35. 2026-10-29 v0.1.17-beta.4 内测 Beta 记录（第二轮审查）
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **27 / 0.1.17-beta.4** |
+| 类型 | prerelease（Beta 通道；stable latest 仍 v0.1.16） |
+| 基线 | v0.1.17-beta.3 + 第二轮审查修复 |
+| 修复 | 下载代际隔离迟到入队结果；入队前绑定 WorkRequest id；重复 SUCCEEDED 保留待安装/授权状态；新入队期间忽略旧任务结果 |
+| 发布政策 | rollout 100%、minSupported 0.1.0 |
+| 产物 | Release workflow 构建；发布后回填 |
+| 后续 | 内测验收通过后发布正式 v0.1.17，清理 beta 临时包 |

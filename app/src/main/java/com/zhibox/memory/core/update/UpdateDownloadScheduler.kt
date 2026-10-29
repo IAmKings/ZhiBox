@@ -33,8 +33,12 @@ data class DownloadWorkState(
 
 /** WorkManager 下载调度抽象（便于 manager 单测注入 fake）。 */
 interface UpdateDownloadScheduler {
-    /** 入队并等待 WorkManager 异步结果；返回 WorkRequest id，失败抛异常。 */
-    suspend fun enqueue(info: UpdateInfo): String
+    /**
+     * 入队并等待 WorkManager 异步结果。
+     * [onRequestId] 必须在任务实际提交前同步回调，让 Manager 先绑定 WorkRequest id，
+     * 避免 RUNNING 观察早于 enqueue 返回时被看门狗误杀。
+     */
+    suspend fun enqueue(info: UpdateInfo, onRequestId: (String) -> Unit)
     fun observe(): kotlinx.coroutines.flow.Flow<DownloadWorkState>
 
     /** 终止并清理下载任务；传入 workId 时只取消该任务，避免旧回调取消新重试。 */

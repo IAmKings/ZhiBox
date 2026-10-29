@@ -229,7 +229,7 @@ class WorkManagerUpdateDownloadScheduler(context: Context) : UpdateDownloadSched
     private val appContext = context.applicationContext
     private val workManager = WorkManager.getInstance(appContext)
 
-    override suspend fun enqueue(info: UpdateInfo): String {
+    override suspend fun enqueue(info: UpdateInfo, onRequestId: (String) -> Unit) {
         val request = OneTimeWorkRequestBuilder<AppUpdateDownloadWorker>()
             // 不加 Network/Storage 约束：约束会让任务长期停留在 ENQUEUED，旧实现把它映射成
             // 「正在下载 0%」且弹窗不可取消。Worker 内做网络预检，失败会快速进入可重试状态。
@@ -250,13 +250,14 @@ class WorkManagerUpdateDownloadScheduler(context: Context) : UpdateDownloadSched
             )
             .addTag(UpdateDownloadContract.TAG)
             .build()
+        // 先同步回调 id，再等待异步入队结果；Worker 的 RUNNING 观察不会早于 id 绑定。
+        onRequestId(request.id.toString())
         // 等待 WorkManager 异步入队结果；失败会抛异常，由 Manager 转为可重试失败态。
         workManager.enqueueUniqueWork(
             UpdateDownloadContract.UNIQUE_WORK,
             ExistingWorkPolicy.REPLACE,
             request,
         ).await()
-        return request.id.toString()
     }
 
     override fun cancel(workId: String?) {

@@ -319,6 +319,15 @@ v0.1.16：
 - 后台完成：Worker 持久化 downloaded 记录并自行发完成通知（非前台、无 Manager/Activity 时也可用）。
 
 
+### 9.13 v0.1.17-beta.4 第二轮审查修复（2026-10-29）
+
+- 下载代际 `downloadGeneration`：startDownload/看门狗/终态递增/失效；入队回调与 await 返回都必须匹配代际；
+- WorkRequest id 在真正提交前通过 `enqueue(info, onRequestId)` 同步绑定，RUNNING 早到也可关闭看门狗；
+- `consumedWorkId` 仅在“下载结果已处理且写入待安装记录”后设置；重复 SUCCEEDED 若
+  downloadedVersion/APK 仍有效则保留，不得清掉 NeedInstallPermission；
+- 新下载创建期（activeWorkId 为空且 downloadActiveInProcess=true）忽略任何旧任务回调。
+
+
 ## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
 
 - 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：

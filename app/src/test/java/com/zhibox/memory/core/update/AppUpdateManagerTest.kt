@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import java.io.File
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -89,11 +90,15 @@ class AppUpdateManagerTest {
         var throwOnEnqueue: Boolean = false
         var nextWorkId: String = "work-1"
         var lastWorkId: String? = null
-        override suspend fun enqueue(info: UpdateInfo): String {
+        var enqueueGates: MutableList<kotlinx.coroutines.CompletableDeferred<Unit>> = mutableListOf()
+        var runStateAfterId: DownloadWorkState? = null
+        override suspend fun enqueue(info: UpdateInfo, onRequestId: (String) -> Unit) {
             if (throwOnEnqueue) throw IllegalStateException("WorkManager unavailable")
             enqueued = info
             lastWorkId = nextWorkId
-            return nextWorkId
+            onRequestId(nextWorkId)
+            runStateAfterId?.let { states.tryEmit(it) }
+            enqueueGates.removeFirstOrNull()?.await()
         }
 
         override fun observe(): kotlinx.coroutines.flow.Flow<DownloadWorkState> = states
@@ -1057,6 +1062,181 @@ class AppUpdateManagerTest {
                 manager.state.value.phase is UpdatePhase.NeedInstallPermission,
             )
             assertEquals(0, installer.installCalls)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun lateOldEnqueueResultCannotOverrideNewDownload() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val installer = FakeInstaller()
+            val scheduler = FakeScheduler().apply {
+                nextWorkId = "work-old"
+                enqueueGates.add(kotlinx.coroutines.CompletableDeferred())
+            }
+            val api = FakeApi(mutableListOf(Result.success(info("0.1.7"))))
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = api,
+                scheduler = scheduler,
+                installer = installer,
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            manager.startDownload()
+            runCurrent()
+            // 第一轮入队卡在 await；看门狗超时后进入失败
+            advanceTimeBy(20_001)
+            runCurrent()
+            assertTrue(manager.state.value.phase is UpdatePhase.DownloadFailed)
+
+            scheduler.nextWorkId = "work-new"
+            manager.retry()
+            runCurrent()
+            // 新任务已绑定 id；此时放行旧 await，它不能覆盖 activeWorkId
+            scheduler.enqueueGates.removeFirstOrNull()?.complete(Unit)
+            runCurrent()
+            assertTrue(manager.state.value.phase is UpdatePhase.Downloading)
+
+            scheduler.emit(
+                DownloadWorkState(
+                    workId = "work-old",
+                    status = DownloadWorkState.Status.SUCCEEDED,
+                    apkPath = "/tmp/old.apk",
+                ),
+            )
+            runCurrent()
+            assertEquals("旧入队结果不能触发安装", 0, installer.installCalls)
+            assertTrue(manager.state.value.phase is UpdatePhase.Downloading)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun earlyRunningAfterIdBindingCancelsWatchdog() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val scheduler = FakeScheduler().apply {
+                nextWorkId = "work-fast"
+                runStateAfterId = DownloadWorkState(
+                    workId = "work-fast",
+                    status = DownloadWorkState.Status.RUNNING,
+                    downloadedBytes = 10,
+                    totalBytes = 100,
+                )
+            }
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = FakeApi(mutableListOf(Result.success(info("0.1.7")))),
+                scheduler = scheduler,
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            manager.startDownload()
+            runCurrent()
+            // RUNNING 已到达并绑定，20s 后不应被看门狗误杀
+            advanceTimeBy(20_001)
+            runCurrent()
+            assertTrue(
+                "真实 RUNNING 应关闭启动看门狗：${manager.state.value.phase}",
+                manager.state.value.phase is UpdatePhase.Downloading,
+            )
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun oldSuccessDuringNewEnqueueIsIgnored() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val installer = FakeInstaller()
+            val scheduler = FakeScheduler().apply {
+                nextWorkId = "work-new"
+                enqueueGates.add(kotlinx.coroutines.CompletableDeferred())
+            }
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = FakeApi(mutableListOf(Result.success(info("0.1.7")))),
+                scheduler = scheduler,
+                installer = installer,
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            manager.startDownload()
+            // 入队协程尚未运行、activeWorkId 为空时，旧成功结果必须忽略
+            scheduler.emit(
+                DownloadWorkState(
+                    workId = "work-old",
+                    status = DownloadWorkState.Status.SUCCEEDED,
+                    apkPath = "/tmp/old.apk",
+                ),
+            )
+            runCurrent()
+            assertEquals(0, installer.installCalls)
+            assertTrue(manager.state.value.phase is UpdatePhase.Downloading)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun duplicateSuccessKeepsPendingInstallAndPermissionState() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val installer = FakeInstaller(
+                result = InstallResult.PermissionRequired,
+                canInstall = false,
+            )
+            val store = FakeStore()
+            val scheduler = FakeScheduler().apply { nextWorkId = "work-perm" }
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = FakeApi(mutableListOf(Result.success(info("0.1.7")))),
+                store = store,
+                scheduler = scheduler,
+                installer = installer,
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            manager.startDownload()
+            runCurrent()
+            val apk = File(
+                ApplicationProvider.getApplicationContext<Context>().cacheDir,
+                "updates/zhibox-0.1.7.apk",
+            ).apply {
+                parentFile?.mkdirs()
+                writeBytes(ByteArray(16))
+            }
+            scheduler.emit(
+                DownloadWorkState(
+                    workId = "work-perm",
+                    status = DownloadWorkState.Status.SUCCEEDED,
+                    apkPath = apk.absolutePath,
+                ),
+            )
+            advanceUntilIdle()
+            assertTrue(manager.state.value.phase is UpdatePhase.NeedInstallPermission)
+            assertEquals("0.1.7", store.downloadedVersion)
+
+            // 同一 SUCCEEDED 回放（模拟重启）：不得清待安装记录或覆盖授权提示
+            scheduler.emit(
+                DownloadWorkState(
+                    workId = "work-perm",
+                    status = DownloadWorkState.Status.SUCCEEDED,
+                    apkPath = apk.absolutePath,
+                ),
+            )
+            advanceUntilIdle()
+            assertTrue(
+                "重复成功回调不应覆盖授权提示：${manager.state.value.phase}",
+                manager.state.value.phase is UpdatePhase.NeedInstallPermission,
+            )
+            assertEquals("0.1.7", store.downloadedVersion)
+            assertNotNull(store.downloadedApkPath)
         } finally {
             Dispatchers.resetMain()
         }
