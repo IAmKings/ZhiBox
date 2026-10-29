@@ -740,11 +740,11 @@ F-03 最终验收需用 v0.1.15 作为基线 + 新强制目标包复测；完成
 |---|---|
 | versionCode / versionName | **28 / 0.1.17** |
 | 类型 | 正式稳定版（latest） |
-| 基线提交 | `733f78a`（tag `v0.1.17`；发布后回填产物） |
+| 基线提交 | `bd6aeb4`（tag `v0.1.17`） |
 | 数据库 schema | v9（可覆盖升级 v0.1.16） |
 | 签名 | 沿用既有 release keystore（可覆盖升级 v0.1.16） |
 | 发布政策 | `release/update-policy.json`（rollout 100%，minSupported 0.1.0） |
 | 主要修复 | 灰度缓存刷新、自动检查开关、线路回退、5min 超时、下载不可卡死、WorkRequest id/代际、冷启动状态保护、半包续传、成功去重、SHA/元数据线路分类、后台完成通知、两轮第三方审查修复 |
-| 产物 | Release workflow 构建；发布后回填 |
+| 产物 | `zhibox-0.1.17-bd6aeb4-release-signed.apk`（70,445,669 bytes）；SHA-256 `a644c5a6ee7f4d00080124e3ed654809b39c64458aacfa84339f13c56faf2325`；`.sha256`、mapping、`zhibox-0.1.17-bd6aeb4-update.json`（stable、100%、0.1.0）；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.17 |
 
-本版本替代 v0.1.17-beta.1~beta.4；内测结论见 §31~§35。
+本版本替代 v0.1.17-beta.1~beta.4；内测结论见 §31~§35。发布后已删除 beta.1~beta.4 临时 Release/tag，latest=v0.1.17。
