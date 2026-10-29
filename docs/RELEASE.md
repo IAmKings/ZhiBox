@@ -716,8 +716,8 @@ F-03 最终验收需用 v0.1.15 作为基线 + 新强制目标包复测；完成
 |---|---|
 | versionCode / versionName | **26 / 0.1.17-beta.3** |
 | 类型 | prerelease（Beta 通道；stable latest 仍 v0.1.16） |
-| 基线 | v0.1.17-beta.2 + 第三方审查修复 |
+| 基线 | v0.1.17-beta.2 + 第三方审查修复（提交 `a253ff9`） |
 | 修复 | 异步入队结果/看门狗、WorkRequest ID 归属、冷启动状态保护、半包续传、成功结果去重、SHA 混合错误分类、元数据坏内容换镜像、Worker 后台完成通知 |
 | 发布政策 | rollout 100%、minSupported 0.1.0 |
-| 产物 | Release workflow 构建；发布后回填 |
+| 产物 | `zhibox-0.1.17-beta.3-a253ff9-release-signed.apk`（70,445,674 bytes）；SHA-256 `980f4049374050d7c877931ee8d216dbfa5fd4efc315a4f344833991d189fc7a`；`.sha256`、mapping、`zhibox-0.1.17-beta.3-a253ff9-update.json`（beta、100%、0.1.0）；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.17-beta.3 |
 | 后续 | 内测验收通过后发布正式 v0.1.17，清理 beta 临时包 |
