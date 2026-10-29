@@ -293,6 +293,17 @@ v0.1.16：
 - 目标：内测 v0.1.17-beta.1，验收通过后发布正式 v0.1.17。
 
 
+### 9.11 v0.1.17-beta.2 下载不可卡死保护（2026-10-29）
+
+- 移除下载 WorkRequest 的 `NetworkType.CONNECTED` / `storageNotLow` 约束：约束会使任务长期
+  停留在 ENQUEUED，旧实现把它映射成不可取消的「正在下载 0%」；
+- Worker 启动时做网络预检（ACCESS_NETWORK_STATE），离线快速返回 Network 失败；
+- Scheduler 新增 WAITING（ENQUEUED/BLOCKED）；Manager 对 WAITING 启动 20s 看门狗，
+  超时取消任务并进入可重试失败态；
+- Manager 捕获 `scheduler.enqueue` 异常，避免 WorkManager 初始化失败导致永久下载态；
+- 线路回退修正：仅当所有线路都 404/410 才判 ReleaseUnavailable；404 + 网络超时混合时不清缓存。
+
+
 ## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
 
 - 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：

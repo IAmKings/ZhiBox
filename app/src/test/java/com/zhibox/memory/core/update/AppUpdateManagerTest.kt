@@ -10,6 +10,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -83,7 +84,9 @@ class AppUpdateManagerTest {
         private val states = kotlinx.coroutines.flow.MutableSharedFlow<DownloadWorkState>(
             extraBufferCapacity = 64,
         )
+        var throwOnEnqueue: Boolean = false
         override fun enqueue(info: UpdateInfo) {
+            if (throwOnEnqueue) throw IllegalStateException("WorkManager unavailable")
             enqueued = info
         }
 
@@ -797,6 +800,59 @@ class AppUpdateManagerTest {
             assertTrue("下载中的 .part 应保留", part.exists())
         } finally {
             dir.deleteRecursively()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun waitingWorkStateTimesOutInsteadOfStickingAtZero() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val scheduler = FakeScheduler()
+            val api = FakeApi(
+                mutableListOf(Result.success(info("0.1.7", minSupportedVersion = "0.1.7"))),
+            )
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = api,
+                scheduler = scheduler,
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            manager.startDownload()
+            advanceUntilIdle()
+
+            scheduler.emit(DownloadWorkState(status = DownloadWorkState.Status.WAITING))
+            runCurrent()
+            advanceTimeBy(20_001)
+            runCurrent()
+
+            val phase = manager.state.value.phase as UpdatePhase.DownloadFailed
+            assertEquals(UpdateFailure.Timeout, phase.failure)
+            assertTrue("卡在 ENQUEUED 应取消任务", scheduler.cancelCalls >= 1)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun enqueueFailureDoesNotLeaveDialogStuck() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val scheduler = FakeScheduler().apply { throwOnEnqueue = true }
+            val api = FakeApi(mutableListOf(Result.success(info("0.1.7"))))
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = api,
+                scheduler = scheduler,
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            manager.startDownload()
+            advanceUntilIdle()
+
+            assertTrue(manager.state.value.phase is UpdatePhase.DownloadFailed)
+        } finally {
             Dispatchers.resetMain()
         }
     }

@@ -26,7 +26,7 @@ data class DownloadWorkState(
     val apkPath: String? = null,
     val failure: UpdateFailure? = null,
 ) {
-    enum class Status { IDLE, RUNNING, SUCCEEDED, FAILED, CANCELLED }
+    enum class Status { IDLE, WAITING, RUNNING, SUCCEEDED, FAILED, CANCELLED }
 }
 
 /** WorkManager 下载调度抽象（便于 manager 单测注入 fake）。 */

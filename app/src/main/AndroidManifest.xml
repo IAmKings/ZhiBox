@@ -12,6 +12,7 @@
       docs/product/APP_UPDATE_SPEC.md
     -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- 应用内更新：下载完成后拉起系统安装器（仅用于升级自身，不安装第三方 APK）。 -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- 后台下载：WorkManager 前台服务 + 通知栏进度（Android 13+ 运行时请求通知权限）。 -->

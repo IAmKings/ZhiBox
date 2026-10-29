@@ -2,12 +2,12 @@ package com.zhibox.memory.core.update
 
 import android.content.Context
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
-import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -89,6 +89,11 @@ class AppUpdateDownloadWorker(
     override suspend fun doWork(): Result {
         val version = inputData.getString(UpdateDownloadContract.KEY_VERSION)
             ?: return Result.failure(workDataOf(UpdateDownloadContract.OUT_FAILURE to "Parse"))
+        if (!hasInternet(applicationContext)) {
+            return Result.failure(
+                workDataOf(UpdateDownloadContract.OUT_FAILURE to encodeUpdateFailure(UpdateFailure.Network)),
+            )
+        }
         if (!isNewerVersion(version, BuildConfig.VERSION_NAME)) {
             return Result.success(
                 workDataOf(UpdateDownloadContract.OUT_INSTALLED_ALREADY to true),
@@ -185,6 +190,13 @@ class AppUpdateDownloadWorker(
         }
     }
 
+    private fun hasInternet(context: Context): Boolean {
+        val manager = context.getSystemService(ConnectivityManager::class.java) ?: return true
+        val network = manager.activeNetwork ?: return false
+        val capabilities = manager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
     private fun foregroundInfo(notification: android.app.Notification): ForegroundInfo =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(
@@ -210,12 +222,8 @@ class WorkManagerUpdateDownloadScheduler(context: Context) : UpdateDownloadSched
 
     override fun enqueue(info: UpdateInfo) {
         val request = OneTimeWorkRequestBuilder<AppUpdateDownloadWorker>()
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .setRequiresStorageNotLow(true)
-                    .build(),
-            )
+            // 不加 Network/Storage 约束：约束会让任务长期停留在 ENQUEUED，旧实现把它映射成
+            // 「正在下载 0%」且弹窗不可取消。Worker 内做网络预检，失败会快速进入可重试状态。
             .setInputData(
                 workDataOf(
                     UpdateDownloadContract.KEY_VERSION to info.versionName,
@@ -250,10 +258,14 @@ class WorkManagerUpdateDownloadScheduler(context: Context) : UpdateDownloadSched
             .distinctUntilChanged()
 
     private fun WorkInfo.toDownloadState(): DownloadWorkState = when (state) {
-        WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> DownloadWorkState(
+        WorkInfo.State.RUNNING -> DownloadWorkState(
             status = DownloadWorkState.Status.RUNNING,
             downloadedBytes = progress.getLong("downloaded", 0L),
             totalBytes = progress.getLong("total", -1L),
+        )
+
+        WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> DownloadWorkState(
+            status = DownloadWorkState.Status.WAITING,
         )
 
         WorkInfo.State.SUCCEEDED -> DownloadWorkState(

@@ -13,6 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,6 +51,7 @@ class AppUpdateManager internal constructor(
     private var taskId = 0L
     private var checkJob: Job? = null
     private var verifyCachedJob: Job? = null
+    private var downloadWatchdogJob: Job? = null
     /** 强制更新下载失败次数（3 次后允许暂时退出，避免锁死）。 */
     private var downloadFailureCount = 0
     private var activeForced = false
@@ -241,19 +243,37 @@ class AppUpdateManager internal constructor(
         clearPendingInstall()
         activeForced = available.forced
         downloadActiveInProcess = true
+        cancelDownloadWatchdog()
         _state.update {
             it.copy(
                 phase = UpdatePhase.Downloading(info, 0L, info.apkSizeBytes),
                 forcedEscapeAllowed = false,
             )
         }
-        scheduler.enqueue(info)
+        try {
+            scheduler.enqueue(info)
+        } catch (e: Exception) {
+            // WorkManager 初始化/入队异常不能让 UI 永远停在不可取消的下载态。
+            downloadActiveInProcess = false
+            failDownload(info, UpdateFailure.Network)
+        }
     }
 
     private suspend fun onWorkState(work: DownloadWorkState) {
         when (work.status) {
             DownloadWorkState.Status.IDLE -> Unit
+            DownloadWorkState.Status.WAITING -> {
+                val info = currentActionInfo() ?: store.cachedInfo() ?: return
+                downloadActiveInProcess = true
+                _state.update { current ->
+                    if (current.phase is UpdatePhase.Downloading) current
+                    else current.copy(phase = UpdatePhase.Downloading(info, 0L, info.apkSizeBytes))
+                }
+                armDownloadWatchdog(info)
+            }
+
             DownloadWorkState.Status.RUNNING -> {
+                cancelDownloadWatchdog()
                 val info = currentActionInfo() ?: store.cachedInfo() ?: return
                 downloadActiveInProcess = true
                 _state.update { current ->
@@ -268,6 +288,7 @@ class AppUpdateManager internal constructor(
             }
 
             DownloadWorkState.Status.SUCCEEDED -> {
+                cancelDownloadWatchdog()
                 downloadActiveInProcess = false
                 // 终端状态只消费一次：先取消唯一任务，避免进程重启后再次回放。
                 scheduler.cancel()
@@ -275,6 +296,7 @@ class AppUpdateManager internal constructor(
             }
 
             DownloadWorkState.Status.FAILED, DownloadWorkState.Status.CANCELLED -> {
+                cancelDownloadWatchdog()
                 if (!downloadActiveInProcess) {
                     // 历史会话的 FAILED/CANCELLED（进程重启后 WorkManager 回放）：
                     // 静默清理，不再用缓存信息弹「更新失败」。
@@ -478,6 +500,25 @@ class AppUpdateManager internal constructor(
         }
     }
 
+    private fun armDownloadWatchdog(info: UpdateInfo) {
+        if (downloadWatchdogJob?.isActive == true) return
+        downloadWatchdogJob = scope.launch {
+            delay(DOWNLOAD_START_TIMEOUT_MS)
+            if (_state.value.phase is UpdatePhase.Downloading) {
+                // WorkManager 长时间停留在 ENQUEUED/BLOCKED（如无网、被系统限制）：
+                // 主动失败并取消任务，避免不可取消的「0%」界面卡死。
+                scheduler.cancel()
+                downloadActiveInProcess = false
+                failDownload(info, UpdateFailure.Timeout)
+            }
+        }
+    }
+
+    private fun cancelDownloadWatchdog() {
+        downloadWatchdogJob?.cancel()
+        downloadWatchdogJob = null
+    }
+
     /** 清理已安装/过期的 APK 缓存；活跃下载（.part 或更高版本）保留。 */
     private fun cleanupOldDownloadCache() {
         val dir = File(appContext.cacheDir, "updates")
@@ -657,6 +698,7 @@ class AppUpdateManager internal constructor(
 
     companion object {
         private const val FORCED_ESCAPE_FAILURES = 3
+        private const val DOWNLOAD_START_TIMEOUT_MS = 20_000L
 
         @Volatile
         private var instance: AppUpdateManager? = null

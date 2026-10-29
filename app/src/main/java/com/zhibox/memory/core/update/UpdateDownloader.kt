@@ -108,6 +108,7 @@ class HttpUpdateDownloader(
         var lastFailure: UpdateException? = null
         var nonNotFoundFailure: UpdateException? = null
         var sawNotFound = false
+        var sawNonNotFoundFailure = false
         orderedRoutes.forEachIndexed { index, routeId ->
             val attempt = routeById[routeId] ?: return@forEachIndexed
             val startedAt = nowMillis()
@@ -135,6 +136,7 @@ class HttpUpdateDownloader(
                 lastFailure = e
                 when (val failure = e.failure) {
                     UpdateFailure.Network, UpdateFailure.Timeout -> {
+                        sawNonNotFoundFailure = true
                         onRouteResult(
                             UpdateRouteSelector.record(
                                 nowMillis = nowMillis(),
@@ -152,6 +154,7 @@ class HttpUpdateDownloader(
                             sawNotFound = true
                         } else {
                             nonNotFoundFailure = e
+                            sawNonNotFoundFailure = true
                         }
                         part.delete()
                     }
@@ -159,6 +162,7 @@ class HttpUpdateDownloader(
                     UpdateFailure.ChecksumMismatch -> {
                         // 某条线路给的内容不对：换路重试，最终失败保留校验错误。
                         nonNotFoundFailure = e
+                        sawNonNotFoundFailure = true
                         part.delete()
                     }
 
@@ -168,7 +172,7 @@ class HttpUpdateDownloader(
         }
         // 只有所有线路都明确 404/410 才判定版本已下架；混合网络/服务器错误时
         // 保留缓存，让用户可稍后重试，避免误清强制/灰度状态。
-        if (sawNotFound && nonNotFoundFailure == null) {
+        if (sawNotFound && !sawNonNotFoundFailure) {
             throw UpdateException(UpdateFailure.ReleaseUnavailable)
         }
         throw nonNotFoundFailure ?: lastFailure ?: UpdateException(UpdateFailure.Network)

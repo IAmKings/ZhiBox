@@ -697,3 +697,15 @@ F-03 最终验收需用 v0.1.15 作为基线 + 新强制目标包复测；完成
 | 修复 | 灰度缓存 6h 刷新；自动检查关闭不联网；线路 404/5xx 回退；5min 超时；P2 清理/重定向校验/防重入/下架节流重置/多资产失败安全 |
 | 产物 | `zhibox-0.1.17-beta.1-5f598bb-release-signed.apk`（70,445,684 bytes）；SHA-256 `e14e45c92c95ddf191338e70cfa1cbeaf18ed23662b0908500b73b178ea276be`；`.sha256`、mapping、`zhibox-0.1.17-beta.1-5f598bb-update.json`（beta、rollout 100、minSupported 0.1.0）；https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.17-beta.1 |
 | 后续 | 内测验收通过后发布正式 v0.1.17（versionCode 25），清理临时包 |
+
+## 33. 2026-10-29 v0.1.17-beta.2 内测 Beta 记录（下载不可卡死）
+
+| 项 | 值 |
+|---|---|
+| versionCode / versionName | **25 / 0.1.17-beta.2** |
+| 类型 | prerelease（Beta 通道；stable latest 仍 v0.1.16） |
+| 基线 | v0.1.17-beta.1 + 下载卡死保护 |
+| 修复 | 移除 WorkManager Network/Storage 约束；Worker 网络预检；WAITING + 20s 看门狗；混合线路失败不误清缓存 |
+| 发布政策 | rollout 100%、minSupported 0.1.0 |
+| 产物 | Release workflow 构建；发布后回填 |
+| 后续 | 内测验收通过后发布正式 v0.1.17，清理 beta 临时包 |
