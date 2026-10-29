@@ -1072,9 +1072,12 @@ class AppUpdateManagerTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         try {
             val installer = FakeInstaller()
+            // 显式持有旧入队的 gate；FakeScheduler 取走队列后仍能由测试释放，
+            // 避免测试因 gate 丢失而“未真正覆盖迟到结果”却仍通过。
+            val oldGate = kotlinx.coroutines.CompletableDeferred<Unit>()
             val scheduler = FakeScheduler().apply {
                 nextWorkId = "work-old"
-                enqueueGates.add(kotlinx.coroutines.CompletableDeferred())
+                enqueueGates.add(oldGate)
             }
             val api = FakeApi(mutableListOf(Result.success(info("0.1.7"))))
             val manager = manager(
@@ -1095,10 +1098,15 @@ class AppUpdateManagerTest {
             scheduler.nextWorkId = "work-new"
             manager.retry()
             runCurrent()
-            // 新任务已绑定 id；此时放行旧 await，它不能覆盖 activeWorkId
-            scheduler.enqueueGates.removeFirstOrNull()?.complete(Unit)
+            // 新任务已绑定 id；此时显式放行旧 await，它不能覆盖 activeWorkId。
+            oldGate.complete(Unit)
+            assertTrue(oldGate.isCompleted)
             runCurrent()
             assertTrue(manager.state.value.phase is UpdatePhase.Downloading)
+            assertTrue(
+                "迟到旧任务应被取消：${scheduler.cancelledWorkIds}",
+                scheduler.cancelledWorkIds.contains("work-old"),
+            )
 
             scheduler.emit(
                 DownloadWorkState(
@@ -1110,6 +1118,20 @@ class AppUpdateManagerTest {
             runCurrent()
             assertEquals("旧入队结果不能触发安装", 0, installer.installCalls)
             assertTrue(manager.state.value.phase is UpdatePhase.Downloading)
+
+            // 新任务终态必须仍能被接收：证明 activeWorkId 未被旧结果覆盖。
+            scheduler.emit(
+                DownloadWorkState(
+                    workId = "work-new",
+                    status = DownloadWorkState.Status.FAILED,
+                    failure = UpdateFailure.Timeout,
+                ),
+            )
+            runCurrent()
+            assertEquals(
+                UpdateFailure.Timeout,
+                (manager.state.value.phase as UpdatePhase.DownloadFailed).failure,
+            )
         } finally {
             Dispatchers.resetMain()
         }
