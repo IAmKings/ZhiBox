@@ -328,6 +328,15 @@ v0.1.16：
 - 新下载创建期（activeWorkId 为空且 downloadActiveInProcess=true）忽略任何旧任务回调。
 
 
+### 9.14 v0.1.17 正式版更新服务结论（2026-10-29）
+
+v0.1.17 汇总 v0.1.17-beta.1~beta.4 的更新服务收尾与两轮第三方审查修复：缓存/灰度刷新、
+自动检查开关、线路回退、5 分钟超时、WorkManager 等待不可卡死、WorkRequest id/代际归属、
+冷启动状态保护、弱网半包续传、成功结果去重、SHA/元数据坏内容换路、后台 Worker 完成通知。
+已知边界：强制离线仍需失败 3 次后暂时退出；GitHub 匿名限流 60/hr/IP；单 universal APK；
+无遥测，灰度覆盖以 0/100 边界与抽样为准。
+
+
 ## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
 
 - 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：
