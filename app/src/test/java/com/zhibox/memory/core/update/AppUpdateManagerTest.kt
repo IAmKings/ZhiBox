@@ -61,6 +61,8 @@ class AppUpdateManagerTest {
 
         override var downloadedVersion: String? = null
         override var downloadedApkPath: String? = null
+        override var installerLaunchedVersion: String? = null
+        override var consumedWorkId: String? = null
     }
 
     private class FakeApi(
@@ -85,15 +87,21 @@ class AppUpdateManagerTest {
             extraBufferCapacity = 64,
         )
         var throwOnEnqueue: Boolean = false
-        override fun enqueue(info: UpdateInfo) {
+        var nextWorkId: String = "work-1"
+        var lastWorkId: String? = null
+        override suspend fun enqueue(info: UpdateInfo): String {
             if (throwOnEnqueue) throw IllegalStateException("WorkManager unavailable")
             enqueued = info
+            lastWorkId = nextWorkId
+            return nextWorkId
         }
 
         override fun observe(): kotlinx.coroutines.flow.Flow<DownloadWorkState> = states
         var cancelCalls: Int = 0
-        override fun cancel() {
+        var cancelledWorkIds: MutableList<String?> = mutableListOf()
+        override fun cancel(workId: String?) {
             cancelCalls++
+            cancelledWorkIds.add(workId)
         }
 
         fun emit(work: DownloadWorkState) {
@@ -107,10 +115,13 @@ class AppUpdateManagerTest {
 
     private class FakeInstaller(
         var result: InstallResult = InstallResult.Launched,
+        var canInstall: Boolean = true,
     ) : UpdateInstaller {
         var installed: File? = null
-        override fun canInstallPackages(): Boolean = true
+        var installCalls: Int = 0
+        override fun canInstallPackages(): Boolean = canInstall
         override fun install(apk: File): InstallResult {
+            installCalls++
             installed = apk
             return result
         }
@@ -270,7 +281,7 @@ class AppUpdateManagerTest {
             manager.onAppEntered()
             advanceUntilIdle()
             manager.startDownload()
-            advanceUntilIdle()
+            runCurrent()
             assertEquals("0.1.7", scheduler.enqueued?.versionName)
 
             val apk = File(
@@ -307,7 +318,7 @@ class AppUpdateManagerTest {
             manager.onAppEntered()
             advanceUntilIdle()
             manager.startDownload()
-            advanceUntilIdle()
+            runCurrent()
             scheduler.emit(
                 DownloadWorkState(
                     status = DownloadWorkState.Status.FAILED,
@@ -339,7 +350,7 @@ class AppUpdateManagerTest {
             manager.onAppEntered()
             advanceUntilIdle()
             manager.startDownload()
-            advanceUntilIdle()
+            runCurrent()
             val apk = File(
                 ApplicationProvider.getApplicationContext<Context>().cacheDir,
                 "updates-test/zhibox-0.1.7.apk",
@@ -756,7 +767,7 @@ class AppUpdateManagerTest {
             assertTrue((manager.state.value.phase as UpdatePhase.Available).forced)
 
             manager.startDownload()
-            advanceUntilIdle()
+            runCurrent()
             scheduler.emit(
                 DownloadWorkState(
                     status = DownloadWorkState.Status.FAILED,
@@ -820,7 +831,7 @@ class AppUpdateManagerTest {
             manager.checkNow()
             advanceUntilIdle()
             manager.startDownload()
-            advanceUntilIdle()
+            runCurrent()
 
             scheduler.emit(DownloadWorkState(status = DownloadWorkState.Status.WAITING))
             runCurrent()
@@ -849,9 +860,203 @@ class AppUpdateManagerTest {
             manager.checkNow()
             advanceUntilIdle()
             manager.startDownload()
-            advanceUntilIdle()
+            runCurrent()
 
             assertTrue(manager.state.value.phase is UpdatePhase.DownloadFailed)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun noWaitingCallbackStillTimesOutFromImmediateWatchdog() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val scheduler = FakeScheduler()
+            val api = FakeApi(mutableListOf(Result.success(info("0.1.7"))))
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = api,
+                scheduler = scheduler,
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            manager.startDownload()
+            runCurrent()
+            // 不发送 WAITING，只让启动看门狗到期
+            advanceTimeBy(20_001)
+            runCurrent()
+
+            val phase = manager.state.value.phase as UpdatePhase.DownloadFailed
+            assertEquals(UpdateFailure.Timeout, phase.failure)
+            assertTrue("应取消当前任务", scheduler.cancelCalls >= 1)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun oldCancelledWorkIdDoesNotCancelRetriedDownload() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val scheduler = FakeScheduler().apply { nextWorkId = "work-new" }
+            val api = FakeApi(mutableListOf(Result.success(info("0.1.7"))))
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = api,
+                scheduler = scheduler,
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            manager.startDownload()
+            runCurrent()
+            assertEquals("work-new", scheduler.lastWorkId)
+
+            scheduler.emit(
+                DownloadWorkState(
+                    workId = "work-old",
+                    status = DownloadWorkState.Status.CANCELLED,
+                    failure = UpdateFailure.Cancelled,
+                ),
+            )
+            runCurrent()
+            assertTrue(
+                "旧任务取消回调不能终止新下载：${manager.state.value.phase}",
+                manager.state.value.phase is UpdatePhase.Downloading,
+            )
+
+            scheduler.emit(
+                DownloadWorkState(
+                    workId = "work-new",
+                    status = DownloadWorkState.Status.FAILED,
+                    failure = UpdateFailure.Timeout,
+                ),
+            )
+            runCurrent()
+            assertEquals(
+                UpdateFailure.Timeout,
+                (manager.state.value.phase as UpdatePhase.DownloadFailed).failure,
+            )
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun coldStartDoesNotOverwriteRestoredDownloadingState() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val store = FakeStore().apply { cached = info("0.1.7") }
+            val scheduler = FakeScheduler()
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = FakeApi(),
+                store = store,
+                scheduler = scheduler,
+            )
+            advanceUntilIdle()
+            scheduler.emit(
+                DownloadWorkState(
+                    workId = "resumed-work",
+                    status = DownloadWorkState.Status.RUNNING,
+                    downloadedBytes = 1024,
+                    totalBytes = 2048,
+                ),
+            )
+            runCurrent()
+            assertTrue(manager.state.value.phase is UpdatePhase.Downloading)
+
+            manager.onAppEntered()
+            advanceUntilIdle()
+            assertTrue(
+                "冷启动检查不能覆盖恢复中的下载：${manager.state.value.phase}",
+                manager.state.value.phase is UpdatePhase.Downloading,
+            )
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun consumedSuccessResultIsNotInstalledTwice() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val installer = FakeInstaller()
+            val store = FakeStore()
+            val scheduler = FakeScheduler().apply { nextWorkId = "work-success" }
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = FakeApi(mutableListOf(Result.success(info("0.1.7")))),
+                store = store,
+                scheduler = scheduler,
+                installer = installer,
+            )
+            manager.checkNow()
+            advanceUntilIdle()
+            manager.startDownload()
+            runCurrent()
+            val apk = File(
+                ApplicationProvider.getApplicationContext<Context>().cacheDir,
+                "updates/zhibox-0.1.7.apk",
+            ).apply {
+                parentFile?.mkdirs()
+                writeBytes(ByteArray(16))
+            }
+            scheduler.emit(
+                DownloadWorkState(
+                    workId = "work-success",
+                    status = DownloadWorkState.Status.SUCCEEDED,
+                    apkPath = apk.absolutePath,
+                ),
+            )
+            advanceUntilIdle()
+            assertEquals(1, installer.installCalls)
+            assertEquals("work-success", store.consumedWorkId)
+
+            // 模拟重启后 WorkManager 再次回放同一 SUCCEEDED
+            scheduler.emit(
+                DownloadWorkState(
+                    workId = "work-success",
+                    status = DownloadWorkState.Status.SUCCEEDED,
+                    apkPath = apk.absolutePath,
+                ),
+            )
+            advanceUntilIdle()
+            assertEquals("同一 WorkRequest 只能安装一次", 1, installer.installCalls)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun coldStartDoesNotOverwriteRestoredInstallPermissionState() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val dir = File(
+                ApplicationProvider.getApplicationContext<Context>().cacheDir,
+                "updates",
+            ).apply { mkdirs() }
+            val apk = File(dir, "zhibox-0.1.7.apk").apply { writeBytes(ByteArray(16)) }
+            val store = FakeStore().apply {
+                cached = info("0.1.7")
+                downloadedVersion = "0.1.7"
+                downloadedApkPath = apk.absolutePath
+            }
+            val installer = FakeInstaller(canInstall = false)
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                api = FakeApi(),
+                store = store,
+                installer = installer,
+            )
+            manager.onAppEntered()
+            advanceUntilIdle()
+
+            assertTrue(
+                "冷启动检查不能覆盖待授权状态：${manager.state.value.phase}",
+                manager.state.value.phase is UpdatePhase.NeedInstallPermission,
+            )
+            assertEquals(0, installer.installCalls)
         } finally {
             Dispatchers.resetMain()
         }

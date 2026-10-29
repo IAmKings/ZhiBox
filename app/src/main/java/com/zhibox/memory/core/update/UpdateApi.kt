@@ -137,7 +137,13 @@ class HttpUpdateApi(
                 allowedHosts = allowedHosts,
                 mirrorHosts = mirrorHosts,
             ) ?: continue
-            return UpdateMetaParser.apply(info, UpdateMetaParser.parse(body))
+            // 单条线路 200 但 JSON/内容损坏时继续尝试镜像，不能一条坏节点阻断检查。
+            val parsed = try {
+                UpdateMetaParser.parse(body)
+            } catch (e: Exception) {
+                continue
+            }
+            return UpdateMetaParser.apply(info, parsed)
         }
         return info
     }

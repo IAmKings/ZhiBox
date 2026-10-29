@@ -222,6 +222,53 @@ class UpdateApiAndDownloaderTest {
     }
 
     @Test
+    fun api_badMetaJsonFallsBackToMirror() = runBlocking {
+        var serverRef: MockHttpsServer? = null
+        val server = MockHttpsServer { request ->
+            when {
+                request.path.startsWith("/repos/") -> {
+                    val metaUrl = serverRef!!.baseUrl("/meta/direct/update.json")
+                    val json = """
+                        {
+                          "tag_name": "v0.1.17", "name": "v0.1.17", "draft": false,
+                          "prerelease": false, "body": "- 更新",
+                          "html_url": "https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.17",
+                          "assets": [
+                            {"name": "zhibox-0.1.17-abc-release-signed.apk", "size": 9,
+                             "browser_download_url": "https://github.com/IAmKings/ZhiBox/releases/download/v0.1.17/zhibox-0.1.17-abc-release-signed.apk",
+                             "digest": "sha256:${"a".repeat(64)}"},
+                            {"name": "zhibox-0.1.17-abc-update.json", "size": 100,
+                             "browser_download_url": "$metaUrl"}
+                          ]
+                        }
+                    """.trimIndent()
+                    MockResponse(200, json)
+                }
+
+                request.path.startsWith("/meta/direct/") ->
+                    MockResponse(200, "<html>bad gateway</html>", contentType = "text/html")
+
+                request.path.startsWith("/mirror/") -> MockResponse(
+                    200,
+                    """{"schema":1,"rolloutPercent":30,"minSupportedVersion":"0.1.6"}""",
+                )
+
+                else -> MockResponse(404, "{}")
+            }
+        }.also { serverRef = it }
+        server.use {
+            val api = HttpUpdateApi(
+                releasesApiBase = server.baseUrl("/repos/IAmKings/ZhiBox/releases"),
+                testMetaHosts = setOf("127.0.0.1"),
+                metaMirrors = listOf(server.baseUrl("/mirror/")),
+            )
+            val info = api.fetchLatest().getOrThrow()
+            assertEquals(30, info.rolloutPercent)
+            assertEquals("0.1.6", info.minSupportedVersion)
+        }
+    }
+
+    @Test
     fun api_404MapsToNoRelease() = runBlocking {
         MockHttpsServer { MockResponse(404, "{}") }.use { server ->
             val api = HttpUpdateApi(

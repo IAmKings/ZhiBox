@@ -187,6 +187,8 @@ class UpdateModelsTest {
 
         override var downloadedVersion: String? = null
         override var downloadedApkPath: String? = null
+        override var installerLaunchedVersion: String? = null
+        override var consumedWorkId: String? = null
     }
 
     private fun info(

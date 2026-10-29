@@ -52,6 +52,9 @@ class AppUpdateManager internal constructor(
     private var checkJob: Job? = null
     private var verifyCachedJob: Job? = null
     private var downloadWatchdogJob: Job? = null
+    /** 当前下载对应的 WorkRequest id；旧任务回调不能影响新重试。 */
+    @Volatile
+    private var activeDownloadWorkId: String? = null
     /** 强制更新下载失败次数（3 次后允许暂时退出，避免锁死）。 */
     private var downloadFailureCount = 0
     private var activeForced = false
@@ -88,10 +91,13 @@ class AppUpdateManager internal constructor(
         if (!entered.compareAndSet(false, true)) return
         scope.launch {
             // 后台下载已完成但尚未安装：先处理安装，再做常规检查。
-            installPendingIfAny()
+            // 如果安装恢复/授权提示已接管流程，不能被冷启动检查覆盖。
+            if (installPendingIfAny()) return@launch
             cleanupOldDownloadCache()
+            if (isDownloadInProgressPhase(_state.value.phase)) return@launch
             when (val action = UpdatePolicy.decideOnLaunch(clock(), store, currentVersionName)) {
                 is UpdatePolicy.LaunchAction.ShowCached -> {
+                    if (isDownloadInProgressPhase(_state.value.phase)) return@launch
                     // 冷启动展示缓存时也必须重新计算 forced 与灰度资格：
                     // - 否则「暂时退出」后重启的强制弹窗会丢失 forced，变成可取消；
                     // - 未命中灰度的设备也不能因为缓存而绕过 rollout。
@@ -104,21 +110,30 @@ class AppUpdateManager internal constructor(
                     } else {
                         UpdatePhase.RolloutPending(action.info, action.info.rolloutPercent)
                     }
-                    _state.update {
-                        it.copy(phase = phase, lastCheckAtMillis = store.lastSuccessAtMillis)
+                    _state.update { current ->
+                        if (isDownloadInProgressPhase(current.phase)) {
+                            current
+                        } else {
+                            current.copy(phase = phase, lastCheckAtMillis = store.lastSuccessAtMillis)
+                        }
                     }
                     if (forced) verifyCachedForced()
                 }
 
                 is UpdatePolicy.LaunchAction.RolloutPending -> {
-                    _state.update {
-                        it.copy(
-                            phase = UpdatePhase.RolloutPending(
-                                action.info,
-                                action.info.rolloutPercent,
-                            ),
-                            lastCheckAtMillis = store.lastSuccessAtMillis,
-                        )
+                    if (isDownloadInProgressPhase(_state.value.phase)) return@launch
+                    _state.update { current ->
+                        if (isDownloadInProgressPhase(current.phase)) {
+                            current
+                        } else {
+                            current.copy(
+                                phase = UpdatePhase.RolloutPending(
+                                    action.info,
+                                    action.info.rolloutPercent,
+                                ),
+                                lastCheckAtMillis = store.lastSuccessAtMillis,
+                            )
+                        }
                     }
                 }
 
@@ -166,7 +181,13 @@ class AppUpdateManager internal constructor(
                         eligible -> UpdatePhase.Available(trigger, info)
                         else -> UpdatePhase.RolloutPending(info, info.rolloutPercent)
                     }
-                    _state.update { it.copy(phase = phase, lastCheckAtMillis = clock()) }
+                    _state.update { current ->
+                        if (isDownloadInProgressPhase(current.phase)) {
+                            current
+                        } else {
+                            current.copy(phase = phase, lastCheckAtMillis = clock())
+                        }
+                    }
                 },
                 onFailure = { error ->
                     val failure = (error as? UpdateException)?.failure ?: UpdateFailure.Network
@@ -195,8 +216,12 @@ class AppUpdateManager internal constructor(
 
                         else -> UpdatePhase.Available(trigger, fallbackCached)
                     }
-                    _state.update {
-                        it.copy(phase = fallbackPhase, lastCheckAtMillis = clock())
+                    _state.update { current ->
+                        if (isDownloadInProgressPhase(current.phase)) {
+                            current
+                        } else {
+                            current.copy(phase = fallbackPhase, lastCheckAtMillis = clock())
+                        }
                     }
                 },
             )
@@ -241,8 +266,11 @@ class AppUpdateManager internal constructor(
         val info = available.info
         UpdateNotifications.ensureChannel(appContext)
         clearPendingInstall()
+        store.installerLaunchedVersion = null
+        store.consumedWorkId = null
         activeForced = available.forced
         downloadActiveInProcess = true
+        activeDownloadWorkId = null
         cancelDownloadWatchdog()
         _state.update {
             it.copy(
@@ -250,16 +278,29 @@ class AppUpdateManager internal constructor(
                 forcedEscapeAllowed = false,
             )
         }
-        try {
-            scheduler.enqueue(info)
-        } catch (e: Exception) {
-            // WorkManager 初始化/入队异常不能让 UI 永远停在不可取消的下载态。
-            downloadActiveInProcess = false
-            failDownload(info, UpdateFailure.Network)
+        // 进入下载态立即武装启动看门狗（不能等 WAITING 回调，异步入队失败时也要能恢复）。
+        armDownloadWatchdog(info, workId = null)
+        scope.launch {
+            try {
+                val id = scheduler.enqueue(info)
+                activeDownloadWorkId = id
+                // 看门狗可能已在入队期间失败并取消；此时取消迟到的任务。
+                if (_state.value.phase !is UpdatePhase.Downloading) {
+                    scheduler.cancel(id)
+                }
+            } catch (e: Exception) {
+                cancelDownloadWatchdog()
+                activeDownloadWorkId = null
+                downloadActiveInProcess = false
+                if (_state.value.phase is UpdatePhase.Downloading) {
+                    failDownload(info, UpdateFailure.Network)
+                }
+            }
         }
     }
 
     private suspend fun onWorkState(work: DownloadWorkState) {
+        if (!claimWorkEvent(work)) return
         when (work.status) {
             DownloadWorkState.Status.IDLE -> Unit
             DownloadWorkState.Status.WAITING -> {
@@ -269,7 +310,7 @@ class AppUpdateManager internal constructor(
                     if (current.phase is UpdatePhase.Downloading) current
                     else current.copy(phase = UpdatePhase.Downloading(info, 0L, info.apkSizeBytes))
                 }
-                armDownloadWatchdog(info)
+                armDownloadWatchdog(info, work.workId)
             }
 
             DownloadWorkState.Status.RUNNING -> {
@@ -277,22 +318,20 @@ class AppUpdateManager internal constructor(
                 val info = currentActionInfo() ?: store.cachedInfo() ?: return
                 downloadActiveInProcess = true
                 _state.update { current ->
-                    if (current.phase is UpdatePhase.Downloading) {
-                        current.copy(phase = UpdatePhase.Downloading(info, work.downloadedBytes, work.totalBytes))
-                    } else if (current.phase is UpdatePhase.Available || current.phase is UpdatePhase.Idle) {
-                        current.copy(phase = UpdatePhase.Downloading(info, work.downloadedBytes, work.totalBytes))
-                    } else {
-                        current
-                    }
+                    // 下载任务已在运行：即使冷启动检查尚在 Checking，也以真实下载态为准。
+                    current.copy(
+                        phase = UpdatePhase.Downloading(info, work.downloadedBytes, work.totalBytes),
+                    )
                 }
             }
 
             DownloadWorkState.Status.SUCCEEDED -> {
                 cancelDownloadWatchdog()
                 downloadActiveInProcess = false
-                // 终端状态只消费一次：先取消唯一任务，避免进程重启后再次回放。
-                scheduler.cancel()
-                handleDownloadSucceeded(work.apkPath)
+                activeDownloadWorkId = null
+                // 只取消当前任务；不要 cancelUniqueWork，否则可能误伤刚重试的新任务。
+                scheduler.cancel(work.workId)
+                handleDownloadSucceeded(work.apkPath, work.workId)
             }
 
             DownloadWorkState.Status.FAILED, DownloadWorkState.Status.CANCELLED -> {
@@ -300,7 +339,7 @@ class AppUpdateManager internal constructor(
                 if (!downloadActiveInProcess) {
                     // 历史会话的 FAILED/CANCELLED（进程重启后 WorkManager 回放）：
                     // 静默清理，不再用缓存信息弹「更新失败」。
-                    scheduler.cancel()
+                    scheduler.cancel(work.workId)
                     clearPendingInstall()
                     _state.update { current ->
                         if (current.phase is UpdatePhase.Downloading || current.phase is UpdatePhase.Verifying) {
@@ -312,10 +351,11 @@ class AppUpdateManager internal constructor(
                     return
                 }
                 downloadActiveInProcess = false
+                activeDownloadWorkId = null
                 val info = currentActionInfo() ?: store.cachedInfo()
                 clearPendingInstall()
-                // 失败弹窗展示后同样取消任务：重试会重新入队，不再回放旧 FAILED。
-                scheduler.cancel()
+                // 失败弹窗展示后同样取消该任务；重试会重新入队，不再回放旧 FAILED。
+                scheduler.cancel(work.workId)
                 if (info != null) {
                     failDownload(info, work.failure ?: UpdateFailure.Network)
                 } else {
@@ -325,21 +365,65 @@ class AppUpdateManager internal constructor(
         }
     }
 
-    private suspend fun handleDownloadSucceeded(apkPath: String?) {
+    /**
+     * 判断回调是否属于当前下载：忽略旧 WorkRequest 的 CANCELLED/FAILED 回调，
+     * 避免旧任务取消刚重试的新任务；进程重启时允许首个 RUNNING/WAITING 被接管。
+     */
+    private fun claimWorkEvent(work: DownloadWorkState): Boolean {
+        val id = work.workId ?: return true
+        val active = activeDownloadWorkId
+        if (active != null) return id == active
+        return when (work.status) {
+            DownloadWorkState.Status.RUNNING,
+            DownloadWorkState.Status.WAITING,
+            -> {
+                if (downloadActiveInProcess) {
+                    // 本进程刚入队、id 尚未返回：先忽略，入队返回后由后续事件/看门狗处理。
+                    false
+                } else {
+                    activeDownloadWorkId = id
+                    downloadActiveInProcess = true
+                    true
+                }
+            }
+
+            DownloadWorkState.Status.SUCCEEDED -> {
+                // 进程重启后恢复的历史成功结果仍需消费（安装/通知），由 consumedWorkId 去重。
+                activeDownloadWorkId = id
+                true
+            }
+
+            DownloadWorkState.Status.FAILED,
+            DownloadWorkState.Status.CANCELLED,
+            DownloadWorkState.Status.IDLE,
+            -> false
+        }
+    }
+
+    private suspend fun handleDownloadSucceeded(apkPath: String?, workId: String?) {
         val info = currentActionInfo() ?: store.cachedInfo()
         if (info == null) {
             // 无对应更新信息：旧 WorkInfo 残留，静默清理，不能弹失败。
-            cleanupStaleDownload(apkPath)
+            cleanupStaleDownload(apkPath, workId)
+            return
+        }
+        if (workId != null && store.consumedWorkId == workId) {
+            // 同一个 SUCCEEDED 结果已经处理过（用户可能取消过系统安装器）：不能重启后再拉起。
+            finishConsumedSuccess(workId)
             return
         }
         if (!isNewerVersion(info.versionName, currentVersionName)) {
-            // 关键修复：自更新成功后进程会以新版本重启，但 WorkManager 里仍有
-            // SUCCEEDED 的旧任务；再次消费时会因“目标版本已安装、versionCode 不再更大”
-            // 被 ApkValidator 判为无效，从而在已成功升级后弹出「更新失败」。
-            // 这里以当前版本为真相：已安装则清缓存/取消旧任务，静默回到 Idle。
-            cleanupStaleDownload(apkPath)
+            if (workId != null) store.consumedWorkId = workId
+            cleanupStaleDownload(apkPath, workId)
             return
         }
+        if (store.installerLaunchedVersion == info.versionName) {
+            // 已交给系统安装器但用户取消安装：重启后不自动再次拉起安装器。
+            finishConsumedSuccess(workId)
+            return
+        }
+        // 先标记消费，防止异常/取消安装后重启再次自动安装。
+        if (workId != null) store.consumedWorkId = workId
         val file = apkPath?.let { File(it) }
         _state.update { it.copy(phase = UpdatePhase.Verifying(info)) }
         if (file == null || !file.isFile) {
@@ -369,14 +453,22 @@ class AppUpdateManager internal constructor(
         }
     }
 
+    /** 已消费的成功结果：只清待安装记录/取消旧任务，不删除安装器可能仍在读取的 APK。 */
+    private fun finishConsumedSuccess(workId: String?) {
+        if (workId != null) store.consumedWorkId = workId
+        clearPendingInstall()
+        scheduler.cancel(workId)
+        _state.update { if (it.phase is UpdatePhase.Idle) it else it.copy(phase = UpdatePhase.Idle) }
+    }
+
     /** 清理“目标版本已安装/无更新信息”场景的残留下载与 WorkManager 状态。 */
-    private fun cleanupStaleDownload(apkPath: String?) {
+    private fun cleanupStaleDownload(apkPath: String?, workId: String? = null) {
         runCatching { apkPath?.let { File(it).delete() } }
         runCatching {
             File(appContext.cacheDir, "updates").listFiles()?.forEach { it.delete() }
         }
         clearPendingInstall()
-        scheduler.cancel()
+        scheduler.cancel(workId)
         _state.update { if (it.phase is UpdatePhase.Idle) it else it.copy(phase = UpdatePhase.Idle) }
     }
 
@@ -385,27 +477,33 @@ class AppUpdateManager internal constructor(
         scope.launch { installPendingIfAny() }
     }
 
-    private suspend fun installPendingIfAny() {
-        if (!installInProgress.compareAndSet(false, true)) return
-        try {
+    /** @return true 表示安装/授权/校验流程已接管 UI，冷启动检查不得覆盖。 */
+    private suspend fun installPendingIfAny(): Boolean {
+        if (!installInProgress.compareAndSet(false, true)) return true
+        return try {
             installPendingIfAnyLocked()
         } finally {
             installInProgress.set(false)
         }
     }
 
-    private suspend fun installPendingIfAnyLocked() {
-        val version = store.downloadedVersion ?: return
-        val path = store.downloadedApkPath ?: return
+    private suspend fun installPendingIfAnyLocked(): Boolean {
+        val version = store.downloadedVersion ?: return false
+        val path = store.downloadedApkPath ?: return false
         if (!isNewerVersion(version, currentVersionName)) {
             File(path).delete()
             clearPendingInstall()
-            return
+            return false
+        }
+        if (store.installerLaunchedVersion == version) {
+            // 已经拉起过安装器（用户取消/未完成）：不自动重复拉起。
+            clearPendingInstall()
+            return false
         }
         val file = File(path)
         if (!file.isFile) {
             clearPendingInstall()
-            return
+            return false
         }
         val info = store.cachedInfo()?.takeIf { it.versionName == version }
             ?: UpdateInfo(
@@ -426,19 +524,21 @@ class AppUpdateManager internal constructor(
             file.delete()
             clearPendingInstall()
             failDownload(info, invalid)
-            return
+            return true
         }
         if (!installer.canInstallPackages()) {
             _state.update { it.copy(phase = UpdatePhase.NeedInstallPermission(info)) }
-            return
+            return true
         }
         launchInstaller(info, file)
+        return true
     }
 
     private suspend fun launchInstaller(info: UpdateInfo, file: File) {
         val result = withContext(Dispatchers.Main) { installer.install(file) }
         when (result) {
             InstallResult.Launched -> {
+                store.installerLaunchedVersion = info.versionName
                 clearPendingInstall()
                 _state.update { it.copy(phase = UpdatePhase.Idle) }
             }
@@ -500,14 +600,15 @@ class AppUpdateManager internal constructor(
         }
     }
 
-    private fun armDownloadWatchdog(info: UpdateInfo) {
+    private fun armDownloadWatchdog(info: UpdateInfo, workId: String?) {
         if (downloadWatchdogJob?.isActive == true) return
         downloadWatchdogJob = scope.launch {
             delay(DOWNLOAD_START_TIMEOUT_MS)
             if (_state.value.phase is UpdatePhase.Downloading) {
-                // WorkManager 长时间停留在 ENQUEUED/BLOCKED（如无网、被系统限制）：
-                // 主动失败并取消任务，避免不可取消的「0%」界面卡死。
-                scheduler.cancel()
+                // 异步入队失败/WorkManager 长时间不启动：主动失败并取消任务，
+                // 避免不可取消的「0%」界面卡死。
+                scheduler.cancel(workId ?: activeDownloadWorkId)
+                activeDownloadWorkId = null
                 downloadActiveInProcess = false
                 failDownload(info, UpdateFailure.Timeout)
             }
@@ -518,6 +619,11 @@ class AppUpdateManager internal constructor(
         downloadWatchdogJob?.cancel()
         downloadWatchdogJob = null
     }
+
+    private fun isDownloadInProgressPhase(phase: UpdatePhase): Boolean =
+        phase is UpdatePhase.Downloading ||
+            phase is UpdatePhase.Verifying ||
+            phase is UpdatePhase.NeedInstallPermission
 
     /** 清理已安装/过期的 APK 缓存；活跃下载（.part 或更高版本）保留。 */
     private fun cleanupOldDownloadCache() {

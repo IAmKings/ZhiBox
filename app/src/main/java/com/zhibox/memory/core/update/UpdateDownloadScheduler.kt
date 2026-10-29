@@ -20,6 +20,8 @@ object AppForegroundTracker {
 
 /** 下载工作状态（manager 订阅后映射为 UpdatePhase）。 */
 data class DownloadWorkState(
+    /** WorkManager WorkRequest id（跨进程/旧回调归属判断）。 */
+    val workId: String? = null,
     val status: Status = Status.IDLE,
     val downloadedBytes: Long = 0L,
     val totalBytes: Long = -1L,
@@ -31,9 +33,10 @@ data class DownloadWorkState(
 
 /** WorkManager 下载调度抽象（便于 manager 单测注入 fake）。 */
 interface UpdateDownloadScheduler {
-    fun enqueue(info: UpdateInfo)
+    /** 入队并等待 WorkManager 异步结果；返回 WorkRequest id，失败抛异常。 */
+    suspend fun enqueue(info: UpdateInfo): String
     fun observe(): kotlinx.coroutines.flow.Flow<DownloadWorkState>
 
-    /** 终止并清理当前下载任务（自更新完成后避免新进程再次消费旧 WorkInfo）。 */
-    fun cancel()
+    /** 终止并清理下载任务；传入 workId 时只取消该任务，避免旧回调取消新重试。 */
+    fun cancel(workId: String? = null)
 }

@@ -304,6 +304,21 @@ v0.1.16：
 - 线路回退修正：仅当所有线路都 404/410 才判 ReleaseUnavailable；404 + 网络超时混合时不清缓存。
 
 
+### 9.12 v0.1.17-beta.3 第三方审查修复（2026-10-29）
+
+- 入队：`UpdateDownloadScheduler.enqueue` 改为 suspend，等待 WorkManager Operation；
+  Manager 进入下载态立即武装 20s 看门狗，异步入队失败可恢复；
+- 任务归属：`DownloadWorkState.workId` + manager `activeDownloadWorkId`；旧 WorkRequest 回调忽略，
+  取消按 workId 精确执行；
+- 冷启动：`installPendingIfAny()` 返回是否接管；Downloading/Verifying/NeedInstallPermission
+  状态受保护，策略检查与缓存展示不得覆盖；
+- 续传：Network/Timeout 保留 `.part`；校验失败/响应起点非法才删除；
+- 成功去重：持久化 `consumedWorkId` 与 `installerLaunchedVersion`，取消安装后重启不自动安装；
+- SHA：仅全部线路 404/410 才 ReleaseUnavailable；
+- 元数据：单线路坏 JSON 继续尝试镜像；
+- 后台完成：Worker 持久化 downloaded 记录并自行发完成通知（非前台、无 Manager/Activity 时也可用）。
+
+
 ## 10. 二期：后台下载 / 通知 / 跨进程续传（2026-10-27）
 
 - 下载由 `AppUpdateDownloadWorker`（WorkManager 唯一任务 `app-update-download`）执行：

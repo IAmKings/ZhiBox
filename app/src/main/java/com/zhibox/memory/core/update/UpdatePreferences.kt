@@ -46,6 +46,12 @@ interface UpdateStore {
     /** 后台下载完成、等待安装的 APK（跨进程恢复用）。 */
     var downloadedVersion: String?
     var downloadedApkPath: String?
+
+    /** 已经拉起过系统安装器的版本（防止用户取消安装后重启又自动拉起）。 */
+    var installerLaunchedVersion: String?
+
+    /** 已经消费过的 WorkManager 任务 id（防止重启后重复消费 SUCCEEDED）。 */
+    var consumedWorkId: String?
 }
 
 class SharedPrefsUpdateStore(context: Context) : UpdateStore {
@@ -158,6 +164,18 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
             prefs.edit().putString(KEY_DOWNLOADED_APK_PATH, value).apply()
         }
 
+    override var installerLaunchedVersion: String?
+        get() = prefs.getString(KEY_INSTALLER_LAUNCHED_VERSION, null)
+        set(value) {
+            prefs.edit().putString(KEY_INSTALLER_LAUNCHED_VERSION, value).apply()
+        }
+
+    override var consumedWorkId: String?
+        get() = prefs.getString(KEY_CONSUMED_WORK_ID, null)
+        set(value) {
+            prefs.edit().putString(KEY_CONSUMED_WORK_ID, value).apply()
+        }
+
     override fun routeHealth(): Map<String, RouteHealth> {
         val raw = prefs.getString(KEY_ROUTE_HEALTH, null) ?: return emptyMap()
         return runCatching {
@@ -225,6 +243,8 @@ class SharedPrefsUpdateStore(context: Context) : UpdateStore {
         const val KEY_ROUTE_HEALTH = "route_health"
         const val KEY_DOWNLOADED_VERSION = "downloaded_version"
         const val KEY_DOWNLOADED_APK_PATH = "downloaded_apk_path"
+        const val KEY_INSTALLER_LAUNCHED_VERSION = "installer_launched_version"
+        const val KEY_CONSUMED_WORK_ID = "consumed_work_id"
         const val KEY_C_VERSION = "cached_version"
         const val KEY_C_TAG = "cached_tag"
         const val KEY_C_TITLE = "cached_title"

@@ -146,7 +146,7 @@ class HttpUpdateDownloader(
                                 id = routeId,
                             ),
                         )
-                        part.delete()
+                        // 网络/读超时保留 .part：重试时继续 Range 续传，弱网可从断点恢复。
                     }
 
                     is UpdateFailure.Http -> {
@@ -280,6 +280,8 @@ class HttpUpdateDownloader(
                 effectiveMirrors.forEach { add(it + shaUrl to true) }
             }
             var lastFailure: UpdateException? = null
+            var sawNotFound = false
+            var sawNonNotFound = false
             for ((candidate, mirrored) in candidates) {
                 var connection: HttpURLConnection? = null
                 try {
@@ -291,29 +293,34 @@ class HttpUpdateDownloader(
                     val shaCode = connection.responseCode
                     if (shaCode !in 200..299) {
                         lastFailure = UpdateException(UpdateFailure.Http(shaCode))
+                        if (shaCode == 404 || shaCode == 410) sawNotFound = true else sawNonNotFound = true
                         continue
                     }
                     val text = connection.inputStream.use { readLimited(it, MAX_SHA_FILE_BYTES) }
-                    return@withContext UpdateReleaseParser.parseSha256File(text)
-                        ?: throw UpdateException(UpdateFailure.NoChecksum)
+                    val sha = UpdateReleaseParser.parseSha256File(text)
+                    if (sha == null) {
+                        sawNonNotFound = true
+                        lastFailure = UpdateException(UpdateFailure.NoChecksum)
+                        continue
+                    }
+                    return@withContext sha
                 } catch (e: UpdateException) {
                     lastFailure = e
+                    sawNonNotFound = true
                 } catch (e: SocketTimeoutException) {
                     lastFailure = UpdateException(UpdateFailure.Timeout)
+                    sawNonNotFound = true
                 } catch (e: IOException) {
                     lastFailure = UpdateException(UpdateFailure.Network)
+                    sawNonNotFound = true
                 } finally {
                     runCatching { connection?.disconnect() }
                 }
             }
-            val failure = lastFailure ?: UpdateException(UpdateFailure.NoChecksum)
-            if (failure.failure is UpdateFailure.Http) {
-                val code = (failure.failure as UpdateFailure.Http).code
-                if (code == 404 || code == 410) {
-                    throw UpdateException(UpdateFailure.ReleaseUnavailable)
-                }
+            if (sawNotFound && !sawNonNotFound) {
+                throw UpdateException(UpdateFailure.ReleaseUnavailable)
             }
-            throw failure
+            throw lastFailure ?: UpdateException(UpdateFailure.NoChecksum)
         }
     }
 

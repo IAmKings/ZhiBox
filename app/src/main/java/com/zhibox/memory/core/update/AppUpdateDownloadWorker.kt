@@ -10,12 +10,14 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
+import androidx.work.await
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.zhibox.memory.BuildConfig
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -167,6 +169,13 @@ class AppUpdateDownloadWorker(
                 }
             }
             UpdateNotifications.cancelProgress(context)
+            // 即使 Manager/Activity 不存在（系统仅为 Worker 重建进程），也持久化待安装记录并
+            // 发完成通知；前台时由 Manager 直接拉起安装，避免重复通知。
+            store.downloadedVersion = info.versionName
+            store.downloadedApkPath = file.absolutePath
+            if (!AppForegroundTracker.isForeground) {
+                UpdateNotifications.notifyDownloadComplete(context, info)
+            }
             Result.success(
                 workDataOf(UpdateDownloadContract.OUT_APK_PATH to file.absolutePath),
             )
@@ -220,7 +229,7 @@ class WorkManagerUpdateDownloadScheduler(context: Context) : UpdateDownloadSched
     private val appContext = context.applicationContext
     private val workManager = WorkManager.getInstance(appContext)
 
-    override fun enqueue(info: UpdateInfo) {
+    override suspend fun enqueue(info: UpdateInfo): String {
         val request = OneTimeWorkRequestBuilder<AppUpdateDownloadWorker>()
             // 不加 Network/Storage 约束：约束会让任务长期停留在 ENQUEUED，旧实现把它映射成
             // 「正在下载 0%」且弹窗不可取消。Worker 内做网络预检，失败会快速进入可重试状态。
@@ -241,15 +250,22 @@ class WorkManagerUpdateDownloadScheduler(context: Context) : UpdateDownloadSched
             )
             .addTag(UpdateDownloadContract.TAG)
             .build()
+        // 等待 WorkManager 异步入队结果；失败会抛异常，由 Manager 转为可重试失败态。
         workManager.enqueueUniqueWork(
             UpdateDownloadContract.UNIQUE_WORK,
             ExistingWorkPolicy.REPLACE,
             request,
-        )
+        ).await()
+        return request.id.toString()
     }
 
-    override fun cancel() {
-        workManager.cancelUniqueWork(UpdateDownloadContract.UNIQUE_WORK)
+    override fun cancel(workId: String?) {
+        if (workId == null) {
+            workManager.cancelUniqueWork(UpdateDownloadContract.UNIQUE_WORK)
+        } else {
+            runCatching { workManager.cancelWorkById(UUID.fromString(workId)) }
+                .onFailure { workManager.cancelUniqueWork(UpdateDownloadContract.UNIQUE_WORK) }
+        }
     }
 
     override fun observe(): Flow<DownloadWorkState> =
@@ -259,26 +275,31 @@ class WorkManagerUpdateDownloadScheduler(context: Context) : UpdateDownloadSched
 
     private fun WorkInfo.toDownloadState(): DownloadWorkState = when (state) {
         WorkInfo.State.RUNNING -> DownloadWorkState(
+            workId = id.toString(),
             status = DownloadWorkState.Status.RUNNING,
             downloadedBytes = progress.getLong("downloaded", 0L),
             totalBytes = progress.getLong("total", -1L),
         )
 
         WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> DownloadWorkState(
+            workId = id.toString(),
             status = DownloadWorkState.Status.WAITING,
         )
 
         WorkInfo.State.SUCCEEDED -> DownloadWorkState(
+            workId = id.toString(),
             status = DownloadWorkState.Status.SUCCEEDED,
             apkPath = outputData.getString(UpdateDownloadContract.OUT_APK_PATH),
         )
 
         WorkInfo.State.FAILED -> DownloadWorkState(
+            workId = id.toString(),
             status = DownloadWorkState.Status.FAILED,
             failure = decodeUpdateFailure(outputData.getString(UpdateDownloadContract.OUT_FAILURE)),
         )
 
         WorkInfo.State.CANCELLED -> DownloadWorkState(
+            workId = id.toString(),
             status = DownloadWorkState.Status.CANCELLED,
             failure = UpdateFailure.Cancelled,
         )
