@@ -131,29 +131,65 @@ class HttpUpdateApi(
             val cacheBusted = runCatching {
                 URL(candidate + (if ('?' in candidate) "&" else "?") + "t=" + System.currentTimeMillis())
             }.getOrNull() ?: url
+            val body = fetchMetaFollowingRedirects(
+                start = cacheBusted,
+                initialMirrored = mirrored,
+                allowedHosts = allowedHosts,
+                mirrorHosts = mirrorHosts,
+            ) ?: continue
+            return UpdateMetaParser.apply(info, UpdateMetaParser.parse(body))
+        }
+        return info
+    }
+
+    /**
+     * 手动跟随元数据重定向（≤5 跳），逐跳校验 https + host；
+     * 不再使用 HttpURLConnection 的自动跟随，避免跳转到未校验域名。
+     */
+    private fun fetchMetaFollowingRedirects(
+        start: URL,
+        initialMirrored: Boolean,
+        allowedHosts: Set<String>,
+        mirrorHosts: Set<String>,
+    ): String? {
+        var current = start
+        repeat(META_MAX_REDIRECTS + 1) { hop ->
+            if (!current.protocol.equals("https", ignoreCase = true)) return null
+            val host = current.host?.lowercase() ?: return null
+            val hostAllowed = when {
+                !initialMirrored && hop == 0 -> host in allowedHosts
+                initialMirrored && hop == 0 -> host in mirrorHosts
+                else -> host in allowedHosts || host in mirrorHosts
+            }
+            if (!hostAllowed) return null
             var connection: HttpURLConnection? = null
             try {
-                connection = openConnection(cacheBusted).apply {
+                connection = openConnection(current).apply {
                     requestMethod = "GET"
-                    connectTimeout = if (mirrored) 8_000 else 5_000
-                    readTimeout = if (mirrored) 10_000 else 8_000
-                    // GitHub Release 资产 URL 会 302 到 objects.githubusercontent.com；
-                    // 元数据很小，跟随重定向（初始 host 已白名单校验）。
-                    instanceFollowRedirects = true
+                    connectTimeout = if (initialMirrored) 8_000 else 5_000
+                    readTimeout = if (initialMirrored) 10_000 else 8_000
+                    instanceFollowRedirects = false
                     setRequestProperty("User-Agent", userAgent)
                     setRequestProperty("Accept", "application/json")
                     setRequestProperty("Cache-Control", "no-cache")
                 }
-                if (connection.responseCode !in 200..299) continue
-                val body = connection.inputStream.use { readLimited(it, META_MAX_BODY_BYTES) }
-                return UpdateMetaParser.apply(info, UpdateMetaParser.parse(body))
+                val code = connection.responseCode
+                if (code in 300..399) {
+                    val location = connection.getHeaderField("Location")
+                    if (location.isNullOrBlank()) return null
+                    current = runCatching { URL(current, location) }.getOrNull() ?: return null
+                } else if (code in 200..299) {
+                    return connection.inputStream.use { readLimited(it, META_MAX_BODY_BYTES) }
+                } else {
+                    return null
+                }
             } catch (e: Exception) {
-                // 尝试下一条线路
+                return null
             } finally {
                 runCatching { connection?.disconnect() }
             }
         }
-        return info
+        return null
     }
 
     private companion object {
@@ -163,6 +199,7 @@ class HttpUpdateApi(
             "release-assets.githubusercontent.com",
         )
         const val META_MAX_BODY_BYTES = 64 * 1024
+        const val META_MAX_REDIRECTS = 5
         const val CONNECT_TIMEOUT_MS = 10_000
         const val READ_TIMEOUT_MS = 15_000
         const val MAX_BODY_BYTES = 1_024 * 1_024

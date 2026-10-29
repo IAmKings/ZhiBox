@@ -57,8 +57,11 @@ object UpdateConfig {
     /** 强制缓存超过该年龄时，冷启动先联网校验，失败再回退缓存。 */
     const val FORCED_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1_000L
 
+    /** 普通/灰度缓存超过该年龄时自动重新校验（避免 rollout 提高/暂停后永不刷新）。 */
+    const val CACHE_REVALIDATE_INTERVAL_MS = 6 * 60 * 60 * 1_000L
+
     /** 下载整体超时：避免网络卡死时不可取消的进度框永久停留。 */
-    const val DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1_000L
+    const val DOWNLOAD_TIMEOUT_MS = 5 * 60 * 1_000L
 }
 
 /**
@@ -345,9 +348,20 @@ object UpdateReleaseParser {
         fun assetName(asset: kotlinx.serialization.json.JsonObject): String =
             str(asset, "name").orEmpty()
 
-        val apkAsset = assets.firstOrNull {
+        val apkAssets = assets.filter {
             assetName(it).endsWith(UpdateConfig.APK_ASSET_SUFFIX)
-        } ?: throw UpdateException(UpdateFailure.IncompleteRelease, "release 缺少 signed apk 资产")
+        }
+        if (apkAssets.isEmpty()) {
+            throw UpdateException(UpdateFailure.IncompleteRelease, "release 缺少 signed apk 资产")
+        }
+        if (apkAssets.size > 1) {
+            // 当前只支持单一 universal APK；多 APK（ABI split 等）不能猜测，失败安全。
+            throw UpdateException(
+                UpdateFailure.IncompleteRelease,
+                "release 包含多个 signed apk 资产，无法确定下载目标",
+            )
+        }
+        val apkAsset = apkAssets.first()
 
         val apkName = assetName(apkAsset)
         val apkUrl = str(apkAsset, "browser_download_url").orEmpty()

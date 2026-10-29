@@ -3,6 +3,7 @@ package com.zhibox.memory.core.update
 import com.zhibox.memory.core.llm.MockHttpsServer
 import com.zhibox.memory.core.llm.MockResponse
 import java.io.File
+import java.net.URL
 import java.security.MessageDigest
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
@@ -171,6 +172,56 @@ class UpdateApiAndDownloaderTest {
     }
 
     @Test
+    fun api_metaRedirectIsFollowedWithHostValidation() = runBlocking {
+        var serverRef: MockHttpsServer? = null
+        val server = MockHttpsServer { request ->
+            when {
+                request.path.startsWith("/repos/") -> {
+                    val metaUrl = serverRef!!.baseUrl("/meta/start")
+                    val json = """
+                        {
+                          "tag_name": "v0.1.17", "name": "v0.1.17", "draft": false,
+                          "prerelease": false, "body": "- 更新",
+                          "html_url": "https://github.com/IAmKings/ZhiBox/releases/tag/v0.1.17",
+                          "assets": [
+                            {"name": "zhibox-0.1.17-abc-release-signed.apk", "size": 9,
+                             "browser_download_url": "https://github.com/IAmKings/ZhiBox/releases/download/v0.1.17/zhibox-0.1.17-abc-release-signed.apk",
+                             "digest": "sha256:${"a".repeat(64)}"},
+                            {"name": "zhibox-0.1.17-abc-update.json", "size": 100,
+                             "browser_download_url": "$metaUrl"}
+                          ]
+                        }
+                    """.trimIndent()
+                    MockResponse(200, json)
+                }
+
+                request.path.startsWith("/meta/start") -> MockResponse(
+                    302,
+                    "",
+                    headers = mapOf("Location" to "/meta/final"),
+                )
+
+                request.path.startsWith("/meta/final") -> MockResponse(
+                    200,
+                    """{"schema":1,"rolloutPercent":10,"minSupportedVersion":"0.1.5"}""",
+                )
+
+                else -> MockResponse(404, "{}")
+            }
+        }.also { serverRef = it }
+        server.use {
+            val api = HttpUpdateApi(
+                releasesApiBase = server.baseUrl("/repos/IAmKings/ZhiBox/releases"),
+                testMetaHosts = setOf("127.0.0.1"),
+            )
+            val info = api.fetchLatest().getOrThrow()
+            assertEquals(10, info.rolloutPercent)
+            assertEquals("0.1.5", info.minSupportedVersion)
+            assertTrue(server.requests.any { it.path == "/meta/final" })
+        }
+    }
+
+    @Test
     fun api_404MapsToNoRelease() = runBlocking {
         MockHttpsServer { MockResponse(404, "{}") }.use { server ->
             val api = HttpUpdateApi(
@@ -205,6 +256,69 @@ class UpdateApiAndDownloaderTest {
         testAllowedHosts = setOf("127.0.0.1"),
         freeBytes = { Long.MAX_VALUE },
     )
+
+    @Test
+    fun downloader_triesRemainingRouteWhenFirstIs404() = runBlocking {
+        val dir = createTempDir("update-dl-route-ok")
+        val payloadText = payload.toString(Charsets.UTF_8)
+        try {
+            MockHttpsServer { request ->
+                if (request.path.startsWith("/https://github.com/")) {
+                    MockResponse(200, payloadText)
+                } else {
+                    MockResponse(404, "not found")
+                }
+            }.use { server ->
+                val downloader = HttpUpdateDownloader(
+                    mirrorPrefixes = listOf("https://gh-proxy.test/"),
+                    openConnection = { url ->
+                        URL(server.baseUrl(url.path)).openConnection() as java.net.HttpURLConnection
+                    },
+                    freeBytes = { Long.MAX_VALUE },
+                )
+                val file = downloader.download(
+                    testInfo(
+                        apkUrl = "https://github.com/IAmKings/ZhiBox/releases/download/v0.1.7/x-release-signed.apk",
+                    ),
+                    dir,
+                )
+                assertArrayEquals(payload, file.readBytes())
+                assertTrue(server.requests.any { it.path.startsWith("/https://github.com/") })
+            }
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun downloader_allRoutes404MapsToReleaseUnavailable() = runBlocking {
+        val dir = createTempDir("update-dl-all-gone")
+        try {
+            MockHttpsServer { MockResponse(404, "not found") }.use { server ->
+                val downloader = HttpUpdateDownloader(
+                    mirrorPrefixes = listOf("https://gh-proxy.test/"),
+                    openConnection = { url ->
+                        URL(server.baseUrl(url.path)).openConnection() as java.net.HttpURLConnection
+                    },
+                    freeBytes = { Long.MAX_VALUE },
+                )
+                val error = try {
+                    downloader.download(
+                        testInfo(
+                            apkUrl = "https://github.com/IAmKings/ZhiBox/releases/download/v0.1.7/x-release-signed.apk",
+                        ),
+                        dir,
+                    )
+                    null
+                } catch (e: UpdateException) {
+                    e
+                }
+                assertEquals(UpdateFailure.ReleaseUnavailable, error?.failure)
+            }
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
 
     @Test
     fun downloader_404MapsToReleaseUnavailable() = runBlocking {

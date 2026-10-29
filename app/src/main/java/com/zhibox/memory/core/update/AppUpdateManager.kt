@@ -61,6 +61,8 @@ class AppUpdateManager internal constructor(
      */
     @Volatile
     private var downloadActiveInProcess = false
+    private var lastForcedVerifyAtMillis = 0L
+    private val installInProgress = AtomicBoolean(false)
 
     init {
         scope.launch {
@@ -85,6 +87,7 @@ class AppUpdateManager internal constructor(
         scope.launch {
             // 后台下载已完成但尚未安装：先处理安装，再做常规检查。
             installPendingIfAny()
+            cleanupOldDownloadCache()
             when (val action = UpdatePolicy.decideOnLaunch(clock(), store, currentVersionName)) {
                 is UpdatePolicy.LaunchAction.ShowCached -> {
                     // 冷启动展示缓存时也必须重新计算 forced 与灰度资格：
@@ -166,27 +169,32 @@ class AppUpdateManager internal constructor(
                 onFailure = { error ->
                     val failure = (error as? UpdateException)?.failure ?: UpdateFailure.Network
                     store.lastAttemptAtMillis = clock()
-                    val fallbackForced = if (trigger == UpdateTrigger.AUTO) {
+                    val fallbackCached = if (trigger == UpdateTrigger.AUTO) {
                         store.cachedInfo()?.takeIf {
-                            isNewerVersion(it.versionName, currentVersionName) &&
-                                UpdateRollout.isForced(it, currentVersionName)
+                            isNewerVersion(it.versionName, currentVersionName)
                         }
                     } else {
                         null
                     }
+                    val fallbackPhase = when {
+                        trigger == UpdateTrigger.MANUAL ->
+                            UpdatePhase.CheckFailed(trigger, failure)
+
+                        fallbackCached == null -> UpdatePhase.Idle
+
+                        UpdateRollout.isForced(fallbackCached, currentVersionName) ->
+                            UpdatePhase.Available(trigger, fallbackCached, forced = true)
+
+                        !UpdateRollout.isEligible(store.installId, fallbackCached) ->
+                            UpdatePhase.RolloutPending(fallbackCached, fallbackCached.rolloutPercent)
+
+                        fallbackCached.versionName == store.dismissedVersion ->
+                            UpdatePhase.Idle
+
+                        else -> UpdatePhase.Available(trigger, fallbackCached)
+                    }
                     _state.update {
-                        it.copy(
-                            phase = when {
-                                trigger == UpdateTrigger.MANUAL ->
-                                    UpdatePhase.CheckFailed(trigger, failure)
-
-                                fallbackForced != null ->
-                                    UpdatePhase.Available(trigger, fallbackForced, forced = true)
-
-                                else -> UpdatePhase.Idle
-                            },
-                            lastCheckAtMillis = clock(),
-                        )
+                        it.copy(phase = fallbackPhase, lastCheckAtMillis = clock())
                     }
                 },
             )
@@ -325,7 +333,13 @@ class AppUpdateManager internal constructor(
         store.downloadedVersion = info.versionName
         store.downloadedApkPath = file.absolutePath
         if (foreground()) {
-            launchInstaller(info, file)
+            if (installInProgress.compareAndSet(false, true)) {
+                try {
+                    launchInstaller(info, file)
+                } finally {
+                    installInProgress.set(false)
+                }
+            }
         } else {
             // Android 后台启动 Activity 受限：发通知，用户点通知/下次进入时安装。
             UpdateNotifications.notifyDownloadComplete(appContext, info)
@@ -350,6 +364,15 @@ class AppUpdateManager internal constructor(
     }
 
     private suspend fun installPendingIfAny() {
+        if (!installInProgress.compareAndSet(false, true)) return
+        try {
+            installPendingIfAnyLocked()
+        } finally {
+            installInProgress.set(false)
+        }
+    }
+
+    private suspend fun installPendingIfAnyLocked() {
         val version = store.downloadedVersion ?: return
         val path = store.downloadedApkPath ?: return
         if (!isNewerVersion(version, currentVersionName)) {
@@ -412,6 +435,9 @@ class AppUpdateManager internal constructor(
     private fun verifyCachedForced() {
         if (!store.autoCheckEnabled) return
         if (verifyCachedJob?.isActive == true) return
+        val now = clock()
+        if (now - lastForcedVerifyAtMillis < UpdateConfig.AUTO_RETRY_INTERVAL_MS) return
+        lastForcedVerifyAtMillis = now
         val id = taskId
         verifyCachedJob = scope.launch {
             val result = api.fetchLatest(store.channel)
@@ -446,8 +472,27 @@ class AppUpdateManager internal constructor(
                 }
                 _state.update { it.copy(phase = phase, lastCheckAtMillis = clock()) }
             }.onFailure {
-                // 离线/网络异常：保留缓存强制（用户仍可尝试下载或稍后重试）。
+                // 离线/网络异常：保留缓存强制，1h 内不再重复后台校验（手动检查不受限）。
+                store.lastAttemptAtMillis = clock()
             }
+        }
+    }
+
+    /** 清理已安装/过期的 APK 缓存；活跃下载（.part 或更高版本）保留。 */
+    private fun cleanupOldDownloadCache() {
+        val dir = File(appContext.cacheDir, "updates")
+        val files = dir.listFiles() ?: return
+        val now = clock()
+        files.forEach { file ->
+            val name = file.name
+            val version = name
+                .removePrefix("zhibox-")
+                .removeSuffix(".part")
+                .removeSuffix(".apk")
+            val keepForUpdate = version.isNotBlank() &&
+                isNewerVersion(version, currentVersionName)
+            val tooOld = now - file.lastModified() >= 7L * 24 * 60 * 60 * 1_000L
+            if (!keepForUpdate || tooOld) file.delete()
         }
     }
 
@@ -465,6 +510,8 @@ class AppUpdateManager internal constructor(
             // Release/资产已下架：清缓存与强制状态，弹可关闭的一次性失败提示，
             // 避免用同一缓存 URL 无限重试/重启后再次强制。
             store.clearCache()
+            store.lastSuccessAtMillis = 0L
+            store.lastAttemptAtMillis = 0L
             clearPendingInstall()
             scheduler.cancel()
             downloadActiveInProcess = false

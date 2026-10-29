@@ -3,13 +3,16 @@
 > 适用：**v0.1.15**（2026-10-29 发布；v0.1.14~v0.1.2、v0.1.1、v0.1.0-mvp 为历史版本）。本文档面向升级用户与后续维护者；实现细节/验收证据见 `docs/review/`、`docs/product/APP_UPDATE_SPEC.md`、`docs/product/INTELLIGENCE_HUB_SPEC.md` 与 `docs/product/INTELLIGENCE_HUB_ACCEPTANCE.md`。
 > **发布状态**：**v0.1.15 为 latest stable**；v0.1.14~v0.1.2、v0.1.1、v0.1.0-mvp 已发布。Beta/灰度/强制临时预发布包已在验收后删除（记录见 `docs/RELEASE.md`）。
 
-## 0. v0.1.17-force.1（2026-10-29 强制缓存失效复测）：minSupported=0.1.17
+## 0. v0.1.17-beta.1（2026-10-29 内测 Beta）：更新服务收尾
 
-- **prerelease**，用于在 v0.1.16 基线上复测「删除 force Release 后缓存强制失效」；
-- `update.json`：channel=beta、rolloutPercent=100、**minSupportedVersion=0.1.17**；
-- 流程：强制弹窗 → 断网失败 3 次 → 暂时退出 → 删除本 Release → 关飞行 → 重启；
-  预期后台校验清缓存/关闭弹窗，或点更新得到可关闭的「版本已下架」，不再死循环；
-- 复测后删除本 Release/tag，恢复 policy 100 / 0.1.0；stable latest 仍为 v0.1.16。
+- **灰度缓存刷新**：普通/灰度缓存超过 6h 自动重新校验；修复 rollout 提高/暂停后设备永不刷新；
+- **自动检查开关**：关闭后强制缓存只展示、不再联网校验（隐私优先）；
+- **下载线路回退**：404/410 遍历所有线路后才判定版本下架；403/429/5xx 换路重试；
+  镜像重定向允许 GitHub CDN；`.sha256` 支持镜像回退；
+- **5 分钟下载超时**（原 10 分钟），超时可重试并续传；
+- **P2 收尾**：安装后 APK 缓存清理、元数据重定向逐跳 host 校验、安装防重入、
+  版本下架后重置节流、多 APK 资产失败安全；
+- **限流**：保持 GitHub 匿名 60 次/小时/IP 策略，不做绕过；正常用户 24h 一次自动检查。
 
 ## 0.1 v0.1.16（2026-10-29 发布）：强制缓存校验 + 版本下架处理
 

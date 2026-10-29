@@ -88,7 +88,8 @@ class HttpUpdateDownloader(
         }
 
         // 线路健康驱动的尝试顺序：直连未冷却时优先直连，否则优先健康镜像。
-        val mirrorAttempts = mirrorPrefixes.mapNotNull { prefix ->
+        val effectiveMirrors = if (testAllowedHosts.isNotEmpty()) emptyList() else mirrorPrefixes
+        val mirrorAttempts = effectiveMirrors.mapNotNull { prefix ->
             val host = runCatching { URL(prefix).host?.lowercase(Locale.ROOT) }.getOrNull()
             if (host == null) null else Attempt(id = host, url = prefix + info.apkUrl, mirror = true)
         }.distinctBy { it.id }
@@ -105,6 +106,8 @@ class HttpUpdateDownloader(
             health = routeHealth,
         )
         var lastFailure: UpdateException? = null
+        var nonNotFoundFailure: UpdateException? = null
+        var sawNotFound = false
         orderedRoutes.forEachIndexed { index, routeId ->
             val attempt = routeById[routeId] ?: return@forEachIndexed
             val startedAt = nowMillis()
@@ -115,8 +118,6 @@ class HttpUpdateDownloader(
                     part = part,
                     target = target,
                     expectedSha = expectedSha,
-                    // 任意线路都尝试续传：镜像可能支持 Range；不支持时 attemptDownload
-                    // 会丢弃半包重下。进程被杀后 direct 先失败也能从 .part 继续。
                     allowResume = true,
                     onProgress = onProgress,
                 )
@@ -132,26 +133,45 @@ class HttpUpdateDownloader(
                 return@withContext file
             } catch (e: UpdateException) {
                 lastFailure = e
-                val retryable = e.failure is UpdateFailure.Network ||
-                    e.failure is UpdateFailure.Timeout
-                if (retryable) {
-                    onRouteResult(
-                        UpdateRouteSelector.record(
-                            nowMillis = nowMillis(),
-                            previous = routeHealth[routeId],
-                            success = false,
-                            latencyMs = 0L,
-                            id = routeId,
-                        ),
-                    )
-                } else {
-                    throw e
+                when (val failure = e.failure) {
+                    UpdateFailure.Network, UpdateFailure.Timeout -> {
+                        onRouteResult(
+                            UpdateRouteSelector.record(
+                                nowMillis = nowMillis(),
+                                previous = routeHealth[routeId],
+                                success = false,
+                                latencyMs = 0L,
+                                id = routeId,
+                            ),
+                        )
+                        part.delete()
+                    }
+
+                    is UpdateFailure.Http -> {
+                        if (failure.code == 404 || failure.code == 410) {
+                            sawNotFound = true
+                        } else {
+                            nonNotFoundFailure = e
+                        }
+                        part.delete()
+                    }
+
+                    UpdateFailure.ChecksumMismatch -> {
+                        // 某条线路给的内容不对：换路重试，最终失败保留校验错误。
+                        nonNotFoundFailure = e
+                        part.delete()
+                    }
+
+                    else -> throw e
                 }
-                // 保留 .part：下一条线路继续 Range；若响应不是 206/起点不符，
-                // attemptDownload 会自行丢弃半包重下。
             }
         }
-        throw lastFailure ?: UpdateException(UpdateFailure.Network)
+        // 只有所有线路都明确 404/410 才判定版本已下架；混合网络/服务器错误时
+        // 保留缓存，让用户可稍后重试，避免误清强制/灰度状态。
+        if (sawNotFound && nonNotFoundFailure == null) {
+            throw UpdateException(UpdateFailure.ReleaseUnavailable)
+        }
+        throw nonNotFoundFailure ?: lastFailure ?: UpdateException(UpdateFailure.Network)
     }
 
     private data class Attempt(val id: String, val url: String, val mirror: Boolean)
@@ -194,9 +214,6 @@ class HttpUpdateDownloader(
                     )
                     code = connection.responseCode
                 }
-            }
-            if (code == 404 || code == 410) {
-                throw UpdateException(UpdateFailure.ReleaseUnavailable)
             }
             if (code !in 200..299) {
                 throw UpdateException(UpdateFailure.Http(code))
@@ -253,28 +270,46 @@ class HttpUpdateDownloader(
         info.sha256?.let { return it }
         val shaUrl = info.sha256Url ?: throw UpdateException(UpdateFailure.NoChecksum)
         return withContext(Dispatchers.IO) {
-            var connection: HttpURLConnection? = null
-            try {
-                connection = openFollowingRedirects(URL(shaUrl), mirror = false, rangeFrom = 0L)
-                val shaCode = connection.responseCode
-                if (shaCode == 404 || shaCode == 410) {
+            val effectiveMirrors = if (testAllowedHosts.isNotEmpty()) emptyList() else mirrorPrefixes
+            val candidates = buildList {
+                add(shaUrl to false)
+                effectiveMirrors.forEach { add(it + shaUrl to true) }
+            }
+            var lastFailure: UpdateException? = null
+            for ((candidate, mirrored) in candidates) {
+                var connection: HttpURLConnection? = null
+                try {
+                    connection = openFollowingRedirects(
+                        url = URL(candidate),
+                        mirror = mirrored,
+                        rangeFrom = 0L,
+                    )
+                    val shaCode = connection.responseCode
+                    if (shaCode !in 200..299) {
+                        lastFailure = UpdateException(UpdateFailure.Http(shaCode))
+                        continue
+                    }
+                    val text = connection.inputStream.use { readLimited(it, MAX_SHA_FILE_BYTES) }
+                    return@withContext UpdateReleaseParser.parseSha256File(text)
+                        ?: throw UpdateException(UpdateFailure.NoChecksum)
+                } catch (e: UpdateException) {
+                    lastFailure = e
+                } catch (e: SocketTimeoutException) {
+                    lastFailure = UpdateException(UpdateFailure.Timeout)
+                } catch (e: IOException) {
+                    lastFailure = UpdateException(UpdateFailure.Network)
+                } finally {
+                    runCatching { connection?.disconnect() }
+                }
+            }
+            val failure = lastFailure ?: UpdateException(UpdateFailure.NoChecksum)
+            if (failure.failure is UpdateFailure.Http) {
+                val code = (failure.failure as UpdateFailure.Http).code
+                if (code == 404 || code == 410) {
                     throw UpdateException(UpdateFailure.ReleaseUnavailable)
                 }
-                if (shaCode !in 200..299) {
-                    throw UpdateException(UpdateFailure.Http(shaCode))
-                }
-                val text = connection.inputStream.use { readLimited(it, MAX_SHA_FILE_BYTES) }
-                UpdateReleaseParser.parseSha256File(text)
-                    ?: throw UpdateException(UpdateFailure.NoChecksum)
-            } catch (e: UpdateException) {
-                throw e
-            } catch (e: SocketTimeoutException) {
-                throw UpdateException(UpdateFailure.Timeout)
-            } catch (e: IOException) {
-                throw UpdateException(UpdateFailure.Network)
-            } finally {
-                runCatching { connection?.disconnect() }
             }
+            throw failure
         }
     }
 
@@ -329,11 +364,18 @@ class HttpUpdateDownloader(
             return
         }
         if (mirror) {
-            if (host == null || host !in mirrorHosts) {
-                throw UpdateException(UpdateFailure.IncompleteRelease, "镜像域名不在白名单：${url.host}")
-            }
-            if (!url.toString().contains(releasePath)) {
-                throw UpdateException(UpdateFailure.IncompleteRelease, "镜像路径非法：${url.path}")
+            if (initial) {
+                if (host == null || host !in mirrorHosts) {
+                    throw UpdateException(UpdateFailure.IncompleteRelease, "镜像域名不在白名单：${url.host}")
+                }
+                if (!url.toString().contains(releasePath)) {
+                    throw UpdateException(UpdateFailure.IncompleteRelease, "镜像路径非法：${url.path}")
+                }
+            } else {
+                // 镜像可能重定向到 GitHub CDN；重定向目标允许镜像域 + GitHub CDN 白名单。
+                if (host == null || (host !in mirrorHosts && host !in ALLOWED_REDIRECT_HOSTS)) {
+                    throw UpdateException(UpdateFailure.IncompleteRelease, "镜像重定向域名不在白名单：${url.host}")
+                }
             }
             return
         }

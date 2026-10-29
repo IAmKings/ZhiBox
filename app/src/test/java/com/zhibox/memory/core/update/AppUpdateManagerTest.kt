@@ -771,4 +771,34 @@ class AppUpdateManagerTest {
         }
     }
 
+    @Test
+    fun startupCleanupRemovesOldApksButKeepsNewerAndPartial() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val dir = File(
+            ApplicationProvider.getApplicationContext<Context>().cacheDir,
+            "updates",
+        )
+        try {
+            dir.deleteRecursively()
+            dir.mkdirs()
+            val old = File(dir, "zhibox-0.1.5.apk").apply { writeBytes(ByteArray(4)) }
+            val newer = File(dir, "zhibox-0.1.7.apk").apply { writeBytes(ByteArray(4)) }
+            val part = File(dir, "zhibox-0.1.7.apk.part").apply { writeBytes(ByteArray(4)) }
+
+            val manager = manager(
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                currentVersionName = "0.1.6",
+            )
+            manager.onAppEntered()
+            advanceUntilIdle()
+
+            assertFalse("已安装旧版本 APK 应清理：${old.name}", old.exists())
+            assertTrue("更高版本应保留", newer.exists())
+            assertTrue("下载中的 .part 应保留", part.exists())
+        } finally {
+            dir.deleteRecursively()
+            Dispatchers.resetMain()
+        }
+    }
+
 }

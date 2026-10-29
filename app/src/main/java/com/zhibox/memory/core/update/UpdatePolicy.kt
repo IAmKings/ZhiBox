@@ -32,6 +32,8 @@ object UpdatePolicy {
             // 强制更新优先级最高：即使用户取消过该版本、或关闭了自动检查，
             // 冷启动也应展示（不联网、纯缓存），且由 UI 层禁止取消。
             if (UpdateRollout.isForced(cached, currentVersionName)) {
+                // 自动检查关闭：强制缓存只展示、不联网（隐私开关优先）。
+                if (!store.autoCheckEnabled) return LaunchAction.ShowCached(cached)
                 val age = if (store.cachedAtMillis > 0L) {
                     nowMillis - store.cachedAtMillis
                 } else {
@@ -48,6 +50,18 @@ object UpdatePolicy {
             if (!store.autoCheckEnabled) return LaunchAction.Skip
             // 旧版本缓存没有灰度/强制元数据，不能用于分桶判断：强制联网刷新一次。
             if (!store.cachedMetaKnown) return LaunchAction.Check
+            // 普通/灰度缓存过期后自动重新校验；受失败退避约束，避免每次启动都请求。
+            val age = if (store.cachedAtMillis > 0L) {
+                nowMillis - store.cachedAtMillis
+            } else {
+                Long.MAX_VALUE
+            }
+            val stale = age >= UpdateConfig.CACHE_REVALIDATE_INTERVAL_MS
+            if (stale &&
+                nowMillis - store.lastAttemptAtMillis >= UpdateConfig.AUTO_RETRY_INTERVAL_MS
+            ) {
+                return LaunchAction.Check
+            }
             // 冷启动同样必须遵守灰度分桶：未命中只显示分批推送，不能弹更新框。
             if (!UpdateRollout.isEligible(store.installId, cached)) {
                 return LaunchAction.RolloutPending(cached)

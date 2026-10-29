@@ -71,6 +71,22 @@ class UpdateModelsTest {
     """.trimIndent()
 
     @Test
+    fun parseLatestRelease_rejectsMultipleSignedApkAssets() {
+        val extraApk = """
+            {"name": "zhibox-0.1.6-abc1234-arm64-release-signed.apk", "size": 100,
+             "browser_download_url": "https://github.com/IAmKings/ZhiBox/releases/download/v0.1.6/zhibox-0.1.6-abc1234-arm64-release-signed.apk",
+             "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+        """
+        val json = releaseJson.replace(
+            """{"name": "zhibox-0.1.6-abc1234-release-signed.apk.sha256",""",
+            extraApk + """{"name": "zhibox-0.1.6-abc1234-release-signed.apk.sha256",""",
+        )
+        val error = runCatching { UpdateReleaseParser.parseLatestRelease(json) }.exceptionOrNull()
+        assertTrue(error is UpdateException)
+        assertEquals(UpdateFailure.IncompleteRelease, (error as UpdateException).failure)
+    }
+
+    @Test
     fun parseLatestRelease_picksSignedApkAndApiDigest() {
         val info = UpdateReleaseParser.parseLatestRelease(releaseJson)
         assertEquals("0.1.6", info.versionName)
@@ -280,6 +296,30 @@ class UpdateModelsTest {
         }
         val action = UpdatePolicy.decideOnLaunch(500_000L, store, "0.1.6")
         assertTrue("未命中灰度不应展示更新框", action is UpdatePolicy.LaunchAction.RolloutPending)
+    }
+
+    @Test
+    fun launchPolicy_staleNormalCacheTriggersCheck() {
+        val now = 1_700_000_000_000L
+        val store = FakeStore().apply {
+            lastSuccessAtMillis = now
+            cached = info("0.1.7")
+            cachedAtMillis = now - UpdateConfig.CACHE_REVALIDATE_INTERVAL_MS - 1
+        }
+        val action = UpdatePolicy.decideOnLaunch(now, store, "0.1.6")
+        assertEquals(UpdatePolicy.LaunchAction.Check, action)
+    }
+
+    @Test
+    fun launchPolicy_staleIneligibleCacheTriggersCheck() {
+        val now = 1_700_000_000_000L
+        val store = FakeStore().apply {
+            lastSuccessAtMillis = now
+            cached = info("0.1.7", rolloutPercent = 0)
+            cachedAtMillis = now - UpdateConfig.CACHE_REVALIDATE_INTERVAL_MS - 1
+        }
+        val action = UpdatePolicy.decideOnLaunch(now, store, "0.1.6")
+        assertEquals(UpdatePolicy.LaunchAction.Check, action)
     }
 
     @Test
